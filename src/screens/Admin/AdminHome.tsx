@@ -5,7 +5,7 @@ import { getAllTryouts } from '@/services/tryoutService';
 import { deleteAllRankings } from '@/services/rankingService';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { FileText, BookOpen, Users, TrendingUp, CircleAlert as AlertCircle, CircleCheck as CheckCircle2, Trash2 } from 'lucide-react';
+import { FileText, BookOpen, Users, TrendingUp, CircleAlert as AlertCircle, Trash2, Activity, Bell } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -85,113 +85,180 @@ export const AdminHome: React.FC = () => {
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 tracking-tight italic">Dashboard</h1>
-        <p className="text-xs text-gray-400 mt-1 uppercase tracking-widest font-semibold">System Analytics & Overview</p>
-      </div>
-
-      {stats.totalQuestions === 0 && (
-        <Alert className="bg-yellow-50 border border-yellow-200">
-          <AlertCircle className="h-4 w-4 text-yellow-700" />
-          <AlertTitle className="text-yellow-900 font-medium">Setup Firebase Rules Diperlukan</AlertTitle>
-          <AlertDescription className="text-yellow-800 text-sm">
-            Jika Anda tidak bisa membuat soal, pastikan Firebase Rules sudah di-setup dengan benar.
-            Lihat file <span className="font-medium">SETUP_FIREBASE_RULES.md</span> untuk panduan lengkap.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {stats.totalQuestions > 0 && (
-        <Alert className="bg-green-50 border border-green-200">
-          <CheckCircle2 className="h-4 w-4 text-green-700" />
-          <AlertTitle className="text-green-900 font-medium">System Berjalan Normal</AlertTitle>
-          <AlertDescription className="text-green-800 text-sm">
-            Database terhubung dengan baik. Anda sudah bisa mengelola soal dan tryout.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="p-6 bg-white border border-gray-100 rounded-none flex flex-col justify-between min-h-[140px]">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total Soal</span>
-            <FileText className="h-4 w-4 text-gray-300" />
-          </div>
-          <div className="mt-4">
-            <span className="text-3xl font-bold text-gray-900">{stats.totalQuestions}</span>
-            <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-tight font-medium">Bank Soal Aktif</p>
-          </div>
+    <div className="space-y-12">
+      {/* Page Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-gray-100 pb-10">
+        <div>
+           <div className="flex items-center gap-2 mb-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Live Platform Analytics</span>
+           </div>
+           <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight leading-none">
+             Dashboard <span className="text-gray-300 font-light ml-2 italic">Overview</span>
+           </h1>
+           <p className="text-sm text-gray-500 mt-4 leading-relaxed max-w-xl">
+             Manage and monitor your online tryout platform performance, user registrations, and system health in real-time.
+           </p>
         </div>
-
-        <div className="p-6 bg-white border border-gray-100 rounded-none flex flex-col justify-between min-h-[140px]">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total Try Out</span>
-            <BookOpen className="h-4 w-4 text-gray-300" />
-          </div>
-          <div className="mt-4">
-            <span className="text-3xl font-bold text-gray-900">{stats.totalTryouts}</span>
-            <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-tight font-medium">Paket Tersedia</p>
-          </div>
-        </div>
-
-        <div className="p-6 bg-white border border-gray-100 rounded-none flex flex-col justify-between min-h-[140px]">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total Pengguna</span>
-            <Users className="h-4 w-4 text-gray-300" />
-          </div>
-          <div className="mt-4">
-            <span className="text-3xl font-bold text-gray-900">{stats.totalUsers}</span>
-            <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-tight font-medium">Peserta Terdaftar</p>
-          </div>
-        </div>
-
-        <div className="p-6 bg-white border border-gray-100 rounded-none flex flex-col justify-between min-h-[140px]">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total Peserta</span>
-            <TrendingUp className="h-4 w-4 text-gray-300" />
-          </div>
-          <div className="mt-4">
-            <span className="text-3xl font-bold text-gray-900">{stats.totalParticipants}</span>
-            <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-tight font-medium">Ujian Selesai</p>
-          </div>
+        <div className="flex items-center gap-3">
+           <Button className="bg-gray-900 hover:bg-black text-white px-6 h-11 rounded-none text-xs font-bold uppercase tracking-widest transition-all">
+              <Activity className="w-4 h-4 mr-2" />
+              Global Activity
+           </Button>
+           <Button variant="outline" className="border-gray-100 hover:border-gray-200 text-gray-500 px-4 h-11 rounded-none">
+              <Bell className="w-4 h-4" />
+           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="p-8 border border-gray-100 bg-white">
-          <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-6">Panduan Operasional</h2>
-          <div className="space-y-4">
-            {[
-              "Pastikan Firebase Rules dikonfigurasi dengan benar.",
-              "Inventarisir soal melalui menu Kelola Soal.",
-              "Susun paket simulasi pada menu Kelola Try Out.",
-              "Monitor aktivitas dan transaksi secara berkala."
-            ].map((text, i) => (
-              <div key={i} className="flex gap-4 items-start">
-                <span className="text-[10px] font-bold text-blue-600 mt-1 bg-blue-50 w-5 h-5 flex items-center justify-center rounded-none border border-blue-100 flex-shrink-0">{i+1}</span>
-                <p className="text-sm text-gray-500 leading-relaxed font-medium">{text}</p>
+      {/* Sub Navigation / Tabs */}
+      <div className="flex items-center gap-8 border-b border-transparent overflow-x-auto custom-scrollbar pb-1">
+         {[
+           { label: 'Overview', active: true },
+           { label: 'Active Tryouts', active: false },
+           { label: 'Registrations', active: false },
+           { label: 'Finance', active: false },
+           { label: 'Security', active: false },
+         ].map((tab) => (
+           <button
+             key={tab.label}
+             className={`pb-4 text-xs font-bold uppercase tracking-widest transition-all border-b-2 whitespace-nowrap ${
+               tab.active ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-300 hover:text-gray-500'
+             }`}
+           >
+             {tab.label}
+           </button>
+         ))}
+      </div>
+
+      {/* Main Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="group relative p-8 bg-white border border-gray-100 transition-all hover:border-gray-200">
+          <div className="flex items-center justify-between mb-8">
+            <div className="p-2 bg-blue-50 text-blue-500">
+               <FileText className="h-4 w-4" />
+            </div>
+            <span className="text-[10px] font-bold text-green-500 bg-green-50 px-2 py-0.5 rounded-none">+12.5%</span>
+          </div>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Total Questions</p>
+          <div className="flex items-baseline gap-2">
+             <span className="text-4xl font-extrabold text-gray-900 tracking-tighter">{stats.totalQuestions}</span>
+             <span className="text-xs font-medium text-gray-300 italic">items</span>
+          </div>
+        </div>
+
+        <div className="group relative p-8 bg-white border border-gray-100 transition-all hover:border-gray-200">
+          <div className="flex items-center justify-between mb-8">
+            <div className="p-2 bg-purple-50 text-purple-500">
+               <BookOpen className="h-4 w-4" />
+            </div>
+            <span className="text-[10px] font-bold text-blue-500 bg-blue-50 px-2 py-0.5 rounded-none">Stable</span>
+          </div>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Try Out Packages</p>
+          <div className="flex items-baseline gap-2">
+             <span className="text-4xl font-extrabold text-gray-900 tracking-tighter">{stats.totalTryouts}</span>
+             <span className="text-xs font-medium text-gray-300 italic">live</span>
+          </div>
+        </div>
+
+        <div className="group relative p-8 bg-white border border-gray-100 transition-all hover:border-gray-200">
+          <div className="flex items-center justify-between mb-8">
+            <div className="p-2 bg-orange-50 text-orange-500">
+               <Users className="h-4 w-4" />
+            </div>
+            <span className="text-[10px] font-bold text-blue-500 bg-blue-50 px-2 py-0.5 rounded-none">+34 New</span>
+          </div>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Registered Users</p>
+          <div className="flex items-baseline gap-2">
+             <span className="text-4xl font-extrabold text-gray-900 tracking-tighter">{stats.totalUsers}</span>
+             <span className="text-xs font-medium text-gray-300 italic">verified</span>
+          </div>
+        </div>
+
+        <div className="group relative p-8 bg-white border border-gray-100 transition-all hover:border-gray-200">
+          <div className="flex items-center justify-between mb-8">
+            <div className="p-2 bg-green-50 text-green-500">
+               <TrendingUp className="h-4 w-4" />
+            </div>
+            <span className="text-[10px] font-bold text-gray-400">Total Runs</span>
+          </div>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Sessions Completed</p>
+          <div className="flex items-baseline gap-2">
+             <span className="text-4xl font-extrabold text-gray-900 tracking-tighter">{stats.totalParticipants}</span>
+             <span className="text-xs font-medium text-gray-300 italic">results</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 pt-6">
+        {/* Alerts & News Area */}
+        <div className="lg:col-span-8 space-y-6">
+           {stats.totalQuestions === 0 && (
+             <div className="p-6 bg-red-50 border border-red-100 animate-in fade-in slide-in-from-top-4">
+                <div className="flex gap-4">
+                   <div className="w-10 h-10 bg-red-100 flex items-center justify-center shrink-0">
+                      <AlertCircle className="w-5 h-5 text-red-600" />
+                   </div>
+                   <div>
+                      <h3 className="text-xs font-bold text-red-900 uppercase tracking-widest mb-1">Permission Required</h3>
+                      <p className="text-sm text-red-700/80 leading-relaxed">
+                        Security rules are blocking writes. Please update your Firestore security configuration to allow question management.
+                      </p>
+                   </div>
+                </div>
+             </div>
+           )}
+
+           <div className="p-10 bg-white border border-gray-100">
+              <div className="flex items-center justify-between mb-10">
+                 <h2 className="text-xs font-bold text-gray-900 uppercase tracking-widest border-l-4 border-blue-500 pl-4 h-4 flex items-center">
+                    Operational Guidelines
+                 </h2>
+                 <button className="text-[10px] font-bold text-blue-600 uppercase tracking-widest hover:underline">View All</button>
               </div>
-            ))}
-          </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10">
+                 {[
+                   { title: "Security Rules", desc: "Ensure IAM and security rules are matching production standards.", status: "Verified" },
+                   { title: "Question Bank", desc: "Keep the item difficulty balanced across all active packages.", status: "Managed" },
+                   { title: "Financial Audits", desc: "Review claim codes and payment logs at the end of each session.", status: "Pending" },
+                   { title: "User Activities", desc: "Monitor for suspicious registration or trial activities.", status: "Active" }
+                 ].map((item, i) => (
+                   <div key={i} className="group cursor-default">
+                      <div className="flex items-center justify-between mb-2">
+                         <span className="text-[11px] font-bold text-gray-900 uppercase tracking-tight">{item.title}</span>
+                         <span className="text-[9px] font-bold text-gray-300 uppercase tracking-tighter">{item.status}</span>
+                      </div>
+                      <p className="text-xs text-gray-400 leading-relaxed font-medium group-hover:text-gray-600 transition-colors">
+                        {item.desc}
+                      </p>
+                      <div className="h-0.5 bg-gray-50 mt-4 overflow-hidden">
+                         <div className="h-full bg-blue-500 transition-all duration-1000 w-0 group-hover:w-full" />
+                      </div>
+                   </div>
+                 ))}
+              </div>
+           </div>
         </div>
 
-        <div className="p-8 border border-red-100 bg-white">
-          <div className="flex items-center gap-2 mb-6 text-red-600">
-            <Trash2 className="w-4 h-4" />
-            <h2 className="text-sm font-bold uppercase tracking-wider">Critical Actions</h2>
-          </div>
-          <p className="text-xs text-gray-400 mb-6 leading-relaxed uppercase tracking-tight font-medium">
-            Penghapusan data ranking bersifat permanen. Seluruh riwayat skor dan peringkat peserta akan dihapus dari sistem.
-          </p>
-          <Button
-            onClick={() => setShowDeleteDialog(true)}
-            variant="outline"
-            className="w-full rounded-none border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700 h-12 text-xs font-bold uppercase tracking-widest"
-            disabled={stats.totalParticipants === 0}
-          >
-            Reset System Ranking
-          </Button>
+        {/* Action Sidebar Area */}
+        <div className="lg:col-span-4 space-y-6">
+           <div className="p-10 bg-gray-50 border border-gray-100 flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-white border border-gray-100 rounded-full flex items-center justify-center mb-6 shadow-sm">
+                 <Trash2 className="w-6 h-6 text-red-400" />
+              </div>
+              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-4">Reset System State</h3>
+              <p className="text-xs text-gray-400 leading-relaxed mb-8 uppercase tracking-tight font-medium">
+                Dangerous action. This will permanently wipe all results and ranking data while preserving users and questions.
+              </p>
+              <Button
+                variant="outline"
+                className="w-full h-12 rounded-none border-red-100 text-red-500 hover:bg-red-50 hover:text-red-700 bg-white text-[10px] font-bold uppercase tracking-widest transition-all shadow-sm"
+                onClick={() => setShowDeleteDialog(true)}
+                disabled={stats.totalParticipants === 0}
+              >
+                Reset Ranking Database
+              </Button>
+           </div>
         </div>
       </div>
 
