@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoadingScreen } from '@/components/ui/spinner';
 import { getAllQuestions } from '@/services/questionService';
 import { getAllTryouts } from '@/services/tryoutService';
@@ -86,10 +85,10 @@ export const AdminHome: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Dashboard Admin</h1>
-        <p className="text-sm text-gray-600 mt-1">Kelola seluruh sistem KelasASN</p>
+        <h1 className="text-3xl font-bold text-gray-900 tracking-tight italic">Dashboard</h1>
+        <p className="text-xs text-gray-400 mt-1 uppercase tracking-widest font-semibold">System Analytics & Overview</p>
       </div>
 
       {stats.totalQuestions === 0 && (
@@ -113,96 +112,87 @@ export const AdminHome: React.FC = () => {
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border border-gray-200 hover:border-gray-300 transition-colors">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Soal</CardTitle>
-            <FileText className="h-4 w-4 text-gray-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold text-gray-900">{stats.totalQuestions}</div>
-            <p className="text-xs text-gray-500 mt-1">Soal tersedia</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="p-6 bg-white border border-gray-100 rounded-none flex flex-col justify-between min-h-[140px]">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total Soal</span>
+            <FileText className="h-4 w-4 text-gray-300" />
+          </div>
+          <div className="mt-4">
+            <span className="text-3xl font-bold text-gray-900">{stats.totalQuestions}</span>
+            <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-tight font-medium">Bank Soal Aktif</p>
+          </div>
+        </div>
 
-        <Card className="border border-gray-200 hover:border-gray-300 transition-colors">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Try Out</CardTitle>
-            <BookOpen className="h-4 w-4 text-gray-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold text-gray-900">{stats.totalTryouts}</div>
-            <p className="text-xs text-gray-500 mt-1">Try out dibuat</p>
-          </CardContent>
-        </Card>
+        <div className="p-6 bg-white border border-gray-100 rounded-none flex flex-col justify-between min-h-[140px]">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total Try Out</span>
+            <BookOpen className="h-4 w-4 text-gray-300" />
+          </div>
+          <div className="mt-4">
+            <span className="text-3xl font-bold text-gray-900">{stats.totalTryouts}</span>
+            <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-tight font-medium">Paket Tersedia</p>
+          </div>
+        </div>
 
-        <Card className="border border-gray-200 hover:border-gray-300 transition-colors">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Pengguna</CardTitle>
-            <Users className="h-4 w-4 text-gray-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold text-gray-900">{stats.totalUsers}</div>
-            <p className="text-xs text-gray-500 mt-1">Pengguna terdaftar</p>
-          </CardContent>
-        </Card>
+        <div className="p-6 bg-white border border-gray-100 rounded-none flex flex-col justify-between min-h-[140px]">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total Pengguna</span>
+            <Users className="h-4 w-4 text-gray-300" />
+          </div>
+          <div className="mt-4">
+            <span className="text-3xl font-bold text-gray-900">{stats.totalUsers}</span>
+            <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-tight font-medium">Peserta Terdaftar</p>
+          </div>
+        </div>
 
-        <Card className="border border-gray-200 hover:border-gray-300 transition-colors">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Peserta</CardTitle>
-            <TrendingUp className="h-4 w-4 text-gray-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold text-gray-900">{stats.totalParticipants}</div>
-            <p className="text-xs text-gray-500 mt-1">Try out dikerjakan</p>
-          </CardContent>
-        </Card>
+        <div className="p-6 bg-white border border-gray-100 rounded-none flex flex-col justify-between min-h-[140px]">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total Peserta</span>
+            <TrendingUp className="h-4 w-4 text-gray-300" />
+          </div>
+          <div className="mt-4">
+            <span className="text-3xl font-bold text-gray-900">{stats.totalParticipants}</span>
+            <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-tight font-medium">Ujian Selesai</p>
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="border border-gray-200">
-          <CardHeader>
-            <CardTitle className="text-base font-medium text-gray-900">Panduan Cepat</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 pt-4">
-            <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700">
-              <li>Pastikan Firebase Rules sudah di-setup</li>
-              <li>Buat soal terlebih dahulu di menu "Kelola Soal"</li>
-              <li>Setelah ada soal, buat paket try out di menu "Kelola Try Out"</li>
-              <li>User dapat melihat dan membeli tryout yang sudah dibuat</li>
-            </ol>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="p-8 border border-gray-100 bg-white">
+          <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-6">Panduan Operasional</h2>
+          <div className="space-y-4">
+            {[
+              "Pastikan Firebase Rules dikonfigurasi dengan benar.",
+              "Inventarisir soal melalui menu Kelola Soal.",
+              "Susun paket simulasi pada menu Kelola Try Out.",
+              "Monitor aktivitas dan transaksi secara berkala."
+            ].map((text, i) => (
+              <div key={i} className="flex gap-4 items-start">
+                <span className="text-[10px] font-bold text-blue-600 mt-1 bg-blue-50 w-5 h-5 flex items-center justify-center rounded-none border border-blue-100 flex-shrink-0">{i+1}</span>
+                <p className="text-sm text-gray-500 leading-relaxed font-medium">{text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
 
-        <Card className="border border-red-200">
-          <CardHeader>
-            <CardTitle className="text-base font-medium text-red-900 flex items-center gap-2">
-              <Trash2 className="w-4 h-4" />
-              Data Management
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 pt-4">
-            <div>
-              <p className="text-sm text-gray-700 mb-3">
-                Hapus semua data ranking untuk memulai dari awal. Ini akan menghapus semua hasil try out dan ranking.
-              </p>
-              <Button
-                onClick={() => setShowDeleteDialog(true)}
-                variant="destructive"
-                className="w-full"
-                disabled={stats.totalParticipants === 0}
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Hapus Semua Ranking
-              </Button>
-              {stats.totalParticipants === 0 && (
-                <p className="text-xs text-gray-500 mt-2 text-center">
-                  Tidak ada data ranking untuk dihapus
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="p-8 border border-red-100 bg-white">
+          <div className="flex items-center gap-2 mb-6 text-red-600">
+            <Trash2 className="w-4 h-4" />
+            <h2 className="text-sm font-bold uppercase tracking-wider">Critical Actions</h2>
+          </div>
+          <p className="text-xs text-gray-400 mb-6 leading-relaxed uppercase tracking-tight font-medium">
+            Penghapusan data ranking bersifat permanen. Seluruh riwayat skor dan peringkat peserta akan dihapus dari sistem.
+          </p>
+          <Button
+            onClick={() => setShowDeleteDialog(true)}
+            variant="outline"
+            className="w-full rounded-none border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700 h-12 text-xs font-bold uppercase tracking-widest"
+            disabled={stats.totalParticipants === 0}
+          >
+            Reset System Ranking
+          </Button>
+        </div>
       </div>
 
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
