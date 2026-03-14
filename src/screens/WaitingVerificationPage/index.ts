@@ -1,0 +1,1 @@
+export { WaitingVerificationPage } from './WaitingVerificationPage';

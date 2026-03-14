@@ -1,0 +1,12 @@
+export { HomePage } from './HomePage';
+export { TryoutsPage } from './TryoutsPage';
+export { TryoutDetailPage } from './TryoutDetailPage';
+export { TryoutExamPage } from './TryoutExamPage';
+export { TryoutResultPage } from './TryoutResultPage';
+export { TryoutReviewPage } from './TryoutReviewPage';
+export { RankingPage } from './RankingPage';
+export { ProfilePage } from './ProfilePage';
+export { JabatanPage } from './JabatanPage';
+export { PaymentHistoryPage } from './PaymentHistoryPage';
+export { PaymentQRISCodePage } from './PaymentQRISCodePage';
+export { PaymentQRISUnifiedPage } from './PaymentQRISUnifiedPage';

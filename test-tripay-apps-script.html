@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Tripay Apps Script</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: transform 0.2s;
+            width: 100%;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 6px;
+            display: none;
+        }
+
+        .result.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .result.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .result pre {
+            margin-top: 10px;
+            background: rgba(0,0,0,0.05);
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-right: 10px;
+        }
+
+        .status-badge.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-badge.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            color: #667eea;
+            margin-top: 10px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Tripay Apps Script Testing Tool</h1>
+
+        <!-- Configuration Card -->
+        <div class="card">
+            <h2>⚙️ Configuration</h2>
+            <div class="form-group">
+                <label for="appsScriptUrl">Google Apps Script URL:</label>
+                <input type="text" id="appsScriptUrl"
+                       placeholder="https://script.google.com/macros/s/YOUR_ID/exec">
+            </div>
+            <button onclick="saveConfig()">💾 Simpan Konfigurasi</button>
+            <div id="configStatus" class="result"></div>
+        </div>
+
+        <div class="grid">
+            <!-- Test Payment Channels -->
+            <div class="card">
+                <h2>1️⃣ Test Get Payment Channels</h2>
+                <p style="margin-bottom: 15px; color: #666;">
+                    Mendapatkan daftar metode pembayaran yang tersedia.
+                </p>
+                <button onclick="testPaymentChannels()">🔍 Test Payment Channels</button>
+                <div class="loading" id="loading1">
+                    <p>Loading...</p>
+                </div>
+                <div id="result1" class="result"></div>
+            </div>
+
+            <!-- Test Create Transaction -->
+            <div class="card">
+                <h2>2️⃣ Test Create Transaction</h2>
+                <div class="form-group">
+                    <label for="paymentMethod">Metode Pembayaran:</label>
+                    <select id="paymentMethod">
+                        <option value="QRIS">QRIS</option>
+                        <option value="BRIVA">BRI Virtual Account</option>
+                        <option value="BCAVA">BCA Virtual Account</option>
+                        <option value="BNIVA">BNI Virtual Account</option>
+                        <option value="MANDIRIVA">Mandiri Virtual Account</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="amount">Jumlah (Rp):</label>
+                    <input type="number" id="amount" value="50000" min="10000">
+                </div>
+                <div class="form-group">
+                    <label for="customerName">Nama Customer:</label>
+                    <input type="text" id="customerName" value="Test User">
+                </div>
+                <div class="form-group">
+                    <label for="customerEmail">Email Customer:</label>
+                    <input type="email" id="customerEmail" value="test@example.com">
+                </div>
+                <div class="form-group">
+                    <label for="customerPhone">Phone Customer:</label>
+                    <input type="tel" id="customerPhone" value="081234567890">
+                </div>
+                <button onclick="testCreateTransaction()">💳 Buat Transaksi Test</button>
+                <div class="loading" id="loading2">
+                    <p>Creating transaction...</p>
+                </div>
+                <div id="result2" class="result"></div>
+            </div>
+
+            <!-- Test Transaction Detail -->
+            <div class="card">
+                <h2>3️⃣ Test Get Transaction Detail</h2>
+                <div class="form-group">
+                    <label for="reference">Reference Number:</label>
+                    <input type="text" id="reference"
+                           placeholder="Contoh: T461181234567890">
+                    <small style="color: #666;">Dapatkan reference dari hasil create transaction</small>
+                </div>
+                <button onclick="testTransactionDetail()">📋 Cek Detail Transaksi</button>
+                <div class="loading" id="loading3">
+                    <p>Loading...</p>
+                </div>
+                <div id="result3" class="result"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load config dari localStorage
+        window.onload = function() {
+            const savedUrl = localStorage.getItem('appsScriptUrl');
+            if (savedUrl) {
+                document.getElementById('appsScriptUrl').value = savedUrl;
+                showStatus('configStatus', 'success', '✅ Konfigurasi tersimpan');
+            }
+        };
+
+        function saveConfig() {
+            const url = document.getElementById('appsScriptUrl').value.trim();
+            if (!url) {
+                showStatus('configStatus', 'error', '❌ URL tidak boleh kosong!');
+                return;
+            }
+
+            localStorage.setItem('appsScriptUrl', url);
+            showStatus('configStatus', 'success', '✅ Konfigurasi berhasil disimpan!');
+        }
+
+        function getBaseUrl() {
+            const url = localStorage.getItem('appsScriptUrl');
+            if (!url) {
+                alert('⚠️ Silakan isi dan simpan Google Apps Script URL terlebih dahulu!');
+                throw new Error('URL not configured');
+            }
+            return url;
+        }
+
+        async function testPaymentChannels() {
+            const loadingEl = document.getElementById('loading1');
+            const resultEl = document.getElementById('result1');
+
+            try {
+                loadingEl.classList.add('active');
+                resultEl.style.display = 'none';
+
+                const baseUrl = getBaseUrl();
+                const response = await fetch(`${baseUrl}?path=payment-channels`);
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    const channels = result.data.data || [];
+                    let message = `✅ Berhasil mendapatkan ${channels.length} payment channels\n\n`;
+
+                    channels.slice(0, 5).forEach(channel => {
+                        message += `• ${channel.name} (${channel.code})\n`;
+                        message += `  Group: ${channel.group}\n`;
+                        message += `  Fee: Rp ${channel.fee_customer.flat.toLocaleString()}\n\n`;
+                    });
+
+                    showStatus('result1', 'success', message, result);
+                } else {
+                    throw new Error(result.error || 'Failed to fetch payment channels');
+                }
+            } catch (error) {
+                showStatus('result1', 'error', '❌ Error: ' + error.message, error);
+            } finally {
+                loadingEl.classList.remove('active');
+            }
+        }
+
+        async function testCreateTransaction() {
+            const loadingEl = document.getElementById('loading2');
+            const resultEl = document.getElementById('result2');
+
+            try {
+                loadingEl.classList.add('active');
+                resultEl.style.display = 'none';
+
+                const baseUrl = getBaseUrl();
+                const merchantRef = 'TEST-' + Date.now();
+
+                const payload = {
+                    method: document.getElementById('paymentMethod').value,
+                    merchant_ref: merchantRef,
+                    amount: parseInt(document.getElementById('amount').value),
+                    customer_name: document.getElementById('customerName').value,
+                    customer_email: document.getElementById('customerEmail').value,
+                    customer_phone: document.getElementById('customerPhone').value,
+                    order_items: [
+                        {
+                            name: 'Test Tryout',
+                            price: parseInt(document.getElementById('amount').value),
+                            quantity: 1
+                        }
+                    ],
+                    callback_url: window.location.origin + '/api/callback',
+                    return_url: window.location.origin + '/payment-success'
+                };
+
+                const response = await fetch(`${baseUrl}?path=create-transaction`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    const data = result.data.data;
+                    let message = `✅ Transaksi berhasil dibuat!\n\n`;
+                    message += `Reference: ${data.reference}\n`;
+                    message += `Status: ${data.status}\n`;
+                    message += `Amount: Rp ${data.amount.toLocaleString()}\n`;
+                    message += `Payment Method: ${data.payment_name}\n`;
+                    message += `Expired: ${new Date(data.expired_time * 1000).toLocaleString()}\n\n`;
+
+                    if (data.pay_url) {
+                        message += `💳 Payment URL: ${data.pay_url}\n`;
+                    }
+                    if (data.qr_url) {
+                        message += `📱 QR Code: ${data.qr_url}\n`;
+                    }
+
+                    // Auto-fill reference untuk test 3
+                    document.getElementById('reference').value = data.reference;
+
+                    showStatus('result2', 'success', message, result);
+                } else {
+                    throw new Error(result.error || 'Failed to create transaction');
+                }
+            } catch (error) {
+                showStatus('result2', 'error', '❌ Error: ' + error.message, error);
+            } finally {
+                loadingEl.classList.remove('active');
+            }
+        }
+
+        async function testTransactionDetail() {
+            const loadingEl = document.getElementById('loading3');
+            const resultEl = document.getElementById('result3');
+
+            try {
+                const reference = document.getElementById('reference').value.trim();
+                if (!reference) {
+                    alert('⚠️ Silakan isi Reference Number!');
+                    return;
+                }
+
+                loadingEl.classList.add('active');
+                resultEl.style.display = 'none';
+
+                const baseUrl = getBaseUrl();
+                const response = await fetch(`${baseUrl}?path=transaction-detail&reference=${reference}`);
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    const data = result.data.data;
+                    let message = `✅ Detail transaksi berhasil didapat!\n\n`;
+                    message += `Reference: ${data.reference}\n`;
+                    message += `Merchant Ref: ${data.merchant_ref}\n`;
+                    message += `Status: ${data.status}\n`;
+                    message += `Amount: Rp ${data.amount.toLocaleString()}\n`;
+                    message += `Payment Method: ${data.payment_name}\n`;
+                    message += `Customer: ${data.customer_name}\n`;
+                    message += `Email: ${data.customer_email}\n`;
+
+                    if (data.paid_at) {
+                        message += `\n✅ Dibayar pada: ${new Date(data.paid_at * 1000).toLocaleString()}\n`;
+                    }
+
+                    showStatus('result3', 'success', message, result);
+                } else {
+                    throw new Error(result.error || 'Failed to fetch transaction detail');
+                }
+            } catch (error) {
+                showStatus('result3', 'error', '❌ Error: ' + error.message, error);
+            } finally {
+                loadingEl.classList.remove('active');
+            }
+        }
+
+        function showStatus(elementId, type, message, data = null) {
+            const element = document.getElementById(elementId);
+            element.className = `result ${type}`;
+
+            let html = `<div>${message}</div>`;
+            if (data) {
+                html += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            }
+
+            element.innerHTML = html;
+            element.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

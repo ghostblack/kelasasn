@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Debug Ranking Data</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+      border-bottom: 2px solid #007bff;
+      padding-bottom: 10px;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px 5px;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 6px;
+      border-left: 4px solid #007bff;
+    }
+    .error {
+      background: #fff3cd;
+      border-left-color: #ffc107;
+      color: #856404;
+    }
+    .success {
+      background: #d4edda;
+      border-left-color: #28a745;
+      color: #155724;
+    }
+    pre {
+      background: #f4f4f4;
+      padding: 15px;
+      border-radius: 4px;
+      overflow-x: auto;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+    .stat-card {
+      background: #e3f2fd;
+      padding: 15px;
+      border-radius: 6px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 32px;
+      font-weight: bold;
+      color: #1976d2;
+    }
+    .stat-label {
+      color: #666;
+      font-size: 14px;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Debug Ranking Data</h1>
+    <p>Tool untuk memeriksa data tryout_results di Firestore</p>
+
+    <div>
+      <button id="checkBtn" onclick="checkRankingData()">Periksa Data Ranking</button>
+      <button id="checkUsersBtn" onclick="checkUserData()">Periksa Data Users</button>
+      <button id="checkTryoutsBtn" onclick="checkTryoutData()">Periksa Data Tryouts</button>
+    </div>
+
+    <div class="stats" id="stats" style="display: none;"></div>
+    <div id="result"></div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.2.0/firebase-app.js';
+    import {
+      getFirestore,
+      collection,
+      getDocs,
+      doc,
+      getDoc
+    } from 'https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDmM8PdKsrZJGy20LwFcbVeFUDsD4b8UoU",
+      authDomain: "kelasasn-16dd2.firebaseapp.com",
+      projectId: "kelasasn-16dd2",
+      storageBucket: "kelasasn-16dd2.firebasestorage.app",
+      messagingSenderId: "296776278829",
+      appId: "1:296776278829:web:c10a34bd2ff9f4cc3e2d4e"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    window.checkRankingData = async function() {
+      const btn = document.getElementById('checkBtn');
+      const resultDiv = document.getElementById('result');
+      const statsDiv = document.getElementById('stats');
+
+      btn.disabled = true;
+      btn.textContent = 'Memeriksa...';
+      resultDiv.innerHTML = '<div class="result">Sedang memuat data...</div>';
+
+      try {
+        const resultsRef = collection(db, 'tryout_results');
+        const snapshot = await getDocs(resultsRef);
+
+        if (snapshot.empty) {
+          resultDiv.innerHTML = `
+            <div class="result error">
+              <h3>⚠️ Tidak Ada Data</h3>
+              <p>Collection 'tryout_results' kosong. Belum ada pengguna yang menyelesaikan tryout.</p>
+            </div>
+          `;
+          statsDiv.style.display = 'none';
+          return;
+        }
+
+        const results = [];
+        const tryoutMap = new Map();
+        const userMap = new Map();
+
+        for (const docSnap of snapshot.docs) {
+          const data = docSnap.data();
+          results.push({
+            id: docSnap.id,
+            ...data,
+            completedAt: data.completedAt?.toDate?.() || new Date()
+          });
+
+          tryoutMap.set(data.tryoutId, (tryoutMap.get(data.tryoutId) || 0) + 1);
+          userMap.set(data.userId, (userMap.get(data.userId) || 0) + 1);
+        }
+
+        results.sort((a, b) => b.totalScore - a.totalScore);
+
+        statsDiv.style.display = 'grid';
+        statsDiv.innerHTML = `
+          <div class="stat-card">
+            <div class="stat-value">${results.length}</div>
+            <div class="stat-label">Total Results</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">${tryoutMap.size}</div>
+            <div class="stat-label">Unique Tryouts</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">${userMap.size}</div>
+            <div class="stat-label">Unique Users</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">${Math.max(...results.map(r => r.totalScore || 0)).toFixed(1)}</div>
+            <div class="stat-label">Highest Score</div>
+          </div>
+        `;
+
+        resultDiv.innerHTML = `
+          <div class="result success">
+            <h3>✅ Data Ditemukan!</h3>
+            <p>Ditemukan ${results.length} hasil tryout dari ${userMap.size} pengguna.</p>
+          </div>
+          <h3>Detail Data:</h3>
+          <pre>${JSON.stringify(results, null, 2)}</pre>
+        `;
+
+      } catch (error) {
+        console.error('Error:', error);
+        resultDiv.innerHTML = `
+          <div class="result error">
+            <h3>❌ Error</h3>
+            <p>${error.message}</p>
+            <pre>${error.stack}</pre>
+          </div>
+        `;
+        statsDiv.style.display = 'none';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Periksa Data Ranking';
+      }
+    };
+
+    window.checkUserData = async function() {
+      const btn = document.getElementById('checkUsersBtn');
+      const resultDiv = document.getElementById('result');
+
+      btn.disabled = true;
+      btn.textContent = 'Memeriksa...';
+      resultDiv.innerHTML = '<div class="result">Sedang memuat data users...</div>';
+
+      try {
+        const usersRef = collection(db, 'users');
+        const snapshot = await getDocs(usersRef);
+
+        const users = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+
+        resultDiv.innerHTML = `
+          <div class="result success">
+            <h3>✅ Data Users</h3>
+            <p>Ditemukan ${users.length} users.</p>
+          </div>
+          <pre>${JSON.stringify(users, null, 2)}</pre>
+        `;
+
+      } catch (error) {
+        resultDiv.innerHTML = `
+          <div class="result error">
+            <h3>❌ Error</h3>
+            <p>${error.message}</p>
+          </div>
+        `;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Periksa Data Users';
+      }
+    };
+
+    window.checkTryoutData = async function() {
+      const btn = document.getElementById('checkTryoutsBtn');
+      const resultDiv = document.getElementById('result');
+
+      btn.disabled = true;
+      btn.textContent = 'Memeriksa...';
+      resultDiv.innerHTML = '<div class="result">Sedang memuat data tryouts...</div>';
+
+      try {
+        const tryoutsRef = collection(db, 'tryouts');
+        const snapshot = await getDocs(tryoutsRef);
+
+        const tryouts = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+
+        resultDiv.innerHTML = `
+          <div class="result success">
+            <h3>✅ Data Tryouts</h3>
+            <p>Ditemukan ${tryouts.length} tryouts.</p>
+          </div>
+          <pre>${JSON.stringify(tryouts, null, 2)}</pre>
+        `;
+
+      } catch (error) {
+        resultDiv.innerHTML = `
+          <div class="result error">
+            <h3>❌ Error</h3>
+            <p>${error.message}</p>
+          </div>
+        `;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Periksa Data Tryouts';
+      }
+    };
+  </script>
+</body>
+</html>

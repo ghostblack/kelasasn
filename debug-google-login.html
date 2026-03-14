@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Debug Google Login - Kelas ASN</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    h1 {
+      color: #333;
+      border-bottom: 3px solid #2563eb;
+      padding-bottom: 10px;
+    }
+    h2 {
+      color: #2563eb;
+      margin-top: 30px;
+    }
+    .info-box {
+      background: #eff6ff;
+      border-left: 4px solid #2563eb;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 4px;
+    }
+    .success-box {
+      background: #f0fdf4;
+      border-left: 4px solid #22c55e;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 4px;
+    }
+    .error-box {
+      background: #fef2f2;
+      border-left: 4px solid #ef4444;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 4px;
+    }
+    .warning-box {
+      background: #fffbeb;
+      border-left: 4px solid #f59e0b;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 4px;
+    }
+    button {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      margin: 5px;
+    }
+    button:hover {
+      background: #1d4ed8;
+    }
+    button:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+    }
+    .danger-btn {
+      background: #ef4444;
+    }
+    .danger-btn:hover {
+      background: #dc2626;
+    }
+    pre {
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 15px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .status-item {
+      display: flex;
+      align-items: center;
+      padding: 10px;
+      margin: 10px 0;
+      background: #f8fafc;
+      border-radius: 6px;
+    }
+    .status-label {
+      font-weight: 600;
+      min-width: 200px;
+      color: #475569;
+    }
+    .status-value {
+      color: #0f172a;
+      font-family: 'Courier New', monospace;
+    }
+    .status-ok {
+      color: #22c55e;
+      font-weight: bold;
+    }
+    .status-error {
+      color: #ef4444;
+      font-weight: bold;
+    }
+    .loader {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #2563eb;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      margin-left: 10px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: 10px;
+    }
+    .badge-success {
+      background: #dcfce7;
+      color: #166534;
+    }
+    .badge-error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    .badge-warning {
+      background: #fef3c7;
+      color: #92400e;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 Google Login Debug Tool</h1>
+    <p>Tool ini membantu debug masalah Google login di Kelas ASN</p>
+
+    <div class="info-box">
+      <strong>💡 Cara Pakai:</strong>
+      <ol>
+        <li>Klik tombol "Check Current Status" untuk melihat status login</li>
+        <li>Lihat semua info di bawah untuk identify masalah</li>
+        <li>Gunakan tombol action sesuai kebutuhan</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="container">
+    <h2>📊 Current Status</h2>
+    <div id="statusContainer">
+      <p style="color: #64748b;">Click "Check Current Status" untuk memulai...</p>
+    </div>
+    <button onclick="checkStatus()">Check Current Status</button>
+    <button onclick="checkStatus()" style="background: #10b981;">Auto-Refresh (Every 3s)</button>
+  </div>
+
+  <div class="container">
+    <h2>🔧 Quick Actions</h2>
+    <div style="display: grid; gap: 10px;">
+      <button onclick="clearAllStorage()">🗑️ Clear All Storage (Logout)</button>
+      <button onclick="clearSessionOnly()">🔄 Clear Session Only</button>
+      <button onclick="checkFirestoreSessions()">📂 Check Firestore Sessions</button>
+      <button onclick="testGoogleLogin()">🔐 Test Google Login</button>
+      <button onclick="viewLogs()" style="background: #8b5cf6;">📋 View Console Logs</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <h2>📝 Debug Logs</h2>
+    <div id="logsContainer">
+      <pre id="logs">Logs akan muncul di sini...</pre>
+    </div>
+    <button onclick="clearLogs()">Clear Logs</button>
+  </div>
+
+  <div class="container">
+    <h2>📖 Troubleshooting Guide</h2>
+
+    <div class="warning-box">
+      <strong>⚠️ Common Issues:</strong>
+      <ul>
+        <li><strong>Login Loop:</strong> User ada tapi terus redirect ke login
+          <ul>
+            <li>Cause: Email verification check salah untuk Google users</li>
+            <li>Fix: Update ProtectedRoute dan AuthContext</li>
+          </ul>
+        </li>
+        <li><strong>Session Invalid:</strong> Session di localStorage tidak valid di Firestore
+          <ul>
+            <li>Cause: Session di-invalidate sebelum dibuat</li>
+            <li>Fix: Create session DULU, baru invalidate others</li>
+          </ul>
+        </li>
+        <li><strong>Race Condition:</strong> AuthContext check sebelum LoginPage selesai
+          <ul>
+            <li>Cause: onAuthStateChanged trigger multiple times</li>
+            <li>Fix: AuthContext harus selalu set user, tidak pernah null jika authenticated</li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+
+    <div class="success-box">
+      <strong>✅ Expected Flow (Google Login):</strong>
+      <ol>
+        <li>User click "Lanjutkan dengan Google"</li>
+        <li>Redirect ke Google → Select account</li>
+        <li>Google redirect back → getRedirectResult()</li>
+        <li>Create/update user profile in Firestore</li>
+        <li>Create new session → Get sessionId</li>
+        <li>Invalidate other sessions (pass sessionId)</li>
+        <li>Store session in localStorage</li>
+        <li>Navigate to /dashboard or /setup-username</li>
+        <li>AuthContext detect user → Set user (NO NULL!)</li>
+        <li>ProtectedRoute check → isGoogleUser = true → Allow</li>
+        <li>Dashboard loads successfully ✅</li>
+      </ol>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.2.0/firebase-app.js';
+    import { getAuth, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/11.2.0/firebase-auth.js';
+    import { getFirestore, collection, query, where, getDocs } from 'https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js';
+
+    // Initialize Firebase (same config as main app)
+    const firebaseConfig = {
+      apiKey: "AIzaSyBWiN_XJi-WwZQwhujp42YiB96bZDPuNUs",
+      authDomain: "cbtonlinetest.firebaseapp.com",
+      projectId: "cbtonlinetest",
+      storageBucket: "cbtonlinetest.firebasestorage.app",
+      messagingSenderId: "1021074657378",
+      appId: "1:1021074657378:web:e79bf47f58e9d12f6ac3e7"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    let logs = [];
+
+    function addLog(message, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      logs.push({ timestamp, message, type });
+      updateLogsDisplay();
+    }
+
+    function updateLogsDisplay() {
+      const logsEl = document.getElementById('logs');
+      logsEl.textContent = logs.map(log =>
+        `[${log.timestamp}] [${log.type.toUpperCase()}] ${log.message}`
+      ).join('\n');
+      logsEl.scrollTop = logsEl.scrollHeight;
+    }
+
+    window.checkStatus = async function() {
+      const container = document.getElementById('statusContainer');
+      container.innerHTML = '<div class="loader"></div> Loading status...';
+
+      try {
+        const user = auth.currentUser;
+        const storedUserId = localStorage.getItem('current_user_id');
+
+        let html = '';
+
+        // User Status
+        if (user) {
+          const isGoogleUser = user.providerData.some(p => p.providerId === 'google.com');
+
+          html += `<div class="status-item">
+            <span class="status-label">Firebase User:</span>
+            <span class="status-value status-ok">✓ Logged In</span>
+          </div>`;
+
+          html += `<div class="status-item">
+            <span class="status-label">User ID:</span>
+            <span class="status-value">${user.uid}</span>
+          </div>`;
+
+          html += `<div class="status-item">
+            <span class="status-label">Email:</span>
+            <span class="status-value">${user.email}</span>
+          </div>`;
+
+          html += `<div class="status-item">
+            <span class="status-label">Provider:</span>
+            <span class="status-value">${isGoogleUser ? '🔵 Google' : '📧 Email/Password'}</span>
+            ${isGoogleUser ? '<span class="badge badge-success">VERIFIED</span>' : ''}
+          </div>`;
+
+          html += `<div class="status-item">
+            <span class="status-label">Email Verified:</span>
+            <span class="status-value ${user.emailVerified ? 'status-ok' : 'status-error'}">
+              ${user.emailVerified ? '✓ Yes' : '✗ No'}
+            </span>
+          </div>`;
+
+          // Session Status
+          const sessionId = localStorage.getItem(`session_${user.uid}`);
+          html += `<div class="status-item">
+            <span class="status-label">Session in localStorage:</span>
+            <span class="status-value ${sessionId ? 'status-ok' : 'status-error'}">
+              ${sessionId ? '✓ Present' : '✗ Missing'}
+            </span>
+          </div>`;
+
+          if (sessionId) {
+            html += `<div class="status-item">
+              <span class="status-label">Session ID:</span>
+              <span class="status-value" style="font-size: 11px;">${sessionId}</span>
+            </div>`;
+
+            // Check Firestore
+            try {
+              const sessionsRef = collection(db, 'userSessions');
+              const q = query(
+                sessionsRef,
+                where('userId', '==', user.uid),
+                where('sessionId', '==', sessionId),
+                where('isActive', '==', true)
+              );
+              const snapshot = await getDocs(q);
+
+              html += `<div class="status-item">
+                <span class="status-label">Session in Firestore:</span>
+                <span class="status-value ${snapshot.size > 0 ? 'status-ok' : 'status-error'}">
+                  ${snapshot.size > 0 ? '✓ Valid' : '✗ Invalid/Missing'}
+                </span>
+              </div>`;
+
+              if (snapshot.size > 0) {
+                const sessionData = snapshot.docs[0].data();
+                html += `<div class="status-item">
+                  <span class="status-label">Last Activity:</span>
+                  <span class="status-value">${new Date(sessionData.lastActivityTime.toMillis()).toLocaleString()}</span>
+                </div>`;
+              }
+            } catch (err) {
+              html += `<div class="error-box">Firestore Error: ${err.message}</div>`;
+              addLog(`Firestore check error: ${err.message}`, 'error');
+            }
+          }
+
+          // Check for potential issues
+          if (!isGoogleUser && !user.emailVerified) {
+            html += `<div class="warning-box">
+              <strong>⚠️ Warning:</strong> Email/Password user but email not verified!
+              User should be at /verify-email page.
+            </div>`;
+          }
+
+          if (isGoogleUser && !sessionId) {
+            html += `<div class="warning-box">
+              <strong>⚠️ Warning:</strong> Google user but no session in localStorage!
+              This might cause issues. Try logging in again.
+            </div>`;
+          }
+
+        } else {
+          html += `<div class="status-item">
+            <span class="status-label">Firebase User:</span>
+            <span class="status-value status-error">✗ Not Logged In</span>
+          </div>`;
+
+          if (storedUserId) {
+            html += `<div class="warning-box">
+              <strong>⚠️ Warning:</strong> User ID in localStorage but not authenticated!
+              This suggests a session issue. Clear storage and login again.
+            </div>`;
+          }
+        }
+
+        container.innerHTML = html;
+        addLog('Status check completed', 'success');
+
+      } catch (error) {
+        container.innerHTML = `<div class="error-box">Error: ${error.message}</div>`;
+        addLog(`Status check failed: ${error.message}`, 'error');
+      }
+    };
+
+    window.clearAllStorage = function() {
+      if (!confirm('This will logout and clear ALL data. Continue?')) return;
+
+      signOut(auth).then(() => {
+        localStorage.clear();
+        addLog('All storage cleared and logged out', 'success');
+        alert('✓ Storage cleared! Refresh the page.');
+      }).catch(err => {
+        addLog(`Logout error: ${err.message}`, 'error');
+      });
+    };
+
+    window.clearSessionOnly = function() {
+      const userId = auth.currentUser?.uid;
+      if (userId) {
+        localStorage.removeItem(`session_${userId}`);
+        localStorage.removeItem('current_user_id');
+        addLog('Session cleared from localStorage', 'success');
+        alert('✓ Session cleared! Try logging in again.');
+      } else {
+        alert('No user logged in');
+      }
+    };
+
+    window.checkFirestoreSessions = async function() {
+      const user = auth.currentUser;
+      if (!user) {
+        alert('No user logged in');
+        return;
+      }
+
+      try {
+        const sessionsRef = collection(db, 'userSessions');
+        const q = query(sessionsRef, where('userId', '==', user.uid));
+        const snapshot = await getDocs(q);
+
+        addLog(`Found ${snapshot.size} session(s) in Firestore`, 'info');
+
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          addLog(`Session ${data.sessionId}: isActive=${data.isActive}`, 'info');
+        });
+
+        alert(`Found ${snapshot.size} session(s). Check logs for details.`);
+      } catch (err) {
+        addLog(`Firestore query error: ${err.message}`, 'error');
+        alert(`Error: ${err.message}`);
+      }
+    };
+
+    window.testGoogleLogin = function() {
+      alert('Click OK to redirect to Google login page...');
+      window.location.href = '/login';
+    };
+
+    window.viewLogs = function() {
+      const logsContainer = document.getElementById('logsContainer');
+      logsContainer.scrollIntoView({ behavior: 'smooth' });
+    };
+
+    window.clearLogs = function() {
+      logs = [];
+      updateLogsDisplay();
+      addLog('Logs cleared', 'info');
+    };
+
+    // Monitor auth state changes
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        addLog(`Auth state changed: User logged in (${user.email})`, 'success');
+      } else {
+        addLog('Auth state changed: User logged out', 'warning');
+      }
+    });
+
+    // Initial log
+    addLog('Debug tool initialized', 'info');
+  </script>
+</body>
+</html>

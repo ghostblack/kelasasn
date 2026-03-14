@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Admin Setup - KelasASN</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 900px;
+      margin: 30px auto;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    h1 {
+      margin-top: 0;
+      color: #2d3748;
+      border-bottom: 3px solid #667eea;
+      padding-bottom: 10px;
+    }
+    h2 {
+      color: #4a5568;
+      margin-top: 30px;
+      font-size: 20px;
+    }
+    .test-section {
+      background: #f7fafc;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+      border-left: 4px solid #667eea;
+    }
+    .status {
+      padding: 12px 20px;
+      border-radius: 6px;
+      margin: 10px 0;
+      font-weight: 500;
+    }
+    .status.loading {
+      background: #fef3c7;
+      color: #92400e;
+      border: 2px solid #fbbf24;
+    }
+    .status.success {
+      background: #d1fae5;
+      color: #065f46;
+      border: 2px solid #10b981;
+    }
+    .status.error {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 2px solid #ef4444;
+    }
+    .status.warning {
+      background: #fef3c7;
+      color: #92400e;
+      border: 2px solid #fbbf24;
+    }
+    .info {
+      background: #dbeafe;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+      color: #1e40af;
+      font-size: 14px;
+    }
+    .code {
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 15px;
+      border-radius: 6px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      overflow-x: auto;
+      margin: 10px 0;
+    }
+    button {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      margin: 10px 10px 10px 0;
+      transition: all 0.3s;
+    }
+    button:hover {
+      background: #5568d3;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    button:disabled {
+      background: #cbd5e0;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .detail {
+      font-size: 13px;
+      color: #4a5568;
+      margin-top: 8px;
+      line-height: 1.6;
+    }
+    .step {
+      margin: 15px 0;
+      padding: 12px;
+      background: white;
+      border-radius: 6px;
+      border: 1px solid #e2e8f0;
+    }
+    .step-title {
+      font-weight: 600;
+      color: #2d3748;
+      margin-bottom: 8px;
+    }
+    pre {
+      margin: 5px 0;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 Test Admin Setup - KelasASN</h1>
+
+    <div class="info">
+      <strong>🎯 Tujuan:</strong> Halaman ini akan membantu debug kenapa login admin tidak berfungsi dengan menguji setiap komponen.
+    </div>
+
+    <h2>1️⃣ Test Firebase Connection</h2>
+    <div class="test-section">
+      <button onclick="testFirebaseConnection()">Test Koneksi Firebase</button>
+      <div id="firebase-status" class="status loading" style="display:none;">Mengecek koneksi...</div>
+    </div>
+
+    <h2>2️⃣ Test Firestore Rules</h2>
+    <div class="test-section">
+      <button onclick="testFirestoreRules()">Test Firestore Rules</button>
+      <div id="rules-status" class="status loading" style="display:none;">Mengecek rules...</div>
+    </div>
+
+    <h2>3️⃣ Cek Admin di Firestore</h2>
+    <div class="test-section">
+      <div class="info">Masukkan UID dari Firebase Authentication untuk mengecek apakah admin sudah terdaftar:</div>
+      <input type="text" id="admin-uid" placeholder="Masukkan UID admin" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px; margin: 10px 0;">
+      <button onclick="checkAdminDocument()">Cek Admin Document</button>
+      <div id="admin-check-status" class="status loading" style="display:none;">Mengecek admin...</div>
+    </div>
+
+    <h2>4️⃣ Test Login dengan Email & Password</h2>
+    <div class="test-section">
+      <div class="step">
+        <div class="step-title">Email:</div>
+        <input type="email" id="test-email" placeholder="admin@kelasasn.com" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+      </div>
+      <div class="step">
+        <div class="step-title">Password:</div>
+        <input type="password" id="test-password" placeholder="Password" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+      </div>
+      <button onclick="testLogin()">Test Login</button>
+      <div id="login-status" class="status loading" style="display:none;">Testing login...</div>
+    </div>
+
+    <h2>5️⃣ Buat Admin Baru</h2>
+    <div class="test-section">
+      <div class="info">
+        <strong>⚠️ Perhatian:</strong> Pastikan Firestore Rules sudah di-setup dengan benar sebelum membuat admin!
+      </div>
+      <div class="step">
+        <div class="step-title">Email:</div>
+        <input type="email" id="new-email" value="admin@kelasasn.com" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+      </div>
+      <div class="step">
+        <div class="step-title">Password (min 6 karakter):</div>
+        <input type="password" id="new-password" placeholder="Password" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+      </div>
+      <div class="step">
+        <div class="step-title">Nama:</div>
+        <input type="text" id="new-name" value="Admin KelasASN" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+      </div>
+      <button onclick="createAdmin()">Buat Admin</button>
+      <div id="create-status" class="status loading" style="display:none;">Membuat admin...</div>
+    </div>
+
+    <h2>📋 Logs</h2>
+    <div id="logs" class="code">Console logs akan muncul di sini...</div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+    import { getFirestore, doc, getDoc, setDoc, serverTimestamp, collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD-OlIkgVVU46Zf4yGNFjO4GUTlMsO-iVY",
+      authDomain: "kelasasn2026.firebaseapp.com",
+      projectId: "kelasasn2026",
+      storageBucket: "kelasasn2026.firebasestorage.app",
+      messagingSenderId: "392575914615",
+      appId: "1:392575914615:web:6ce24a89616b15d7d7ec72",
+      measurementId: "G-WGDEB4EF9B"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    function log(message, type = 'info') {
+      const logsDiv = document.getElementById('logs');
+      const timestamp = new Date().toLocaleTimeString();
+      const color = type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : type === 'warning' ? '#f59e0b' : '#3b82f6';
+      logsDiv.innerHTML += `<div style="color: ${color}; margin: 5px 0;">[${timestamp}] ${message}</div>`;
+      logsDiv.scrollTop = logsDiv.scrollHeight;
+      console.log(message);
+    }
+
+    window.testFirebaseConnection = async () => {
+      const statusDiv = document.getElementById('firebase-status');
+      statusDiv.style.display = 'block';
+      statusDiv.className = 'status loading';
+      statusDiv.textContent = '⏳ Mengecek koneksi Firebase...';
+      log('Testing Firebase connection...');
+
+      try {
+        log('Firebase Config:', 'info');
+        log(`- Project ID: ${firebaseConfig.projectId}`, 'info');
+        log(`- Auth Domain: ${firebaseConfig.authDomain}`, 'info');
+
+        statusDiv.className = 'status success';
+        statusDiv.innerHTML = '✅ Firebase terkonfigurasi dengan benar!<div class="detail">Project: kelasasn2026</div>';
+        log('✅ Firebase connection OK', 'success');
+      } catch (error) {
+        statusDiv.className = 'status error';
+        statusDiv.innerHTML = `❌ Error: ${error.message}`;
+        log(`❌ Firebase error: ${error.message}`, 'error');
+      }
+    };
+
+    window.testFirestoreRules = async () => {
+      const statusDiv = document.getElementById('rules-status');
+      statusDiv.style.display = 'block';
+      statusDiv.className = 'status loading';
+      statusDiv.textContent = '⏳ Testing Firestore Rules...';
+      log('Testing Firestore Rules...');
+
+      try {
+        // Try to read admins collection (should fail if rules not set)
+        log('Attempting to read admins collection...', 'info');
+        const adminsRef = collection(db, 'admins');
+        const snapshot = await getDocs(adminsRef);
+
+        statusDiv.className = 'status success';
+        statusDiv.innerHTML = `✅ Firestore Rules OK! Ditemukan ${snapshot.size} admin(s)`;
+        log(`✅ Rules allow read. Found ${snapshot.size} admin document(s)`, 'success');
+
+        if (snapshot.size === 0) {
+          statusDiv.innerHTML += '<div class="detail">⚠️ Collection admins kosong. Belum ada admin yang terdaftar.</div>';
+          log('⚠️ No admin documents found', 'warning');
+        }
+      } catch (error) {
+        statusDiv.className = 'status error';
+        log(`❌ Firestore Rules error: ${error.code}`, 'error');
+        log(`Error message: ${error.message}`, 'error');
+
+        if (error.code === 'permission-denied' || error.message.includes('Missing or insufficient permissions')) {
+          statusDiv.innerHTML = `
+            ❌ Firestore Rules BELUM di-setup!
+            <div class="detail">
+              <strong>SOLUSI:</strong><br>
+              1. Buka: <a href="https://console.firebase.google.com/project/kelasasn2026/firestore/rules" target="_blank" style="color: #2563eb;">Firebase Console - Rules</a><br>
+              2. Paste rules dari FIRESTORE_RULES.md<br>
+              3. Klik "Publish"<br>
+              4. Refresh halaman ini dan test lagi
+            </div>
+          `;
+        } else {
+          statusDiv.innerHTML = `❌ Error: ${error.message}`;
+        }
+      }
+    };
+
+    window.checkAdminDocument = async () => {
+      const uid = document.getElementById('admin-uid').value.trim();
+      const statusDiv = document.getElementById('admin-check-status');
+
+      if (!uid) {
+        statusDiv.style.display = 'block';
+        statusDiv.className = 'status error';
+        statusDiv.textContent = '❌ Masukkan UID terlebih dahulu!';
+        return;
+      }
+
+      statusDiv.style.display = 'block';
+      statusDiv.className = 'status loading';
+      statusDiv.textContent = '⏳ Mengecek admin document...';
+      log(`Checking admin document for UID: ${uid}`);
+
+      try {
+        const adminDoc = await getDoc(doc(db, 'admins', uid));
+
+        if (adminDoc.exists()) {
+          const data = adminDoc.data();
+          log('✅ Admin document found!', 'success');
+          log(`Data: ${JSON.stringify(data, null, 2)}`, 'info');
+
+          statusDiv.className = 'status success';
+          statusDiv.innerHTML = `
+            ✅ Admin document DITEMUKAN!
+            <div class="detail">
+              <strong>Data:</strong><br>
+              - Email: ${data.email || 'N/A'}<br>
+              - Role: ${data.role || 'N/A'}<br>
+              - Name: ${data.displayName || 'N/A'}<br>
+              - UID: ${data.uid || 'N/A'}
+            </div>
+          `;
+
+          if (data.role !== 'admin') {
+            statusDiv.className = 'status warning';
+            statusDiv.innerHTML += '<div class="detail" style="color: #dc2626; font-weight: 600;">⚠️ WARNING: Role bukan "admin"!</div>';
+            log('⚠️ Role is not "admin"!', 'warning');
+          }
+        } else {
+          statusDiv.className = 'status error';
+          statusDiv.innerHTML = `
+            ❌ Admin document TIDAK DITEMUKAN!
+            <div class="detail">
+              Document dengan UID "${uid}" tidak ada di collection "admins".<br>
+              <strong>Solusi:</strong> Buat admin menggunakan form di bawah.
+            </div>
+          `;
+          log('❌ Admin document not found', 'error');
+        }
+      } catch (error) {
+        statusDiv.className = 'status error';
+        statusDiv.innerHTML = `❌ Error: ${error.message}`;
+        log(`❌ Error checking admin: ${error.message}`, 'error');
+      }
+    };
+
+    window.testLogin = async () => {
+      const email = document.getElementById('test-email').value;
+      const password = document.getElementById('test-password').value;
+      const statusDiv = document.getElementById('login-status');
+
+      if (!email || !password) {
+        statusDiv.style.display = 'block';
+        statusDiv.className = 'status error';
+        statusDiv.textContent = '❌ Isi email dan password!';
+        return;
+      }
+
+      statusDiv.style.display = 'block';
+      statusDiv.className = 'status loading';
+      statusDiv.textContent = '⏳ Testing login...';
+      log(`Testing login for: ${email}`);
+
+      try {
+        // Step 1: Sign in
+        log('Step 1: Signing in with email and password...', 'info');
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        log(`✅ Authentication successful! UID: ${user.uid}`, 'success');
+
+        // Step 2: Check admin document
+        log('Step 2: Checking admin document...', 'info');
+        const adminDoc = await getDoc(doc(db, 'admins', user.uid));
+
+        if (!adminDoc.exists()) {
+          log('❌ Admin document not found!', 'error');
+          statusDiv.className = 'status error';
+          statusDiv.innerHTML = `
+            ❌ Login GAGAL: Admin document tidak ditemukan!
+            <div class="detail">
+              User berhasil login, tapi tidak ada document di collection "admins".<br>
+              UID: ${user.uid}<br>
+              <strong>Solusi:</strong> Buat admin document untuk UID ini.
+            </div>
+          `;
+          await signOut(auth);
+          return;
+        }
+
+        const adminData = adminDoc.data();
+        log(`✅ Admin document found: ${JSON.stringify(adminData, null, 2)}`, 'success');
+
+        // Step 3: Check role
+        if (adminData.role !== 'admin') {
+          log(`❌ Role is not "admin": ${adminData.role}`, 'error');
+          statusDiv.className = 'status error';
+          statusDiv.innerHTML = `
+            ❌ Login GAGAL: Role bukan "admin"!
+            <div class="detail">
+              Role saat ini: "${adminData.role}"<br>
+              <strong>Solusi:</strong> Update field "role" menjadi "admin" di Firestore.
+            </div>
+          `;
+          await signOut(auth);
+          return;
+        }
+
+        log('✅ Login successful! All checks passed!', 'success');
+        statusDiv.className = 'status success';
+        statusDiv.innerHTML = `
+          ✅ LOGIN BERHASIL!
+          <div class="detail">
+            Semua pengecekan lolos:<br>
+            ✓ Authentication berhasil<br>
+            ✓ Admin document ada<br>
+            ✓ Role = "admin"<br><br>
+            <strong>Admin ini bisa login!</strong><br>
+            Email: ${adminData.email}<br>
+            Name: ${adminData.displayName}
+          </div>
+        `;
+
+        await signOut(auth);
+        log('Signed out for testing purposes', 'info');
+
+      } catch (error) {
+        log(`❌ Login error: ${error.code}`, 'error');
+        log(`Error message: ${error.message}`, 'error');
+
+        statusDiv.className = 'status error';
+        let errorMsg = '';
+
+        switch (error.code) {
+          case 'auth/invalid-credential':
+          case 'auth/wrong-password':
+            errorMsg = 'Email atau password salah!';
+            break;
+          case 'auth/user-not-found':
+            errorMsg = 'User tidak ditemukan!';
+            break;
+          case 'auth/invalid-email':
+            errorMsg = 'Format email tidak valid!';
+            break;
+          case 'permission-denied':
+            errorMsg = 'Firestore Rules belum di-setup!';
+            break;
+          default:
+            errorMsg = error.message;
+        }
+
+        statusDiv.innerHTML = `❌ ${errorMsg}<div class="detail">Error code: ${error.code}</div>`;
+      }
+    };
+
+    window.createAdmin = async () => {
+      const email = document.getElementById('new-email').value;
+      const password = document.getElementById('new-password').value;
+      const displayName = document.getElementById('new-name').value;
+      const statusDiv = document.getElementById('create-status');
+
+      if (!email || !password || !displayName) {
+        statusDiv.style.display = 'block';
+        statusDiv.className = 'status error';
+        statusDiv.textContent = '❌ Isi semua field!';
+        return;
+      }
+
+      if (password.length < 6) {
+        statusDiv.style.display = 'block';
+        statusDiv.className = 'status error';
+        statusDiv.textContent = '❌ Password minimal 6 karakter!';
+        return;
+      }
+
+      statusDiv.style.display = 'block';
+      statusDiv.className = 'status loading';
+      statusDiv.textContent = '⏳ Membuat admin...';
+      log(`Creating admin: ${email}`);
+
+      try {
+        // Step 1: Create user
+        log('Step 1: Creating user in Authentication...', 'info');
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        log(`✅ User created! UID: ${user.uid}`, 'success');
+
+        // Step 2: Create admin document
+        log('Step 2: Creating admin document in Firestore...', 'info');
+        await setDoc(doc(db, 'admins', user.uid), {
+          uid: user.uid,
+          email: email,
+          role: 'admin',
+          displayName: displayName,
+          createdAt: serverTimestamp(),
+        });
+        log('✅ Admin document created!', 'success');
+
+        // Step 3: Create user document
+        log('Step 3: Creating user document in Firestore...', 'info');
+        await setDoc(doc(db, 'users', user.uid), {
+          uid: user.uid,
+          email: email,
+          displayName: displayName,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+        log('✅ User document created!', 'success');
+
+        statusDiv.className = 'status success';
+        statusDiv.innerHTML = `
+          ✅ ADMIN BERHASIL DIBUAT!
+          <div class="detail">
+            Email: ${email}<br>
+            UID: ${user.uid}<br>
+            Name: ${displayName}<br><br>
+            <strong>Sekarang coba login!</strong>
+          </div>
+        `;
+        log('✅ Admin creation completed successfully!', 'success');
+
+        await signOut(auth);
+
+        setTimeout(() => {
+          if (confirm('Admin berhasil dibuat! Ingin test login sekarang?')) {
+            document.getElementById('test-email').value = email;
+            document.getElementById('test-password').value = password;
+            window.scrollTo(0, document.getElementById('login-status').offsetTop - 100);
+          }
+        }, 1500);
+
+      } catch (error) {
+        log(`❌ Create admin error: ${error.code}`, 'error');
+        log(`Error message: ${error.message}`, 'error');
+
+        statusDiv.className = 'status error';
+        let errorMsg = '';
+
+        if (error.code === 'auth/email-already-in-use') {
+          errorMsg = 'Email sudah terdaftar! Gunakan email lain atau test login dengan email ini.';
+        } else if (error.code === 'permission-denied' || error.message.includes('Missing or insufficient permissions')) {
+          errorMsg = `
+            Firestore Rules BELUM di-setup!
+            <div class="detail">
+              <strong>SOLUSI:</strong><br>
+              1. Buka: <a href="https://console.firebase.google.com/project/kelasasn2026/firestore/rules" target="_blank" style="color: #2563eb;">Firebase Console - Rules</a><br>
+              2. Paste rules dari FIRESTORE_RULES.md<br>
+              3. Klik "Publish"<br>
+              4. Coba lagi
+            </div>
+          `;
+        } else {
+          errorMsg = error.message;
+        }
+
+        statusDiv.innerHTML = `❌ ${errorMsg}`;
+      }
+    };
+
+    // Auto test on load
+    log('🚀 Test Admin Setup loaded', 'success');
+    log('Click buttons above to start testing', 'info');
+  </script>
+</body>
+</html>

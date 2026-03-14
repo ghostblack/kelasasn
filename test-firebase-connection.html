@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Firebase Connection - KelasASN</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .card {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    h1 {
+      margin-top: 0;
+      color: #333;
+    }
+    .status {
+      padding: 15px;
+      border-radius: 4px;
+      margin: 10px 0;
+      font-size: 14px;
+    }
+    .status.loading {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+    .status.success {
+      background: #d1fae5;
+      color: #065f46;
+    }
+    .status.error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    .info {
+      background: #f3f4f6;
+      padding: 10px 15px;
+      border-radius: 4px;
+      margin: 10px 0;
+      font-size: 13px;
+      font-family: monospace;
+    }
+    button {
+      padding: 10px 20px;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-top: 10px;
+    }
+    button:hover {
+      background: #1d4ed8;
+    }
+    .section {
+      margin: 20px 0;
+      padding: 15px;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+    }
+    .section h3 {
+      margin-top: 0;
+      color: #374151;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Test Koneksi Firebase</h1>
+
+    <div class="section">
+      <h3>Status Koneksi</h3>
+      <div id="connectionStatus" class="status loading">Mengecek koneksi...</div>
+    </div>
+
+    <div class="section">
+      <h3>Informasi Project</h3>
+      <div id="projectInfo" class="info">Loading...</div>
+    </div>
+
+    <div class="section">
+      <h3>Test Authentication</h3>
+      <div id="authStatus" class="status loading">Mengecek authentication...</div>
+    </div>
+
+    <div class="section">
+      <h3>Test Firestore</h3>
+      <div id="firestoreStatus" class="status loading">Mengecek Firestore...</div>
+    </div>
+
+    <div class="section">
+      <h3>Cek Admin</h3>
+      <input type="text" id="uidInput" placeholder="Masukkan UID user (opsional)" style="width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px;">
+      <button onclick="checkAdmin()">Cek Status Admin</button>
+      <div id="adminStatus" class="info" style="margin-top: 10px; display: none;"></div>
+    </div>
+
+    <button onclick="location.reload()">Refresh Test</button>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+    import { getFirestore, doc, getDoc, collection, getDocs, query, limit } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD-OlIkgVVU46Zf4yGNFjO4GUTlMsO-iVY",
+      authDomain: "kelasasn2026.firebaseapp.com",
+      projectId: "kelasasn2026",
+      storageBucket: "kelasasn2026.firebasestorage.app",
+      messagingSenderId: "392575914615",
+      appId: "1:392575914615:web:6ce24a89616b15d7d7ec72",
+      measurementId: "G-WGDEB4EF9B"
+    };
+
+    let app, auth, db;
+
+    try {
+      app = initializeApp(firebaseConfig);
+      auth = getAuth(app);
+      db = getFirestore(app);
+
+      document.getElementById('connectionStatus').innerHTML = '✓ Firebase berhasil diinisialisasi';
+      document.getElementById('connectionStatus').className = 'status success';
+
+      document.getElementById('projectInfo').innerHTML = `
+        Project ID: ${firebaseConfig.projectId}<br>
+        Auth Domain: ${firebaseConfig.authDomain}<br>
+        API Key: ${firebaseConfig.apiKey.substring(0, 20)}...<br>
+        Storage Bucket: ${firebaseConfig.storageBucket}
+      `;
+
+    } catch (error) {
+      document.getElementById('connectionStatus').innerHTML = '✗ Gagal inisialisasi Firebase: ' + error.message;
+      document.getElementById('connectionStatus').className = 'status error';
+      console.error('Init error:', error);
+    }
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        document.getElementById('authStatus').innerHTML = `✓ User sedang login<br>Email: ${user.email}<br>UID: ${user.uid}`;
+        document.getElementById('authStatus').className = 'status success';
+      } else {
+        document.getElementById('authStatus').innerHTML = '○ Tidak ada user yang login (ini normal)';
+        document.getElementById('authStatus').className = 'status loading';
+      }
+    });
+
+    async function testFirestore() {
+      try {
+        const adminsRef = collection(db, 'admins');
+        const q = query(adminsRef, limit(1));
+        const snapshot = await getDocs(q);
+
+        document.getElementById('firestoreStatus').innerHTML = `✓ Firestore terhubung<br>Collection 'admins' ditemukan dengan ${snapshot.size} document (tampilan dibatasi 1)`;
+        document.getElementById('firestoreStatus').className = 'status success';
+
+        if (snapshot.size > 0) {
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            document.getElementById('firestoreStatus').innerHTML += `<br><br>Sample Admin:<br>UID: ${doc.id}<br>Email: ${data.email}<br>Role: ${data.role}`;
+          });
+        } else {
+          document.getElementById('firestoreStatus').innerHTML += '<br><br>⚠ Belum ada admin terdaftar. Buat admin terlebih dahulu.';
+        }
+
+      } catch (error) {
+        document.getElementById('firestoreStatus').innerHTML = '✗ Error Firestore: ' + error.message;
+        document.getElementById('firestoreStatus').className = 'status error';
+        console.error('Firestore error:', error);
+      }
+    }
+
+    testFirestore();
+
+    window.checkAdmin = async function() {
+      const uid = document.getElementById('uidInput').value.trim();
+      const statusDiv = document.getElementById('adminStatus');
+      statusDiv.style.display = 'block';
+
+      if (!uid) {
+        statusDiv.innerHTML = 'Masukkan UID user terlebih dahulu';
+        return;
+      }
+
+      try {
+        const adminDoc = await getDoc(doc(db, 'admins', uid));
+
+        if (adminDoc.exists()) {
+          const data = adminDoc.data();
+          statusDiv.innerHTML = `
+            ✓ Admin ditemukan!<br><br>
+            UID: ${data.uid}<br>
+            Email: ${data.email}<br>
+            Role: ${data.role}<br>
+            Name: ${data.displayName}<br>
+            Created: ${data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleString('id-ID') : 'N/A'}
+          `;
+        } else {
+          statusDiv.innerHTML = `✗ User dengan UID "${uid}" tidak ditemukan di collection admins.<br><br>User ini mungkin bukan admin atau belum terdaftar.`;
+        }
+
+      } catch (error) {
+        statusDiv.innerHTML = '✗ Error: ' + error.message;
+        console.error('Check admin error:', error);
+      }
+    };
+  </script>
+</body>
+</html>

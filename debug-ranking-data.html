@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Ranking Data</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        h1 { color: #333; }
+        .section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        button {
+            padding: 12px 24px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        .results {
+            margin-top: 20px;
+            padding: 15px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success { color: #10b981; }
+        .error { color: #ef4444; }
+        .info { color: #3b82f6; }
+    </style>
+</head>
+<body>
+    <h1>Debug Ranking Data - Firebase</h1>
+
+    <div class="section">
+        <h2>1. Cek Data Tryout Results</h2>
+        <button onclick="checkTryoutResults()">Check Tryout Results</button>
+        <div id="tryoutResults" class="results"></div>
+    </div>
+
+    <div class="section">
+        <h2>2. Cek Data Users</h2>
+        <button onclick="checkUsers()">Check Users</button>
+        <div id="usersResults" class="results"></div>
+    </div>
+
+    <div class="section">
+        <h2>3. Cek Data Tryouts</h2>
+        <button onclick="checkTryouts()">Check Tryouts</button>
+        <div id="tryoutsResults" class="results"></div>
+    </div>
+
+    <div class="section">
+        <h2>4. Generate Sample Ranking Data</h2>
+        <p class="info">Generate sample data untuk testing ranking (akan membuat 5 hasil tryout dengan skor berbeda)</p>
+        <button onclick="generateSampleData()">Generate Sample Data</button>
+        <div id="sampleResults" class="results"></div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+        import {
+            getFirestore,
+            collection,
+            getDocs,
+            addDoc,
+            serverTimestamp,
+            query,
+            where
+        } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+        import { getAuth } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAdIAKpd22PDj26KPfnRvYeNH_a_Rh9Zes",
+            authDomain: "kelasasn-7b207.firebaseapp.com",
+            projectId: "kelasasn-7b207",
+            storageBucket: "kelasasn-7b207.firebasestorage.app",
+            messagingSenderId: "419967020390",
+            appId: "1:419967020390:web:95aa27734b5c046d1b3c72"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        window.checkTryoutResults = async function() {
+            const resultsDiv = document.getElementById('tryoutResults');
+            resultsDiv.innerHTML = '<p>Loading...</p>';
+
+            try {
+                const resultsRef = collection(db, 'tryout_results');
+                const snapshot = await getDocs(resultsRef);
+
+                resultsDiv.innerHTML = `
+                    <p class="success">✓ Collection exists!</p>
+                    <p><strong>Total documents:</strong> ${snapshot.size}</p>
+                    <hr>
+                    <h3>Documents:</h3>
+                `;
+
+                if (snapshot.empty) {
+                    resultsDiv.innerHTML += '<p class="error">⚠ No documents found in tryout_results collection</p>';
+                    resultsDiv.innerHTML += '<p class="info">Ini sebabnya ranking kosong. Belum ada data hasil tryout.</p>';
+                } else {
+                    snapshot.forEach((doc) => {
+                        const data = doc.data();
+                        resultsDiv.innerHTML += `
+                            <div style="margin: 10px 0; padding: 10px; border: 1px solid #e5e7eb; border-radius: 4px;">
+                                <strong>ID:</strong> ${doc.id}<br>
+                                <strong>User ID:</strong> ${data.userId || 'N/A'}<br>
+                                <strong>Tryout ID:</strong> ${data.tryoutId || 'N/A'}<br>
+                                <strong>Tryout Name:</strong> ${data.tryoutName || 'N/A'}<br>
+                                <strong>Total Score:</strong> ${data.totalScore || 0}<br>
+                                <strong>TWK:</strong> ${data.twkScore || 0} |
+                                <strong>TIU:</strong> ${data.tiuScore || 0} |
+                                <strong>TKP:</strong> ${data.tkpScore || 0}<br>
+                                <strong>Completed At:</strong> ${data.completedAt?.toDate?.() || 'N/A'}
+                            </div>
+                        `;
+                    });
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+                console.error(error);
+            }
+        };
+
+        window.checkUsers = async function() {
+            const resultsDiv = document.getElementById('usersResults');
+            resultsDiv.innerHTML = '<p>Loading...</p>';
+
+            try {
+                const usersRef = collection(db, 'users');
+                const snapshot = await getDocs(usersRef);
+
+                resultsDiv.innerHTML = `
+                    <p class="success">✓ Collection exists!</p>
+                    <p><strong>Total users:</strong> ${snapshot.size}</p>
+                    <hr>
+                `;
+
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    resultsDiv.innerHTML += `
+                        <div style="margin: 5px 0;">
+                            <strong>ID:</strong> ${doc.id} |
+                            <strong>Email:</strong> ${data.email || 'N/A'} |
+                            <strong>Name:</strong> ${data.name || 'N/A'}
+                        </div>
+                    `;
+                });
+            } catch (error) {
+                resultsDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+                console.error(error);
+            }
+        };
+
+        window.checkTryouts = async function() {
+            const resultsDiv = document.getElementById('tryoutsResults');
+            resultsDiv.innerHTML = '<p>Loading...</p>';
+
+            try {
+                const tryoutsRef = collection(db, 'tryouts');
+                const snapshot = await getDocs(tryoutsRef);
+
+                resultsDiv.innerHTML = `
+                    <p class="success">✓ Collection exists!</p>
+                    <p><strong>Total tryouts:</strong> ${snapshot.size}</p>
+                    <hr>
+                `;
+
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    resultsDiv.innerHTML += `
+                        <div style="margin: 5px 0;">
+                            <strong>ID:</strong> ${doc.id} |
+                            <strong>Name:</strong> ${data.name || 'N/A'} |
+                            <strong>Price:</strong> ${data.price || 0}
+                        </div>
+                    `;
+                });
+            } catch (error) {
+                resultsDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+                console.error(error);
+            }
+        };
+
+        window.generateSampleData = async function() {
+            const resultsDiv = document.getElementById('sampleResults');
+            resultsDiv.innerHTML = '<p>Generating sample data...</p>';
+
+            try {
+                // Get first user and tryout
+                const usersRef = collection(db, 'users');
+                const usersSnapshot = await getDocs(usersRef);
+
+                const tryoutsRef = collection(db, 'tryouts');
+                const tryoutsSnapshot = await getDocs(tryoutsRef);
+
+                if (usersSnapshot.empty || tryoutsSnapshot.empty) {
+                    resultsDiv.innerHTML = '<p class="error">⚠ Need at least 1 user and 1 tryout to generate sample data</p>';
+                    return;
+                }
+
+                const users = usersSnapshot.docs;
+                const tryout = tryoutsSnapshot.docs[0];
+                const tryoutData = tryout.data();
+
+                resultsDiv.innerHTML = '<p>Creating sample results...</p>';
+
+                // Generate 5 sample results with different scores
+                const sampleScores = [
+                    { twk: 85, tiu: 90, tkp: 88 },  // Total: 263
+                    { twk: 75, tiu: 80, tkp: 78 },  // Total: 233
+                    { twk: 90, tiu: 85, tkp: 92 },  // Total: 267
+                    { twk: 70, tiu: 75, tkp: 72 },  // Total: 217
+                    { twk: 80, tiu: 88, tkp: 85 },  // Total: 253
+                ];
+
+                const resultsRef = collection(db, 'tryout_results');
+                const created = [];
+
+                for (let i = 0; i < Math.min(5, users.length); i++) {
+                    const user = users[i];
+                    const userData = user.data();
+                    const scores = sampleScores[i];
+                    const totalScore = scores.twk + scores.tiu + scores.tkp;
+
+                    const docRef = await addDoc(resultsRef, {
+                        userId: user.id,
+                        tryoutId: tryout.id,
+                        tryoutName: tryoutData.name || 'Try Out SKD',
+                        totalScore: totalScore,
+                        twkScore: scores.twk,
+                        tiuScore: scores.tiu,
+                        tkpScore: scores.tkp,
+                        twkCorrect: Math.floor(scores.twk / 5),
+                        tiuCorrect: Math.floor(scores.tiu / 5),
+                        tkpCorrect: Math.floor(scores.tkp / 5),
+                        twkTotal: 35,
+                        tiuTotal: 35,
+                        tkpTotal: 45,
+                        rank: 0,
+                        totalParticipants: 0,
+                        answers: {},
+                        attemptNumber: 1,
+                        completedAt: serverTimestamp()
+                    });
+
+                    created.push({
+                        id: docRef.id,
+                        email: userData.email,
+                        totalScore: totalScore
+                    });
+                }
+
+                resultsDiv.innerHTML = `
+                    <p class="success">✓ Successfully created ${created.length} sample results!</p>
+                    <hr>
+                    <h3>Created Results:</h3>
+                `;
+
+                created.forEach((result, index) => {
+                    resultsDiv.innerHTML += `
+                        <div style="margin: 5px 0;">
+                            ${index + 1}. <strong>Email:</strong> ${result.email} |
+                            <strong>Score:</strong> ${result.totalScore}
+                        </div>
+                    `;
+                });
+
+                resultsDiv.innerHTML += '<p class="info" style="margin-top: 15px;">✓ Sekarang coba refresh halaman ranking!</p>';
+
+            } catch (error) {
+                resultsDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+                console.error(error);
+            }
+        };
+    </script>
+</body>
+</html>

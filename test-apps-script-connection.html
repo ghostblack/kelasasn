@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Koneksi Apps Script - Tripay</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 800px;
+      width: 100%;
+      padding: 40px;
+    }
+
+    h1 {
+      color: #2d3748;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+
+    .subtitle {
+      color: #718096;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .alert {
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .alert-info {
+      background: #ebf8ff;
+      border-left: 4px solid #3182ce;
+      color: #2c5282;
+    }
+
+    .alert-success {
+      background: #f0fff4;
+      border-left: 4px solid #38a169;
+      color: #22543d;
+    }
+
+    .alert-error {
+      background: #fff5f5;
+      border-left: 4px solid #e53e3e;
+      color: #742a2a;
+    }
+
+    .alert-warning {
+      background: #fffaf0;
+      border-left: 4px solid #ed8936;
+      color: #7c2d12;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: #2d3748;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: all 0.2s;
+      font-family: monospace;
+    }
+
+    input[type="text"]:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .btn {
+      padding: 14px 28px;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-secondary {
+      background: #e2e8f0;
+      color: #2d3748;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: #cbd5e0;
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+      flex-wrap: wrap;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .result {
+      margin-top: 24px;
+      padding: 20px;
+      background: #f7fafc;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .result h3 {
+      color: #2d3748;
+      margin-bottom: 12px;
+      font-size: 16px;
+    }
+
+    pre {
+      background: #2d3748;
+      color: #e2e8f0;
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .steps {
+      background: #f7fafc;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 24px;
+    }
+
+    .steps ol {
+      margin-left: 20px;
+    }
+
+    .steps li {
+      margin-bottom: 12px;
+      color: #2d3748;
+      line-height: 1.6;
+    }
+
+    .steps code {
+      background: #2d3748;
+      color: #68d391;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    .steps a {
+      color: #667eea;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .steps a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔌 Test Koneksi Apps Script - Tripay</h1>
+    <p class="subtitle">Tool untuk mengecek koneksi antara frontend dan Google Apps Script</p>
+
+    <div class="alert alert-info">
+      <strong>ℹ️ Informasi:</strong><br>
+      Tool ini akan mengecek apakah URL Google Apps Script Anda sudah benar dan dapat diakses.
+    </div>
+
+    <div class="steps">
+      <h3 style="margin-bottom: 12px;">📋 Langkah Setup:</h3>
+      <ol>
+        <li>Buka <a href="https://script.google.com" target="_blank">Google Apps Script</a></li>
+        <li>Buat project baru atau buka project yang sudah ada</li>
+        <li>Copy code dari file <code>google-apps-script/TripayProxy.gs</code></li>
+        <li>Klik <strong>Deploy</strong> → <strong>New deployment</strong> → <strong>Web app</strong></li>
+        <li>Set "Execute as": <code>Me</code> dan "Who has access": <code>Anyone</code></li>
+        <li>Copy URL deployment dan paste di bawah ini</li>
+        <li>Jalankan function <code>setupScriptProperties</code> untuk set kredensial Tripay</li>
+      </ol>
+    </div>
+
+    <div class="form-group">
+      <label for="appsScriptUrl">URL Google Apps Script:</label>
+      <input
+        type="text"
+        id="appsScriptUrl"
+        placeholder="https://script.google.com/macros/s/YOUR_ID/exec"
+        value=""
+      />
+    </div>
+
+    <div class="button-group">
+      <button class="btn btn-primary" onclick="testConnection()" id="testBtn">
+        <span>🔍 Test Koneksi</span>
+      </button>
+      <button class="btn btn-primary" onclick="testPaymentChannels()" id="channelsBtn">
+        <span>💳 Test Payment Channels</span>
+      </button>
+      <button class="btn btn-secondary" onclick="copyToEnv()" id="copyBtn">
+        <span>📋 Copy ke .env</span>
+      </button>
+    </div>
+
+    <div id="result"></div>
+  </div>
+
+  <script>
+    // Load dari localStorage
+    const savedUrl = localStorage.getItem('appsScriptUrl');
+    if (savedUrl) {
+      document.getElementById('appsScriptUrl').value = savedUrl;
+    }
+
+    async function testConnection() {
+      const url = document.getElementById('appsScriptUrl').value.trim();
+      const resultDiv = document.getElementById('result');
+      const btn = document.getElementById('testBtn');
+
+      if (!url) {
+        resultDiv.innerHTML = `
+          <div class="alert alert-warning">
+            <strong>⚠️ Peringatan:</strong> Mohon masukkan URL Google Apps Script terlebih dahulu.
+          </div>
+        `;
+        return;
+      }
+
+      // Validasi format URL
+      if (!url.includes('script.google.com') || !url.includes('/exec')) {
+        resultDiv.innerHTML = `
+          <div class="alert alert-error">
+            <strong>❌ Error:</strong> Format URL tidak valid. Harus menggunakan format:<br>
+            <code>https://script.google.com/macros/s/YOUR_ID/exec</code>
+          </div>
+        `;
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading"></span> Testing...';
+
+      try {
+        resultDiv.innerHTML = `
+          <div class="alert alert-info">
+            <strong>⏳ Sedang mengecek koneksi...</strong><br>
+            Menghubungi: ${url}
+          </div>
+        `;
+
+        const response = await fetch(url + '?path=payment-channels', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        const responseText = await response.text();
+        let result;
+
+        try {
+          result = JSON.parse(responseText);
+        } catch (e) {
+          throw new Error('Response bukan JSON valid: ' + responseText);
+        }
+
+        // Simpan URL yang berhasil
+        localStorage.setItem('appsScriptUrl', url);
+
+        if (result.success) {
+          resultDiv.innerHTML = `
+            <div class="alert alert-success">
+              <strong>✅ Koneksi Berhasil!</strong><br>
+              Apps Script dapat diakses dan merespons dengan benar.
+            </div>
+            <div class="result">
+              <h3>📊 Response Detail:</h3>
+              <pre>${JSON.stringify(result, null, 2)}</pre>
+            </div>
+          `;
+        } else {
+          resultDiv.innerHTML = `
+            <div class="alert alert-warning">
+              <strong>⚠️ Koneksi Berhasil, tapi ada error dari Tripay:</strong><br>
+              ${result.error || 'Unknown error'}
+            </div>
+            <div class="result">
+              <h3>📊 Response Detail:</h3>
+              <pre>${JSON.stringify(result, null, 2)}</pre>
+            </div>
+            <div class="alert alert-info">
+              <strong>💡 Kemungkinan Penyebab:</strong><br>
+              1. Kredensial Tripay belum di-set di Script Properties<br>
+              2. Jalankan function <code>setupScriptProperties()</code> di Apps Script<br>
+              3. Pastikan API Key dan Private Key sudah benar
+            </div>
+          `;
+        }
+      } catch (error) {
+        resultDiv.innerHTML = `
+          <div class="alert alert-error">
+            <strong>❌ Koneksi Gagal:</strong><br>
+            ${error.message}
+          </div>
+          <div class="alert alert-info">
+            <strong>💡 Solusi:</strong><br>
+            1. Pastikan URL deployment sudah benar<br>
+            2. Pastikan "Who has access" di-set ke <code>Anyone</code><br>
+            3. Pastikan script sudah di-deploy sebagai Web App<br>
+            4. Coba deploy ulang dan gunakan URL yang baru
+          </div>
+        `;
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span>🔍 Test Koneksi</span>';
+      }
+    }
+
+    async function testPaymentChannels() {
+      const url = document.getElementById('appsScriptUrl').value.trim();
+      const resultDiv = document.getElementById('result');
+      const btn = document.getElementById('channelsBtn');
+
+      if (!url) {
+        resultDiv.innerHTML = `
+          <div class="alert alert-warning">
+            <strong>⚠️ Peringatan:</strong> Mohon masukkan URL Google Apps Script terlebih dahulu.
+          </div>
+        `;
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading"></span> Loading...';
+
+      try {
+        resultDiv.innerHTML = `
+          <div class="alert alert-info">
+            <strong>⏳ Mengambil payment channels dari Tripay...</strong>
+          </div>
+        `;
+
+        const response = await fetch(url + '?path=payment-channels', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        const result = await response.json();
+
+        if (result.success && result.data && result.data.data) {
+          const channels = result.data.data;
+          const activeChannels = channels.filter(ch => ch.active);
+
+          resultDiv.innerHTML = `
+            <div class="alert alert-success">
+              <strong>✅ Berhasil!</strong><br>
+              Ditemukan ${channels.length} payment channels (${activeChannels.length} aktif)
+            </div>
+            <div class="result">
+              <h3>💳 Metode Pembayaran yang Tersedia:</h3>
+              ${activeChannels.map(ch => `
+                <div style="padding: 12px; margin: 8px 0; background: white; border-radius: 8px; border: 1px solid #e2e8f0;">
+                  <div style="display: flex; align-items: center; gap: 12px;">
+                    <img src="${ch.icon_url}" alt="${ch.name}" style="width: 40px; height: 40px; object-fit: contain;">
+                    <div>
+                      <strong>${ch.name}</strong> (${ch.code})<br>
+                      <small style="color: #718096;">${ch.group} - Fee: Rp ${ch.fee_customer.flat.toLocaleString()} + ${ch.fee_customer.percent}%</small>
+                    </div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+            <div class="result">
+              <h3>📊 Full Response:</h3>
+              <pre>${JSON.stringify(result, null, 2)}</pre>
+            </div>
+          `;
+        } else {
+          resultDiv.innerHTML = `
+            <div class="alert alert-error">
+              <strong>❌ Error:</strong><br>
+              ${result.error || result.data?.message || 'Gagal mengambil payment channels'}
+            </div>
+            <div class="result">
+              <h3>📊 Response:</h3>
+              <pre>${JSON.stringify(result, null, 2)}</pre>
+            </div>
+          `;
+        }
+      } catch (error) {
+        resultDiv.innerHTML = `
+          <div class="alert alert-error">
+            <strong>❌ Error:</strong><br>
+            ${error.message}
+          </div>
+        `;
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span>💳 Test Payment Channels</span>';
+      }
+    }
+
+    function copyToEnv() {
+      const url = document.getElementById('appsScriptUrl').value.trim();
+
+      if (!url) {
+        document.getElementById('result').innerHTML = `
+          <div class="alert alert-warning">
+            <strong>⚠️ Peringatan:</strong> Mohon masukkan URL terlebih dahulu.
+          </div>
+        `;
+        return;
+      }
+
+      const envContent = `VITE_TRIPAY_APPS_SCRIPT_URL=${url}`;
+
+      navigator.clipboard.writeText(envContent).then(() => {
+        document.getElementById('result').innerHTML = `
+          <div class="alert alert-success">
+            <strong>✅ Berhasil!</strong><br>
+            Text berikut sudah di-copy ke clipboard:<br>
+            <pre style="margin-top: 8px;">${envContent}</pre>
+            <strong style="margin-top: 12px; display: block;">Langkah selanjutnya:</strong><br>
+            1. Buka file <code>.env</code> di project Anda<br>
+            2. Paste text yang sudah di-copy<br>
+            3. Restart dev server dengan <code>npm run dev</code>
+          </div>
+        `;
+      }).catch(() => {
+        document.getElementById('result').innerHTML = `
+          <div class="alert alert-info">
+            <strong>📋 Copy text berikut ke file .env:</strong><br>
+            <pre style="margin-top: 8px;">${envContent}</pre>
+          </div>
+        `;
+      });
+    }
+
+    // Test otomatis jika URL sudah tersimpan
+    window.addEventListener('load', () => {
+      const savedUrl = localStorage.getItem('appsScriptUrl');
+      if (savedUrl) {
+        document.getElementById('result').innerHTML = `
+          <div class="alert alert-info">
+            <strong>💾 URL tersimpan ditemukan:</strong><br>
+            Klik "Test Koneksi" untuk mengecek koneksi.
+          </div>
+        `;
+      }
+    });
+  </script>
+</body>
+</html>

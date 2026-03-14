@@ -1,0 +1,161 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===== Helper Functions =====
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+             exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // ===== Admins Collection =====
+    // Only authenticated users can read, only admins can write
+    match /admins/{adminId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // ===== Users Collection =====
+    // Allow create on first login with Google OAuth
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ===== User Sessions Collection =====
+    // IMPORTANT: Collection name is camelCase "userSessions"!
+    // Used for multi-device session management
+    match /userSessions/{sessionId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    // ===== Questions Collection =====
+    // Users can read, only admins can write
+    match /questions/{questionId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ===== Tryout Packages Collection =====
+    // IMPORTANT: Collection name has underscore "tryout_packages"!
+    // Users can read all packages, only admins can write
+    match /tryout_packages/{tryoutId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ===== Tryouts Collection =====
+    // LEGACY: This might be old collection, keep for backward compatibility
+    // Users can read, only admins can write
+    match /tryouts/{tryoutId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ===== User Tryouts Collection =====
+    // IMPORTANT: Collection name has underscore "user_tryouts"!
+    // Users can read their own tryouts, admins can do everything
+    match /user_tryouts/{userTryoutId} {
+      allow read: if isAuthenticated() &&
+                    (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() &&
+                      request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() &&
+                      (resource.data.userId == request.auth.uid || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // ===== Tryout Sessions Collection =====
+    // IMPORTANT: Collection name has underscore "tryout_sessions"!
+    // Users can manage their own sessions
+    match /tryout_sessions/{sessionId} {
+      allow read: if isAuthenticated() &&
+                    (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() &&
+                      request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() &&
+                      (resource.data.userId == request.auth.uid || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // ===== Tryout Results Collection =====
+    // IMPORTANT: Collection name has underscore "tryout_results"!
+    // All authenticated users can read all results (for ranking page)
+    // Users can create their own results, admins can do everything
+    match /tryout_results/{resultId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() &&
+                      request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    // ===== Rankings Collection =====
+    // All authenticated users can read rankings
+    // Only admins can write/update rankings
+    match /rankings/{rankingId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // ===== Jabatan (Positions) Collection =====
+    // All authenticated users can read positions
+    // Only admins can write
+    match /jabatan/{jabatanId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // ===== Payment Transactions Collection =====
+    // IMPORTANT: Collection name has underscore "payment_transactions"!
+    // Users can read their own transactions and list all (for admin)
+    // Users can create their own transactions
+    // Admins can do everything
+    match /payment_transactions/{transactionId} {
+      allow get: if isAuthenticated() &&
+                    (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isAuthenticated();
+      allow create: if isAuthenticated() &&
+                      request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() &&
+                      (resource.data.userId == request.auth.uid || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // ===== Claim Codes Collection =====
+    // IMPORTANT: Collection name has underscore "claim_codes"!
+    // Users can read all claim codes (to validate before claiming)
+    // Users can update claim codes when claiming (if valid and not used)
+    // Only admins can create and delete claim codes
+    match /claim_codes/{claimCodeId} {
+      allow read: if isAuthenticated();
+      allow create, delete: if isAdmin();
+      // Allow users to update claim codes when claiming
+      // Conditions: code must be active, not exceeded max uses, not already used by this user
+      allow update: if isAuthenticated() &&
+                      (isAdmin() ||
+                       (resource.data.isActive == true &&
+                        resource.data.currentUses < resource.data.maxUses &&
+                        !(request.auth.uid in resource.data.usedBy)));
+    }
+
+    // ===== Default Deny All =====
+    // Block everything else that's not explicitly allowed
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

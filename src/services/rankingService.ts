@@ -1,0 +1,264 @@
+import { collection, query, where, getDocs, doc, getDoc, writeBatch } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+
+export interface RankingEntry {
+  id: string;
+  userId: string;
+  tryoutId: string;
+  tryoutName: string;
+  totalScore: number;
+  completedAt: Date;
+  rank: number;
+  userName?: string;
+  userEmail?: string;
+}
+
+export const getRankingByTryout = async (
+  tryoutId?: string,
+  limitCount: number = 100
+): Promise<RankingEntry[]> => {
+  try {
+    console.log('=== getRankingByTryout called ===');
+    console.log('tryoutId:', tryoutId);
+    console.log('limitCount:', limitCount);
+
+    const resultsRef = collection(db, 'tryout_results');
+    let q;
+
+    if (tryoutId && tryoutId !== 'all') {
+      console.log('Querying with tryoutId filter:', tryoutId);
+      q = query(
+        resultsRef,
+        where('tryoutId', '==', tryoutId)
+      );
+    } else {
+      console.log('Querying all tryout results');
+      q = query(resultsRef);
+    }
+
+    const snapshot = await getDocs(q);
+    console.log('✓ Found tryout_results documents:', snapshot.size);
+
+    if (snapshot.empty) {
+      console.warn('⚠ No tryout results found in Firebase');
+      console.warn('Collection: tryout_results is empty or no matching documents');
+      console.warn('Possible reasons:');
+      console.warn('1. No user has completed any try out yet');
+      console.warn('2. Try out submission is not saving to tryout_results collection');
+      console.warn('3. Firestore rules are blocking read access');
+      return [];
+    }
+
+    console.log('✓ Documents found, processing...');
+
+    console.log('Raw documents sample:', snapshot.docs.slice(0, 3).map(d => {
+      const data = d.data();
+      return {
+        id: d.id,
+        userId: data.userId,
+        tryoutId: data.tryoutId,
+        totalScore: data.totalScore,
+        completedAt: data.completedAt,
+        tryoutName: data.tryoutName
+      };
+    }));
+
+    const resultsWithUserData = await Promise.all(
+      snapshot.docs.map(async (resultDoc) => {
+        const data = resultDoc.data();
+
+        let userEmail = 'Unknown';
+        let userName = 'Unknown';
+        let tryoutName = data.tryoutName || 'Tryout';
+
+        try {
+          const userDocRef = doc(db, 'users', data.userId);
+          const userDoc = await getDoc(userDocRef);
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            userEmail = userData.email || userEmail;
+            userName = userData.displayName || userData.name || userEmail.split('@')[0];
+          } else {
+            console.warn(`User document not found for userId: ${data.userId}`);
+          }
+        } catch (err) {
+          console.error('Error fetching user data for userId:', data.userId, err);
+        }
+
+        if (!data.tryoutName && data.tryoutId) {
+          try {
+            const tryoutDocRef = doc(db, 'tryouts', data.tryoutId);
+            const tryoutDoc = await getDoc(tryoutDocRef);
+            if (tryoutDoc.exists()) {
+              tryoutName = tryoutDoc.data().name || tryoutName;
+            } else {
+              console.warn(`Tryout document not found for tryoutId: ${data.tryoutId}`);
+            }
+          } catch (err) {
+            console.error('Error fetching tryout data for tryoutId:', data.tryoutId, err);
+          }
+        }
+
+        return {
+          id: resultDoc.id,
+          userId: data.userId,
+          tryoutId: data.tryoutId,
+          tryoutName: tryoutName,
+          totalScore: data.totalScore || 0,
+          completedAt: data.completedAt?.toDate() || new Date(),
+          rank: 0,
+          userEmail,
+          userName,
+        } as RankingEntry;
+      })
+    );
+
+    console.log('✓ Processed', resultsWithUserData.length, 'results with user data');
+
+    console.log('\n=== Processing best scores per user ===');
+    const userBestScores = new Map<string, typeof resultsWithUserData[0]>();
+
+    resultsWithUserData.forEach(result => {
+      const key = tryoutId && tryoutId !== 'all' ? `${result.userId}-${result.tryoutId}` : result.userId;
+      const existing = userBestScores.get(key);
+
+      if (!existing || result.totalScore > existing.totalScore ||
+          (result.totalScore === existing.totalScore &&
+           result.completedAt.getTime() < existing.completedAt.getTime())) {
+        userBestScores.set(key, result);
+      }
+    });
+
+    const bestResults = Array.from(userBestScores.values());
+    console.log('✓ Best results per user:', bestResults.length);
+
+    // Sort by score (descending), then by completion time (ascending)
+    bestResults.sort((a, b) => {
+      if (b.totalScore !== a.totalScore) {
+        return b.totalScore - a.totalScore;
+      }
+      return a.completedAt.getTime() - b.completedAt.getTime();
+    });
+
+    console.log('\n=== Sorted results (top 5) ===');
+    bestResults.slice(0, 5).forEach((r, i) => {
+      console.log(`${i + 1}. User: ${r.userEmail}, Score: ${r.totalScore}, Tryout: ${r.tryoutName}`);
+    });
+
+    const rankedResults = bestResults
+      .slice(0, limitCount)
+      .map((result, index) => ({
+        ...result,
+        rank: index + 1,
+      }));
+
+    console.log('\n✓ Final ranked results:', rankedResults.length);
+    console.log('=== getRankingByTryout completed ===\n');
+    return rankedResults;
+  } catch (error) {
+    console.error('Error in getRankingByTryout:', error);
+    return [];
+  }
+};
+
+export const getUserRankInTryout = async (
+  userId: string,
+  tryoutId: string
+): Promise<number> => {
+  try {
+    const resultsRef = collection(db, 'tryout_results');
+    const q = query(
+      resultsRef,
+      where('tryoutId', '==', tryoutId)
+    );
+
+    const snapshot = await getDocs(q);
+    const results = snapshot.docs.map(doc => ({
+      id: doc.id,
+      userId: doc.data().userId,
+      totalScore: doc.data().totalScore || 0,
+      completedAt: doc.data().completedAt?.toDate() || new Date(),
+    }));
+
+    const userBestScores = new Map<string, typeof results[0]>();
+
+    results.forEach(result => {
+      const existing = userBestScores.get(result.userId);
+      if (!existing || result.totalScore > existing.totalScore ||
+          (result.totalScore === existing.totalScore &&
+           result.completedAt.getTime() < existing.completedAt.getTime())) {
+        userBestScores.set(result.userId, result);
+      }
+    });
+
+    const bestResults = Array.from(userBestScores.values());
+
+    bestResults.sort((a, b) => {
+      if (b.totalScore !== a.totalScore) {
+        return b.totalScore - a.totalScore;
+      }
+      return a.completedAt.getTime() - b.completedAt.getTime();
+    });
+
+    const userResultIndex = bestResults.findIndex(r => r.userId === userId);
+    return userResultIndex >= 0 ? userResultIndex + 1 : 0;
+  } catch (error) {
+    console.error('Error in getUserRankInTryout:', error);
+    return 0;
+  }
+};
+
+export const deleteAllRankings = async (tryoutId?: string): Promise<void> => {
+  try {
+    console.log('=== deleteAllRankings called ===');
+    console.log('tryoutId:', tryoutId || 'all');
+
+    const resultsRef = collection(db, 'tryout_results');
+    let q;
+
+    if (tryoutId && tryoutId !== 'all') {
+      console.log('Deleting rankings for specific tryout:', tryoutId);
+      q = query(resultsRef, where('tryoutId', '==', tryoutId));
+    } else {
+      console.log('Deleting all rankings');
+      q = query(resultsRef);
+    }
+
+    const snapshot = await getDocs(q);
+    console.log('Found', snapshot.size, 'documents to delete');
+
+    if (snapshot.empty) {
+      console.log('No rankings to delete');
+      return;
+    }
+
+    const batchSize = 500;
+    const batches = [];
+    let currentBatch = writeBatch(db);
+    let operationCount = 0;
+
+    snapshot.docs.forEach((document) => {
+      currentBatch.delete(document.ref);
+      operationCount++;
+
+      if (operationCount === batchSize) {
+        batches.push(currentBatch);
+        currentBatch = writeBatch(db);
+        operationCount = 0;
+      }
+    });
+
+    if (operationCount > 0) {
+      batches.push(currentBatch);
+    }
+
+    console.log('Executing', batches.length, 'batch(es)');
+    await Promise.all(batches.map(batch => batch.commit()));
+
+    console.log('✓ Successfully deleted', snapshot.size, 'ranking(s)');
+    console.log('=== deleteAllRankings completed ===');
+  } catch (error) {
+    console.error('Error deleting rankings:', error);
+    throw error;
+  }
+};

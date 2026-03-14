@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OG Image Template - Kelas ASN</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .instructions {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+
+        .og-preview {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 30px 0;
+        }
+
+        .og-image {
+            width: 1200px;
+            height: 630px;
+            background: linear-gradient(135deg, #2C27E1 0%, #4845E4 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            padding: 80px;
+            box-sizing: border-box;
+            transform: scale(0.5);
+            transform-origin: top left;
+        }
+
+        .og-wrapper {
+            width: 600px;
+            height: 315px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .logo-container {
+            background: white;
+            width: 150px;
+            height: 150px;
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        .logo-text {
+            font-size: 80px;
+            font-weight: bold;
+            color: #2C27E1;
+            font-family: 'Rethink Sans', sans-serif;
+        }
+
+        .og-title {
+            font-size: 72px;
+            font-weight: bold;
+            color: white;
+            text-align: center;
+            margin-bottom: 20px;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            line-height: 1.2;
+        }
+
+        .og-subtitle {
+            font-size: 36px;
+            color: rgba(255,255,255,0.95);
+            text-align: center;
+            margin-bottom: 40px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .og-features {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            margin-top: 40px;
+        }
+
+        .feature {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
+            padding: 20px 40px;
+            border-radius: 15px;
+            border: 2px solid rgba(255,255,255,0.2);
+        }
+
+        .feature-text {
+            font-size: 28px;
+            color: white;
+            font-weight: 600;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .decorative-circle {
+            position: absolute;
+            border-radius: 50%;
+            opacity: 0.1;
+        }
+
+        .circle-1 {
+            width: 400px;
+            height: 400px;
+            background: white;
+            top: -100px;
+            right: -100px;
+        }
+
+        .circle-2 {
+            width: 300px;
+            height: 300px;
+            background: white;
+            bottom: -50px;
+            left: -50px;
+        }
+
+        button {
+            background: #2C27E1;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px;
+            font-weight: 600;
+        }
+
+        button:hover {
+            background: #1f1a9e;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin: 30px 0;
+        }
+
+        .info {
+            background: #e7f3ff;
+            border: 1px solid #2196F3;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .download-section {
+            background: #f9f9f9;
+            padding: 30px;
+            border-radius: 8px;
+            margin-top: 30px;
+        }
+
+        code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+            color: #d63384;
+        }
+
+        .specs {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .spec-item {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #2C27E1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Open Graph Image Generator - Kelas ASN</h1>
+
+        <div class="instructions">
+            <h3>📋 Cara Menggunakan Template Ini:</h3>
+            <ol>
+                <li>Scroll ke bawah untuk melihat preview OG image</li>
+                <li>Klik tombol "Download as PNG" untuk save image</li>
+                <li>Upload file ke folder <code>public/og-image.png</code></li>
+                <li>Verifikasi dengan Facebook Debugger atau Twitter Card Validator</li>
+            </ol>
+        </div>
+
+        <div class="specs">
+            <div class="spec-item">
+                <strong>Dimensi:</strong> 1200 x 630 pixels
+            </div>
+            <div class="spec-item">
+                <strong>Format:</strong> PNG
+            </div>
+            <div class="spec-item">
+                <strong>Aspect Ratio:</strong> 1.91:1
+            </div>
+            <div class="spec-item">
+                <strong>File Size:</strong> Target < 1MB
+            </div>
+        </div>
+
+        <h2>Preview OG Image (50% scale)</h2>
+        <div class="og-wrapper">
+            <div class="og-image" id="ogImage">
+                <div class="decorative-circle circle-1"></div>
+                <div class="decorative-circle circle-2"></div>
+
+                <div class="logo-container">
+                    <svg width="80" height="80" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12.8158 12.8274H21.7782V35.4667H12.8158V12.8274ZM24.5436 18.9912C24.5436 16.5368 25.1655 14.8876 26.4094 14.0435C27.5866 13.255 29.8022 12.8607 33.0562 12.8607H34.7387V16.0092C34.7387 18.5192 34.1002 20.3072 32.823 21.3734C31.5236 22.4395 29.2858 22.9726 26.1095 22.9726H24.5436V18.9912ZM24.5436 24.7051H26.1095C29.2413 24.7051 31.4792 25.327 32.823 26.5709C34.1002 27.7592 34.7387 29.6361 34.7387 32.2016V35.5H33.0562C29.8688 35.5 27.6532 35.0224 26.4094 34.0673C25.1655 33.1011 24.5436 31.3686 24.5436 28.8698V24.7051Z" fill="#2C27E1"/>
+                    </svg>
+                </div>
+
+                <div class="og-title">Kelas ASN</div>
+                <div class="og-subtitle">Platform Try Out CPNS Terbaik</div>
+
+                <div class="og-features">
+                    <div class="feature">
+                        <div class="feature-text">🏆 Ranking Nasional</div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-text">📚 Ratusan Soal</div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-text">✨ Pembahasan Lengkap</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="button-group">
+            <button onclick="downloadImage()">📥 Download as PNG</button>
+            <button onclick="copyToClipboard()">📋 Copy Specs</button>
+        </div>
+
+        <div class="info">
+            <h3>✅ Checklist Setelah Download:</h3>
+            <ul>
+                <li>Upload file ke <code>public/og-image.png</code></li>
+                <li>Build project: <code>npm run build</code></li>
+                <li>Test dengan Facebook Debugger: <a href="https://developers.facebook.com/tools/debug/" target="_blank">Link</a></li>
+                <li>Test dengan Twitter Card Validator: <a href="https://cards-dev.twitter.com/validator" target="_blank">Link</a></li>
+                <li>Verify file size < 1MB</li>
+            </ul>
+        </div>
+
+        <div class="download-section">
+            <h3>🎨 Alternative: Design Tools</h3>
+            <p>Jika ingin custom design lebih lanjut, gunakan:</p>
+            <ul>
+                <li><strong>Canva:</strong> Template "Facebook OG Image" (1200x630)</li>
+                <li><strong>Figma:</strong> Create new frame 1200x630px</li>
+                <li><strong>Photoshop:</strong> New document 1200x630px, 72dpi</li>
+            </ul>
+            <p><strong>Design Guidelines:</strong></p>
+            <ul>
+                <li>Keep important content 40px from edges (safe zone)</li>
+                <li>Use large, readable text (minimum 36px)</li>
+                <li>High contrast untuk visibility</li>
+                <li>Brand colors: #2C27E1 (primary)</li>
+                <li>Test on different backgrounds (light/dark)</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script>
+        async function downloadImage() {
+            const element = document.getElementById('ogImage');
+
+            // Temporarily scale to actual size
+            element.style.transform = 'scale(1)';
+            element.style.transformOrigin = 'top left';
+
+            try {
+                const canvas = await html2canvas(element, {
+                    width: 1200,
+                    height: 630,
+                    scale: 1,
+                    backgroundColor: null,
+                    logging: false,
+                    useCORS: true
+                });
+
+                // Convert to blob and download
+                canvas.toBlob(function(blob) {
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.download = 'og-image.png';
+                    link.href = url;
+                    link.click();
+                    URL.revokeObjectURL(url);
+
+                    // Show success message
+                    alert('✅ OG Image berhasil didownload!\n\nSelanjutnya:\n1. Upload ke public/og-image.png\n2. Build project\n3. Test dengan validator tools');
+                }, 'image/png');
+
+            } catch (error) {
+                console.error('Error generating image:', error);
+                alert('❌ Error saat generate image. Coba lagi atau gunakan screenshot manual.');
+            } finally {
+                // Reset scale
+                element.style.transform = 'scale(0.5)';
+            }
+        }
+
+        function copyToClipboard() {
+            const specs = `OG Image Specifications:
+- Dimensions: 1200 x 630 pixels
+- Format: PNG
+- Aspect Ratio: 1.91:1
+- Max File Size: 8MB (recommended < 1MB)
+- Color Space: RGB
+- DPI: 72 (web standard)
+- Safe Zone: 40px from edges
+
+Current Design:
+- Background: Linear gradient #2C27E1 to #4845E4
+- Logo: White container with brand icon
+- Title: "Kelas ASN" in 72px white bold
+- Subtitle: "Platform Try Out CPNS Terbaik"
+- Features: 3 badges with glass morphism effect`;
+
+            navigator.clipboard.writeText(specs).then(() => {
+                alert('✅ Specifications copied to clipboard!');
+            }).catch(err => {
+                console.error('Error copying:', err);
+            });
+        }
+    </script>
+</body>
+</html>

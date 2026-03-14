@@ -1,0 +1,21 @@
+{
+  "name": "Kelas ASN - Platform Try Out CPNS",
+  "short_name": "Kelas ASN",
+  "description": "Platform try out CPNS online terlengkap dengan sistem ranking nasional",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2C27E1",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "productivity"],
+  "lang": "id",
+  "dir": "ltr"
+}

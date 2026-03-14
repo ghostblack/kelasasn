@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Payment Calculation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-left: 4px solid #007bff;
+        }
+        .input-group {
+            margin: 15px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            background: #e7f3ff;
+            border-radius: 5px;
+            border: 1px solid #007bff;
+        }
+        .result h3 {
+            margin-top: 0;
+            color: #007bff;
+        }
+        .price-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #ddd;
+        }
+        .price-row:last-child {
+            border-bottom: none;
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 10px;
+            padding-top: 15px;
+            border-top: 2px solid #007bff;
+        }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #28a745;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #dc3545;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧮 Test Kalkulasi Pembayaran</h1>
+
+        <div class="warning">
+            <strong>⚠️ Penjelasan:</strong>
+            <p>Tool ini untuk testing kalkulasi harga pembayaran dan memastikan tidak ada perbedaan antara harga yang diinput admin dengan yang dibayar customer.</p>
+        </div>
+
+        <div class="section">
+            <h2>Input Data</h2>
+
+            <div class="input-group">
+                <label>Harga Try Out (yang diinput Admin):</label>
+                <input type="number" id="tryoutPrice" value="5000" placeholder="Contoh: 5000">
+            </div>
+
+            <div class="input-group">
+                <label>Metode Pembayaran:</label>
+                <select id="paymentMethod">
+                    <option value="flat-0-percent-0">Gratis (0 biaya)</option>
+                    <option value="flat-0-percent-2">E-Wallet (2%)</option>
+                    <option value="flat-1500-percent-0">Bank Transfer (Flat Rp 1.500)</option>
+                    <option value="flat-2500-percent-0">VA Bank (Flat Rp 2.500)</option>
+                    <option value="flat-1000-percent-1.5">Kombinasi (Rp 1.000 + 1.5%)</option>
+                </select>
+            </div>
+
+            <button onclick="calculatePayment()">Hitung Pembayaran</button>
+        </div>
+
+        <div id="result" style="display: none;" class="result">
+            <h3>📊 Hasil Kalkulasi</h3>
+            <div id="resultContent"></div>
+        </div>
+
+        <div class="section">
+            <h2>📝 Penjelasan Fee Structure</h2>
+            <p><strong>Flat Fee:</strong> Biaya tetap yang dikenakan terlepas dari nominal transaksi</p>
+            <p><strong>Percent Fee:</strong> Biaya persentase dari total transaksi</p>
+            <p><strong>Total Fee:</strong> Flat Fee + Percent Fee</p>
+            <p><strong>Minimum Fee:</strong> Biaya minimum yang dikenakan jika total fee di bawah nilai ini</p>
+        </div>
+
+        <div class="section">
+            <h2>🎯 Kesimpulan</h2>
+            <ul>
+                <li>Harga yang admin input adalah <strong>harga dasar</strong> try out</li>
+                <li>Customer membayar = <strong>Harga Dasar + Biaya Admin</strong></li>
+                <li>Biaya admin <strong>DITAMBAHKAN</strong>, bukan dikurangi</li>
+                <li>Setiap metode pembayaran punya biaya admin berbeda</li>
+                <li>Customer melihat total akhir sebelum checkout</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function calculateFee(amount, flatFee, percentFee, minimumFee = 0) {
+            const calculatedFlatFee = flatFee;
+            const calculatedPercentFee = (amount * percentFee) / 100;
+            const totalFee = calculatedFlatFee + calculatedPercentFee;
+
+            return Math.max(totalFee, minimumFee);
+        }
+
+        function calculatePayment() {
+            const tryoutPrice = parseFloat(document.getElementById('tryoutPrice').value);
+            const methodValue = document.getElementById('paymentMethod').value;
+
+            if (!tryoutPrice || tryoutPrice <= 0) {
+                alert('Masukkan harga try out yang valid!');
+                return;
+            }
+
+            // Parse fee structure
+            const [flatPart, percentPart] = methodValue.split('-percent-');
+            const flatFee = parseFloat(flatPart.replace('flat-', ''));
+            const percentFee = parseFloat(percentPart);
+
+            // Calculate
+            const adminFee = calculateFee(tryoutPrice, flatFee, percentFee);
+            const totalAmount = tryoutPrice + adminFee;
+
+            // Display result
+            const resultDiv = document.getElementById('result');
+            const resultContent = document.getElementById('resultContent');
+
+            let html = `
+                <div class="price-row">
+                    <span>Harga Try Out (Admin Input):</span>
+                    <span><strong>Rp ${tryoutPrice.toLocaleString('id-ID')}</strong></span>
+                </div>
+                <div class="price-row">
+                    <span>Biaya Admin:</span>
+                    <span>`;
+
+            if (adminFee > 0) {
+                html += `<strong style="color: #ff6b6b;">+ Rp ${adminFee.toLocaleString('id-ID')}</strong>`;
+                if (flatFee > 0 && percentFee > 0) {
+                    html += `<br><small>(Rp ${flatFee.toLocaleString('id-ID')} + ${percentFee}%)</small>`;
+                } else if (flatFee > 0) {
+                    html += `<br><small>(Flat Rp ${flatFee.toLocaleString('id-ID')})</small>`;
+                } else if (percentFee > 0) {
+                    html += `<br><small>(${percentFee}% dari harga)</small>`;
+                }
+            } else {
+                html += `<strong style="color: #28a745;">GRATIS</strong>`;
+            }
+
+            html += `</span>
+                </div>
+                <div class="price-row">
+                    <span>Total yang Dibayar Customer:</span>
+                    <span><strong style="color: #007bff; font-size: 20px;">Rp ${totalAmount.toLocaleString('id-ID')}</strong></span>
+                </div>
+            `;
+
+            resultContent.innerHTML = html;
+            resultDiv.style.display = 'block';
+
+            // Validation check
+            const validationDiv = document.createElement('div');
+            if (totalAmount >= tryoutPrice) {
+                validationDiv.className = 'success';
+                validationDiv.innerHTML = `
+                    <strong>✅ VALIDASI BERHASIL</strong>
+                    <p>Total pembayaran (Rp ${totalAmount.toLocaleString('id-ID')}) lebih besar atau sama dengan harga try out (Rp ${tryoutPrice.toLocaleString('id-ID')})</p>
+                    <p><strong>Tidak ada potongan harga!</strong> Biaya admin ditambahkan ke harga dasar.</p>
+                `;
+            } else {
+                validationDiv.className = 'error';
+                validationDiv.innerHTML = `
+                    <strong>❌ ERROR TERDETEKSI</strong>
+                    <p>Total pembayaran (Rp ${totalAmount.toLocaleString('id-ID')}) lebih kecil dari harga try out (Rp ${tryoutPrice.toLocaleString('id-ID')})</p>
+                    <p>Ini tidak seharusnya terjadi! Periksa konfigurasi fee.</p>
+                `;
+            }
+
+            resultDiv.appendChild(validationDiv);
+
+            // Scroll to result
+            resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // Auto calculate on page load
+        window.onload = function() {
+            calculatePayment();
+        };
+    </script>
+</body>
+</html>

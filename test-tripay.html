@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Tripay Integration</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-section {
+            border: 1px solid #ddd;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+        }
+        .loading {
+            color: #007bff;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Tripay Integration</h1>
+
+    <div class="test-section">
+        <h2>1. Test Get Payment Channels</h2>
+        <button onclick="testChannels()">Test Channels</button>
+        <div id="channels-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Test Create Transaction</h2>
+        <button onclick="testCreateTransaction()">Create Test Transaction</button>
+        <div id="create-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Test Get Transaction Detail</h2>
+        <input type="text" id="reference-input" placeholder="Enter reference" style="padding: 8px; margin-right: 10px; width: 300px;">
+        <button onclick="testDetail()">Get Detail</button>
+        <div id="detail-result" class="result"></div>
+    </div>
+
+    <script>
+        const PROXY_URL = 'https://0ec90b57d6e95fcbda19832f.supabase.co/functions/v1/tripay-proxy';
+
+        async function testChannels() {
+            const resultDiv = document.getElementById('channels-result');
+            resultDiv.className = 'result loading';
+            resultDiv.textContent = 'Loading...';
+
+            try {
+                const response = await fetch(`${PROXY_URL}?action=channels`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `SUCCESS!\n\nFound ${data.data.length} payment channels\n\nSample channels:\n${JSON.stringify(data.data.slice(0, 3), null, 2)}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `ERROR:\n${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `ERROR:\n${error.message}`;
+            }
+        }
+
+        async function testCreateTransaction() {
+            const resultDiv = document.getElementById('create-result');
+            resultDiv.className = 'result loading';
+            resultDiv.textContent = 'Creating transaction...';
+
+            try {
+                const merchantRef = `TEST-${Date.now()}`;
+                const amount = 10000;
+
+                const payload = {
+                    method: 'BRIVA',
+                    merchant_ref: merchantRef,
+                    amount: amount,
+                    customer_name: 'Test User',
+                    customer_email: 'test@example.com',
+                    customer_phone: '08123456789',
+                    order_items: [
+                        {
+                            name: 'Test Tryout',
+                            price: amount,
+                            quantity: 1,
+                        },
+                    ],
+                    return_url: window.location.origin + '/success',
+                    expired_time: 24 * 60 * 60,
+                };
+
+                const response = await fetch(`${PROXY_URL}?action=create`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload),
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `SUCCESS!\n\nTransaction created:\n\nReference: ${data.data.reference}\nMerchant Ref: ${data.data.merchant_ref}\nStatus: ${data.data.status}\nAmount: ${data.data.amount}\nCheckout URL: ${data.data.checkout_url}\n\nFull Response:\n${JSON.stringify(data.data, null, 2)}`;
+
+                    document.getElementById('reference-input').value = data.data.reference;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `ERROR:\n${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `ERROR:\n${error.message}`;
+            }
+        }
+
+        async function testDetail() {
+            const reference = document.getElementById('reference-input').value;
+            const resultDiv = document.getElementById('detail-result');
+
+            if (!reference) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = 'Please enter a reference number';
+                return;
+            }
+
+            resultDiv.className = 'result loading';
+            resultDiv.textContent = 'Loading transaction detail...';
+
+            try {
+                const response = await fetch(`${PROXY_URL}?action=detail&reference=${reference}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `SUCCESS!\n\nTransaction Detail:\n\nReference: ${data.data.reference}\nStatus: ${data.data.status}\nAmount: ${data.data.amount}\n\nFull Response:\n${JSON.stringify(data.data, null, 2)}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `ERROR:\n${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `ERROR:\n${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

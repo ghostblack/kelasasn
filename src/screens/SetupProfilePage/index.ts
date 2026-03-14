@@ -1,0 +1,1 @@
+export { SetupProfilePage } from './SetupProfilePage';
