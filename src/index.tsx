@@ -36,13 +36,24 @@ import { UsersMonitoring } from "./screens/Admin/UsersMonitoring";
 import { PaymentsManagement } from "./screens/Admin/PaymentsManagement";
 import { QuestionsManagement } from "./screens/Admin/QuestionsManagement";
 import { AuthProvider } from "./contexts/AuthContext";
+import { MaintenanceProvider, useMaintenanceMode } from "./contexts/MaintenanceContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AdminProtectedRoute } from "./components/AdminProtectedRoute";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 import { Toaster } from "./components/ui/toaster";
 import { SessionConflictModal } from "./components/SessionConflictModal";
+import { MaintenancePage } from "./screens/MaintenancePage";
 import { useAuth } from "./contexts/AuthContext";
 import "../tailwind.css";
+
+// Guard component that shows maintenance page for non-admin routes
+function MaintenanceGuard({ children }: { children: React.ReactNode }) {
+  const { isMaintenance, maintenanceMessage, loading } = useMaintenanceMode();
+
+  if (loading) return null; // Will show while MaintenanceContext loads; auth loading handles the full-page spinner
+  if (isMaintenance) return <MaintenancePage message={maintenanceMessage} />;
+  return <>{children}</>;
+}
 
 function AppWrapper() {
   const { showSessionConflict, setShowSessionConflict, conflictDeviceInfo } = useAuth();
@@ -56,11 +67,11 @@ function AppWrapper() {
       />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<DesignLandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/setup-username" element={<SetupUsernamePage />} />
-          <Route path="/setup-profile" element={<SetupProfilePage />} />
+          <Route path="/" element={<MaintenanceGuard><DesignLandingPage /></MaintenanceGuard>} />
+          <Route path="/login" element={<MaintenanceGuard><LoginPage /></MaintenanceGuard>} />
+          <Route path="/register" element={<MaintenanceGuard><RegisterPage /></MaintenanceGuard>} />
+          <Route path="/setup-username" element={<MaintenanceGuard><SetupUsernamePage /></MaintenanceGuard>} />
+          <Route path="/setup-profile" element={<MaintenanceGuard><SetupProfilePage /></MaintenanceGuard>} />
 
           <Route
             path="/dashboard"
@@ -261,7 +272,9 @@ function AppWrapper() {
 createRoot(document.getElementById("app") as HTMLElement).render(
   <StrictMode>
     <AuthProvider>
-      <AppWrapper />
+      <MaintenanceProvider>
+        <AppWrapper />
+      </MaintenanceProvider>
     </AuthProvider>
   </StrictMode>,
 );

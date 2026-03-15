@@ -5,7 +5,9 @@ import { getAllTryouts } from '@/services/tryoutService';
 import { deleteAllRankings } from '@/services/rankingService';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { FileText, BookOpen, Users, TrendingUp, CircleAlert as AlertCircle, Trash2, Activity, Bell } from 'lucide-react';
+import { FileText, BookOpen, Users, TrendingUp, CircleAlert as AlertCircle, Trash2, Activity, Bell, Construction, Power } from 'lucide-react';
+import { getMaintenanceStatus, setMaintenanceStatus } from '@/services/maintenanceService';
+import { useAuth } from '@/contexts/AuthContext';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +22,7 @@ import {
 
 export const AdminHome: React.FC = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [stats, setStats] = useState({
     totalQuestions: 0,
     totalTryouts: 0,
@@ -30,9 +33,13 @@ export const AdminHome: React.FC = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const [maintenanceActive, setMaintenanceActive] = useState(false);
+  const [maintenanceMessage, setMaintenanceMessage] = useState('Kami sedang melakukan pemeliharaan sistem. Silakan coba lagi dalam beberapa saat.');
+  const [togglingMaintenance, setTogglingMaintenance] = useState(false);
 
   useEffect(() => {
     loadStats();
+    loadMaintenanceStatus();
   }, []);
 
   const loadStats = async () => {
@@ -80,6 +87,41 @@ export const AdminHome: React.FC = () => {
       });
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const loadMaintenanceStatus = async () => {
+    try {
+      const status = await getMaintenanceStatus();
+      setMaintenanceActive(status.isActive);
+      if (status.message) setMaintenanceMessage(status.message);
+    } catch (error) {
+      console.error('Error loading maintenance status:', error);
+    }
+  };
+
+  const handleToggleMaintenance = async () => {
+    if (!user) return;
+    try {
+      setTogglingMaintenance(true);
+      const newStatus = !maintenanceActive;
+      await setMaintenanceStatus(newStatus, maintenanceMessage, user.uid);
+      setMaintenanceActive(newStatus);
+      toast({
+        title: newStatus ? '🔧 Maintenance Mode Aktif' : '✅ Website Kembali Online',
+        description: newStatus
+          ? 'Website sekarang dalam mode maintenance. Hanya admin yang bisa mengakses.'
+          : 'Website sekarang bisa diakses oleh semua pengguna.',
+      });
+    } catch (error) {
+      console.error('Error toggling maintenance:', error);
+      toast({
+        title: 'Error',
+        description: 'Gagal mengubah status maintenance',
+        variant: 'destructive',
+      });
+    } finally {
+      setTogglingMaintenance(false);
     }
   };
 
@@ -245,6 +287,64 @@ export const AdminHome: React.FC = () => {
 
         {/* Action Sidebar Area */}
         <div className="lg:col-span-4 space-y-6">
+           {/* Maintenance Mode Toggle */}
+           <div className={`p-10 border transition-all ${
+             maintenanceActive
+               ? 'bg-orange-50 border-orange-200'
+               : 'bg-gray-50 border-gray-100'
+           }`}>
+              <div className="flex flex-col items-center text-center">
+                 <div className={`w-16 h-16 border rounded-full flex items-center justify-center mb-6 shadow-sm transition-all ${
+                   maintenanceActive
+                     ? 'bg-orange-100 border-orange-200'
+                     : 'bg-white border-gray-100'
+                 }`}>
+                    <Construction className={`w-6 h-6 ${
+                      maintenanceActive ? 'text-orange-500' : 'text-gray-400'
+                    }`} />
+                 </div>
+                 <h3 className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-2">Maintenance Mode</h3>
+                 <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest mb-4 ${
+                   maintenanceActive
+                     ? 'bg-orange-100 text-orange-700'
+                     : 'bg-green-100 text-green-700'
+                 }`}>
+                    <div className={`w-1.5 h-1.5 rounded-full ${
+                      maintenanceActive ? 'bg-orange-500 animate-pulse' : 'bg-green-500'
+                    }`} />
+                    {maintenanceActive ? 'Maintenance Aktif' : 'Online'}
+                 </div>
+                 <p className="text-xs text-gray-400 leading-relaxed mb-4 font-medium">
+                   {maintenanceActive
+                     ? 'Website dalam mode maintenance. Hanya admin yang bisa mengakses.'
+                     : 'Website berjalan normal dan bisa diakses oleh semua pengguna.'}
+                 </p>
+                 <textarea
+                   value={maintenanceMessage}
+                   onChange={(e) => setMaintenanceMessage(e.target.value)}
+                   placeholder="Pesan maintenance untuk pengguna..."
+                   className="w-full text-xs border border-gray-200 rounded-lg p-3 mb-4 resize-none h-20 focus:outline-none focus:ring-1 focus:ring-orange-300 focus:border-orange-300 bg-white"
+                   disabled={togglingMaintenance}
+                 />
+                 <Button
+                   className={`w-full h-12 rounded-none text-[10px] font-bold uppercase tracking-widest transition-all shadow-sm ${
+                     maintenanceActive
+                       ? 'bg-green-600 hover:bg-green-700 text-white'
+                       : 'bg-orange-500 hover:bg-orange-600 text-white'
+                   }`}
+                   onClick={handleToggleMaintenance}
+                   disabled={togglingMaintenance}
+                 >
+                   <Power className="w-4 h-4 mr-2" />
+                   {togglingMaintenance
+                     ? 'Memproses...'
+                     : maintenanceActive
+                       ? 'Matikan Maintenance'
+                       : 'Aktifkan Maintenance'}
+                 </Button>
+              </div>
+           </div>
+
            <div className="p-10 bg-gray-50 border border-gray-100 flex flex-col items-center text-center">
               <div className="w-16 h-16 bg-white border border-gray-100 rounded-full flex items-center justify-center mb-6 shadow-sm">
                  <Trash2 className="w-6 h-6 text-red-400" />
