@@ -29,6 +29,7 @@ export const AdminHome: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     loadStats();
@@ -36,6 +37,7 @@ export const AdminHome: React.FC = () => {
 
   const loadStats = async () => {
     try {
+      setHasError(false);
       const [questions, tryouts, usersSnapshot, resultsSnapshot] = await Promise.all([
         getAllQuestions(),
         getAllTryouts(),
@@ -51,6 +53,7 @@ export const AdminHome: React.FC = () => {
       });
     } catch (error) {
       console.error('Error loading stats:', error);
+      setHasError(true);
     } finally {
       setLoading(false);
     }
@@ -91,10 +94,10 @@ export const AdminHome: React.FC = () => {
         <div>
            <div className="flex items-center gap-2 mb-2">
               <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Live Platform Analytics</span>
+              <span className="text-[10px] font-bold text-gray-400 capitalize tracking-wider">Live Platform Analytics</span>
            </div>
            <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight leading-none">
-             Dashboard <span className="text-gray-300 font-light ml-2 italic">Overview</span>
+             Dashboard <span className="text-gray-400 font-medium ml-2">Overview</span>
            </h1>
            <p className="text-sm text-gray-500 mt-4 leading-relaxed max-w-xl">
              Manage and monitor your online tryout platform performance, user registrations, and system health in real-time.
@@ -193,16 +196,16 @@ export const AdminHome: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 pt-6">
         {/* Alerts & News Area */}
         <div className="lg:col-span-8 space-y-6">
-           {stats.totalQuestions === 0 && (
+           {hasError && (
              <div className="p-6 bg-red-50 border border-red-100 animate-in fade-in slide-in-from-top-4">
                 <div className="flex gap-4">
                    <div className="w-10 h-10 bg-red-100 flex items-center justify-center shrink-0">
                       <AlertCircle className="w-5 h-5 text-red-600" />
                    </div>
                    <div>
-                      <h3 className="text-xs font-bold text-red-900 uppercase tracking-widest mb-1">Permission Required</h3>
+                      <h3 className="text-xs font-bold text-red-900 uppercase tracking-widest mb-1">Permission or Data Error</h3>
                       <p className="text-sm text-red-700/80 leading-relaxed">
-                        Security rules are blocking writes. Please update your Firestore security configuration to allow question management.
+                        There was an error loading system statistics. This might be due to security rules or a connection issue.
                       </p>
                    </div>
                 </div>

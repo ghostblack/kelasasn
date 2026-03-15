@@ -160,111 +160,139 @@ export const ClaimCodesManagement: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-10">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-gray-100 pb-10">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Kelola Kode Klaim</h1>
-          <p className="text-sm text-gray-600 mt-1">Generate dan kelola kode klaim untuk akses try out</p>
+           <div className="flex items-center gap-2 mb-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+              <span className="text-[10px] font-bold text-gray-400 capitalize tracking-wider">Access Authorization</span>
+           </div>
+           <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight leading-none">
+             Kelola <span className="text-gray-400 font-medium ml-2">Kode Klaim</span>
+           </h1>
+           <p className="text-sm text-gray-500 mt-4 leading-relaxed max-w-xl">
+             Generate dan kelola kode klaim untuk akses try out manual. Aktifkan atau nonaktifkan kode untuk mengontrol akses pengguna secara instan.
+           </p>
         </div>
-        <Button onClick={() => setShowDialog(true)} className="bg-blue-600 hover:bg-blue-700">
-          <Plus className="w-4 h-4 mr-2" />
-          Generate Kode
-        </Button>
+        <div className="flex items-center gap-3">
+           <Button onClick={() => setShowDialog(true)} className="bg-gray-900 hover:bg-black text-white px-6 h-11 rounded-none text-xs font-bold uppercase tracking-widest transition-all shadow-sm">
+              <Plus className="w-4 h-4 mr-2" />
+              Generate Kode
+           </Button>
+        </div>
       </div>
 
       {loading ? (
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400 mx-auto"></div>
-          <p className="mt-4 text-gray-600 text-sm">Memuat data...</p>
+        <div className="text-center py-24 bg-white border border-gray-100">
+           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900 mx-auto"></div>
+           <p className="mt-4 text-gray-500 text-xs font-bold uppercase tracking-widest">Initialising Database...</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {claimCodes.map((claimCode) => (
-            <Card key={claimCode.id} className="border border-gray-200 hover:border-gray-300 transition-colors">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-base font-medium text-gray-900 mb-2">{claimCode.tryoutName}</CardTitle>
-                    <div className="flex flex-wrap gap-2">
-                      <Badge variant={claimCode.isActive ? 'default' : 'secondary'} className="text-xs">
-                        {claimCode.isActive ? 'Aktif' : 'Nonaktif'}
+            <Card key={claimCode.id} className="bg-white border border-gray-100 rounded-none shadow-sm overflow-hidden hover:border-gray-200 transition-all group">
+              <div className="p-6 border-b border-gray-50 bg-gray-50/50">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="text-xs font-bold text-gray-900 uppercase tracking-tight mb-2 leading-tight min-h-[2rem] line-clamp-2">
+                      {claimCode.tryoutName}
+                    </h3>
+                    <div className="flex flex-wrap gap-1.5">
+                      <Badge className={`rounded-none border-none text-[9px] font-black tracking-tighter ${
+                        claimCode.isActive ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'
+                      }`}>
+                        {claimCode.isActive ? 'ACTIVE' : 'INACTIVE'}
                       </Badge>
                       {claimCode.currentUses >= claimCode.maxUses && (
-                        <Badge variant="destructive" className="text-xs">
-                          Penuh
+                        <Badge className="bg-red-50 text-red-600 rounded-none border-none text-[9px] font-black tracking-tighter">
+                          FULL
                         </Badge>
                       )}
                     </div>
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-3 pt-3">
-                <div className="bg-blue-50 p-4 rounded border border-blue-200">
-                  <div className="flex items-center justify-between gap-2">
-                    <code className="text-lg font-semibold text-blue-900">{claimCode.code}</code>
+              </div>
+
+              <div className="p-6 space-y-6">
+                <div className="relative group/code">
+                  <div className="absolute -inset-2 bg-indigo-50/0 group-hover/code:bg-indigo-50/50 transition-all duration-300 -z-10" />
+                  <div className="flex items-center justify-between gap-4 p-4 border border-gray-100 bg-white">
+                    <code className="text-xl font-black text-gray-900 tracking-wider">
+                      {claimCode.code}
+                    </code>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => handleCopyCode(claimCode.code)}
-                      className="shrink-0"
+                      className="h-8 w-8 p-0 hover:bg-gray-50 rounded-none transition-colors"
                     >
                       {copiedCode === claimCode.code ? (
                         <Check className="w-4 h-4 text-green-600" />
                       ) : (
-                        <Copy className="w-4 h-4" />
+                        <Copy className="w-4 h-4 text-gray-400" />
                       )}
                     </Button>
                   </div>
                 </div>
 
-                <div className="space-y-2 text-sm text-gray-700 bg-gray-50 p-3 rounded border border-gray-200">
-                  <div className="flex justify-between">
-                    <span className="font-medium">Penggunaan:</span>
-                    <span className="font-medium text-gray-900">
-                      {claimCode.currentUses} / {claimCode.maxUses}
-                    </span>
+                <div className="grid grid-cols-2 gap-px bg-gray-100 border border-gray-100">
+                  <div className="bg-white p-3">
+                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Usage</p>
+                    <p className="text-xs font-black text-gray-900">
+                      {claimCode.currentUses} <span className="text-gray-300 font-medium">/</span> {claimCode.maxUses}
+                    </p>
                   </div>
-                  {claimCode.expiryDate && (
-                    <div className="flex justify-between">
-                      <span className="font-medium">Kadaluarsa:</span>
-                      <span className="font-medium text-gray-900">
-                        {claimCode.expiryDate.toLocaleDateString('id-ID')}
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex justify-between">
-                    <span className="font-medium">Dibuat:</span>
-                    <span className="font-medium text-gray-900">
-                      {claimCode.createdAt.toLocaleDateString('id-ID')}
-                    </span>
+                  <div className="bg-white p-3">
+                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Status</p>
+                    <p className="text-xs font-black text-gray-900">
+                      {claimCode.currentUses >= claimCode.maxUses ? 'EXHAUSTED' : 'AVAILABLE'}
+                    </p>
+                  </div>
+                  <div className="bg-white p-3 col-span-2 border-t border-gray-100">
+                     <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Created / Expiry</p>
+                     <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-gray-900">{claimCode.createdAt.toLocaleDateString('id-ID')}</span>
+                        <span className="text-xs font-medium text-gray-400">
+                          {claimCode.expiryDate ? claimCode.expiryDate.toLocaleDateString('id-ID') : 'No Expiry'}
+                        </span>
+                     </div>
                   </div>
                 </div>
 
-                <div className="flex gap-2 mt-3">
+                <div className="flex gap-2">
                   <Button
-                    variant={claimCode.isActive ? 'outline' : 'default'}
+                    variant="ghost"
                     size="sm"
-                    className="flex-1"
+                    className={`flex-1 rounded-none text-[10px] font-bold uppercase tracking-widest h-10 border border-gray-100 transition-all ${
+                      claimCode.isActive ? 'text-gray-400 hover:text-orange-600 hover:bg-orange-50/50' : 'text-blue-600 hover:bg-blue-50/50 bg-blue-50/30'
+                    }`}
                     onClick={() => handleToggleStatus(claimCode.id, claimCode.isActive)}
                   >
-                    <Power className="w-4 h-4 mr-2" />
-                    {claimCode.isActive ? 'Nonaktifkan' : 'Aktifkan'}
+                    <Power className="w-3.5 h-3.5 mr-2" />
+                    {claimCode.isActive ? 'Deactivate' : 'Activate Area'}
                   </Button>
                   <Button
-                    variant="destructive"
+                    variant="ghost"
                     size="sm"
+                    className="aspect-square w-10 p-0 rounded-none text-gray-300 hover:text-red-600 hover:bg-red-50 border border-gray-100 transition-all"
                     onClick={() => handleDelete(claimCode.id)}
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-3.5 h-3.5" />
                   </Button>
                 </div>
-              </CardContent>
+              </div>
             </Card>
           ))}
 
           {claimCodes.length === 0 && (
-            <div className="col-span-full text-center py-12">
-              <p className="text-gray-600 text-base">Belum ada kode klaim</p>
+            <div className="col-span-full text-center py-24 bg-white border border-dashed border-gray-200">
+               <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-gray-100">
+                  <Plus className="w-6 h-6 text-gray-300" />
+               </div>
+               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">No active claim codes found</p>
+               <Button variant="link" onClick={() => setShowDialog(true)} className="text-blue-600 text-[10px] font-bold uppercase tracking-widest mt-2">
+                 Generate First Code
+               </Button>
             </div>
           )}
         </div>

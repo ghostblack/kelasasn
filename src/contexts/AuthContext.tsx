@@ -84,64 +84,54 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 return;
               }
 
-              const isGoogleUser = currentUser.providerData.some(
-                provider => provider.providerId === 'google.com'
-              );
+              // Simplify: Just check if we have a user. Google users are the priority.
+              // We no longer enforce emailVerified here.
+              console.log('AuthContext: User authenticated', { uid: currentUser.uid, email: currentUser.email });
 
-              if (isGoogleUser || currentUser.emailVerified) {
-                console.log('AuthContext: User verified', { isGoogleUser, emailVerified: currentUser.emailVerified });
+              const storedSessionId = localStorage.getItem(`session_${currentUser.uid}`);
 
-                const storedSessionId = localStorage.getItem(`session_${currentUser.uid}`);
+              if (storedSessionId) {
+                if (isMounted) {
+                  setSessionId(storedSessionId);
+                }
 
-                if (storedSessionId) {
-                  if (isMounted) {
-                    setSessionId(storedSessionId);
-                  }
+                if (sessionUnsubscribe) {
+                  sessionUnsubscribe();
+                }
 
-                  if (sessionUnsubscribe) {
-                    sessionUnsubscribe();
-                  }
-
-                  sessionUnsubscribe = sessionService.onSessionInvalidated(storedSessionId, async () => {
-                    const activeSessions = await sessionService.getActiveSessions(currentUser.uid);
-                    if (activeSessions.length > 0) {
-                      const newSession = activeSessions[0];
-                      if (isMounted) {
-                        setConflictDeviceInfo({
-                          deviceType: newSession.deviceInfo.deviceType,
-                          browser: newSession.deviceInfo.browser,
-                        });
-                      }
-                    }
+                sessionUnsubscribe = sessionService.onSessionInvalidated(storedSessionId, async () => {
+                  const activeSessions = await sessionService.getActiveSessions(currentUser.uid);
+                  if (activeSessions.length > 0) {
+                    const newSession = activeSessions[0];
                     if (isMounted) {
-                      setShowSessionConflict(true);
+                      setConflictDeviceInfo({
+                        deviceType: newSession.deviceInfo.deviceType,
+                        browser: newSession.deviceInfo.browser,
+                      });
                     }
-                    setTimeout(() => {
-                      if (isMounted) {
-                        setUser(null);
-                        setSessionId(null);
-                      }
-                      localStorage.removeItem(`session_${currentUser.uid}`);
-                      localStorage.removeItem('current_user_id');
-                    }, 2000);
-                  });
-                } else {
-                  if (isMounted) {
-                    setSessionId(null);
                   }
-                }
-
-                if (isMounted) {
-                  setUser(currentUser);
-                }
-                localStorage.setItem('current_user_id', currentUser.uid);
+                  if (isMounted) {
+                    setShowSessionConflict(true);
+                  }
+                  setTimeout(() => {
+                    if (isMounted) {
+                      setUser(null);
+                      setSessionId(null);
+                    }
+                    localStorage.removeItem(`session_${currentUser.uid}`);
+                    localStorage.removeItem('current_user_id');
+                  }, 2000);
+                });
               } else {
-                console.log('AuthContext: User not verified');
                 if (isMounted) {
-                  setUser(currentUser);
                   setSessionId(null);
                 }
               }
+
+              if (isMounted) {
+                setUser(currentUser);
+              }
+              localStorage.setItem('current_user_id', currentUser.uid);
             } catch (error) {
               console.error('AuthContext: Error checking user status:', error);
               if (isMounted) {

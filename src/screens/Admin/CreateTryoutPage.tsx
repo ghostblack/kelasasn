@@ -34,10 +34,10 @@ export const CreateTryoutPage: React.FC = () => {
     totalDuration: 100,
     twkQuestions: 30,
     tiuQuestions: 35,
-    tkpQuestions: 35,
+    tkpQuestions: 45,
     passingGradeTWK: 65,
     passingGradeTIU: 80,
-    passingGradeTKP: 143,
+    passingGradeTKP: 166,
     isActive: true,
   });
 
@@ -80,7 +80,7 @@ export const CreateTryoutPage: React.FC = () => {
         tkpQuestions: tryout.tkpQuestions,
         passingGradeTWK: tryout.passingGradeTWK || 65,
         passingGradeTIU: tryout.passingGradeTIU || 80,
-        passingGradeTKP: tryout.passingGradeTKP || 143,
+        passingGradeTKP: tryout.passingGradeTKP || 166,
         isActive: tryout.isActive,
       });
 

@@ -113,17 +113,33 @@ export const getRankingByTryout = async (
       })
     );
 
-    console.log('✓ Processed', resultsWithUserData.length, 'results with user data');
+    // Deduplicate and filter realistic legacy scores (total max score is typically 550)
+    // Anything > 550 is impossible under normal SKD rules
+    const validResults = resultsWithUserData.filter(r => {
+      const score = Number(r.totalScore || 0);
+      return score <= 550 && score >= 0;
+    });
+
+    console.log('✓ Filtered valid results (0 <= score <= 550):', validResults.length);
+    if (validResults.length < resultsWithUserData.length) {
+      console.warn(`! Filtered out ${resultsWithUserData.length - validResults.length} invalid/legacy results`);
+    }
+
+    console.log('✓ Processed', validResults.length, 'results with user data');
 
     console.log('\n=== Processing best scores per user ===');
-    const userBestScores = new Map<string, typeof resultsWithUserData[0]>();
+    const userBestScores = new Map<string, typeof validResults[0]>();
 
-    resultsWithUserData.forEach(result => {
+    validResults.forEach(result => {
+      // Key is either (userId + tryoutId) for specific tryout ranking, or just userId for global ranking
       const key = tryoutId && tryoutId !== 'all' ? `${result.userId}-${result.tryoutId}` : result.userId;
       const existing = userBestScores.get(key);
 
-      if (!existing || result.totalScore > existing.totalScore ||
-          (result.totalScore === existing.totalScore &&
+      const currentScore = Number(result.totalScore || 0);
+      const existingScore = existing ? Number(existing.totalScore || 0) : -1;
+
+      if (!existing || currentScore > existingScore ||
+          (currentScore === existingScore &&
            result.completedAt.getTime() < existing.completedAt.getTime())) {
         userBestScores.set(key, result);
       }

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { getTryoutById, getUserTryouts } from '@/services/tryoutService';
@@ -11,12 +11,12 @@ import {
   updateTryoutSession,
 } from '@/services/tryoutSessionService';
 import { Question, TryoutPackage, TryoutSession } from '@/types';
+import { MathText } from '@/components/MathText';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { LoadingScreen } from '@/components/ui/spinner';
-import { Clock, ChevronLeft, ChevronRight, Flag, Menu, CircleAlert as AlertCircle } from 'lucide-react';
+import { Menu, Flag, CircleAlert as AlertCircle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -32,7 +32,6 @@ export const TryoutExamPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const questionContainerRef = useRef<HTMLDivElement>(null);
 
   const [loading, setLoading] = useState(true);
   const [tryout, setTryout] = useState<TryoutPackage | null>(null);
@@ -136,7 +135,7 @@ export const TryoutExamPage: React.FC = () => {
       let sessionData = await getActiveTryoutSession(user.uid, id);
 
       if (!sessionData) {
-        const sessionId = await createTryoutSession(
+        await createTryoutSession(
           user.uid,
           userTryout.id,
           id,
@@ -357,9 +356,19 @@ export const TryoutExamPage: React.FC = () => {
   const calculateScores = () => {
     if (!questions || !session) return null;
 
-    const twkQuestions = questions.filter((q) => q.category === 'TWK');
-    const tiuQuestions = questions.filter((q) => q.category === 'TIU');
-    const tkpQuestions = questions.filter((q) => q.category === 'TKP');
+    // Deduplicate questions to prevent double counting if the same ID exists multiple times
+    const uniqueQuestionsMap = new Map<string, Question>();
+    questions.forEach(q => {
+      if (q && q.id) {
+        uniqueQuestionsMap.set(q.id, q);
+      }
+    });
+    
+    const uniqueQuestions = Array.from(uniqueQuestionsMap.values());
+
+    const twkQuestions = uniqueQuestions.filter((q) => q.category === 'TWK');
+    const tiuQuestions = uniqueQuestions.filter((q) => q.category === 'TIU');
+    const tkpQuestions = uniqueQuestions.filter((q) => q.category === 'TKP');
 
     let twkCorrect = 0;
     let tiuCorrect = 0;
@@ -377,29 +386,31 @@ export const TryoutExamPage: React.FC = () => {
     tkpQuestions.forEach((q) => {
       const userAnswer = session.answers[q.id];
       if (userAnswer && q.tkpScoring) {
-        tkpScore += q.tkpScoring[userAnswer as 'a' | 'b' | 'c' | 'd' | 'e'] || 0;
+        // Ensure score is added as a number
+        const scoreValue = q.tkpScoring[userAnswer as 'a' | 'b' | 'c' | 'd' | 'e'];
+        tkpScore += Number(scoreValue) || 0;
       }
       if (session.answers[q.id] === q.correctAnswer) tkpCorrect++;
     });
 
-    const twkScore = twkQuestions.length > 0 ? (twkCorrect / twkQuestions.length) * 100 : 0;
-    const tiuScore = tiuQuestions.length > 0 ? (tiuCorrect / tiuQuestions.length) * 150 : 0;
+    const twkScore = twkCorrect * 5;
+    const tiuScore = tiuCorrect * 5;
     const tkpMaxScore = tkpQuestions.length * 5;
 
-    const maxTwkScore = twkQuestions.length * 5 * 100;
-    const maxTiuScore = tiuQuestions.length * 5 * 150;
+    const maxTwkScore = twkQuestions.length * 5;
+    const maxTiuScore = tiuQuestions.length * 5;
     const maxTkpScore = tkpMaxScore;
 
     return {
-      twkScore: Math.round(twkScore * 5),
-      tiuScore: Math.round(tiuScore * 5),
-      tkpScore: tkpScore,
+      twkScore: Number(twkScore),
+      tiuScore: Number(tiuScore),
+      tkpScore: Number(tkpScore),
       twkCorrect,
       tiuCorrect,
       tkpCorrect,
       twkTotal: twkQuestions.length,
       tiuTotal: tiuQuestions.length,
-      tkpTotal: tkpMaxScore,
+      tkpTotal: tkpQuestions.length,
       maxTwkScore,
       maxTiuScore,
       maxTkpScore,
@@ -578,9 +589,7 @@ export const TryoutExamPage: React.FC = () => {
 
                 <div className="p-4 md:p-6">
                   <div className="mb-6 space-y-4">
-                    <div className="text-sm leading-relaxed text-gray-900">
-                      {currentQuestion.questionText}
-                    </div>
+                    <MathText text={currentQuestion.questionText} className="text-sm leading-relaxed text-gray-900" />
                     {currentQuestion.questionImage && (
                       <div className="flex justify-center py-2">
                         <img
@@ -630,9 +639,18 @@ export const TryoutExamPage: React.FC = () => {
                             >
                               {key.toUpperCase()}
                             </div>
-                            <span className="text-sm text-gray-900 leading-relaxed pt-0.5">
-                              {value}
-                            </span>
+                            <div className="flex flex-col gap-2 grow">
+                              <MathText text={value} className="text-sm text-gray-900 leading-relaxed pt-0.5" />
+                              {currentQuestion.optionImages?.[key as 'a'|'b'|'c'|'d'|'e'] && (
+                                <div className="mt-1">
+                                  <img 
+                                    src={currentQuestion.optionImages[key as 'a'|'b'|'c'|'d'|'e']} 
+                                    alt={`Pilihan ${key.toUpperCase()}`}
+                                    className="max-w-full sm:max-w-xs max-h-48 object-contain rounded border border-gray-100 bg-white"
+                                  />
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </button>
                       );

@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp, collection, query, where, getDocs, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { UserProfile } from '@/types';
 
@@ -101,6 +101,41 @@ export const updateUsername = async (userId: string, username: string): Promise<
   });
 };
 
+export const deleteUser = async (userId: string): Promise<void> => {
+  try {
+    // 1. Clean up associated data
+    const sessionsRef = collection(db, 'tryout_sessions');
+    const sessionsQ = query(sessionsRef, where('userId', '==', userId));
+    const sessionsSnap = await getDocs(sessionsQ);
+    
+    const resultsRef = collection(db, 'tryout_results');
+    const resultsQ = query(resultsRef, where('userId', '==', userId));
+    const resultsSnap = await getDocs(resultsQ);
+
+    const userTryoutsRef = collection(db, 'user_tryouts');
+    const userTryoutsQ = query(userTryoutsRef, where('userId', '==', userId));
+    const userTryoutsSnap = await getDocs(userTryoutsQ);
+
+    const paymentsRef = collection(db, 'payment_transactions');
+    const paymentsQ = query(paymentsRef, where('userId', '==', userId));
+    const paymentsSnap = await getDocs(paymentsQ);
+
+    // Delete all associated data
+    const deletePromises = [
+      ...sessionsSnap.docs.map(d => deleteDoc(d.ref)),
+      ...resultsSnap.docs.map(d => deleteDoc(d.ref)),
+      ...userTryoutsSnap.docs.map(d => deleteDoc(d.ref)),
+      ...paymentsSnap.docs.map(d => deleteDoc(d.ref)),
+      deleteDoc(doc(db, 'users', userId))
+    ];
+
+    await Promise.all(deletePromises);
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    throw error;
+  }
+};
+
 export const userService = {
   createUserProfile,
   createMinimalUserProfile,
@@ -109,4 +144,5 @@ export const userService = {
   getUserData,
   checkUsernameAvailability,
   updateUsername,
+  deleteUser,
 };

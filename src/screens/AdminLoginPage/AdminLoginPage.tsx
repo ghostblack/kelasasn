@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
+import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -134,164 +135,210 @@ export const AdminLoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-4">
-      <Card className="w-full max-w-md shadow-xl border-0">
-        <CardHeader className="space-y-4 pb-6">
-          <div className="flex justify-center">
-            <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
-              <Shield className="w-10 h-10 text-white" />
-            </div>
-          </div>
-          <CardTitle className="text-3xl font-bold text-center bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Admin Panel</CardTitle>
-          <CardDescription className="text-center text-gray-600">
-            Masuk ke dashboard admin KelasASN
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="admin@kelasasn.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                disabled={loading}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={loading}
-              />
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowForgotPasswordDialog(true);
-                    setResetEmail(email);
-                  }}
-                  className="text-sm text-blue-600 hover:underline font-medium"
-                  disabled={loading}
-                >
-                  Lupa Password?
-                </button>
+    <div className="min-h-screen flex items-center justify-center bg-[#F9FAFB] font-sans antialiased text-gray-900 p-4">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-sm"
+      >
+        <div className="flex flex-col items-center mb-10">
+           <Link to="/" className="flex flex-col items-center group">
+              <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center shadow-sm group-hover:bg-green-600 transition-colors mb-4">
+                 <img src="/Frame 1321314500.svg" alt="Logo" className="h-7 w-7 brightness-0 invert" />
               </div>
-            </div>
+              <div className="flex flex-col items-center">
+                <span className="font-bold text-gray-900 tracking-tight text-xl">KelasASN</span>
+                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em] mt-1">Admin Portal</span>
+              </div>
+           </Link>
+        </div>
 
-            <Button type="submit" className="w-full h-11 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium shadow-md" disabled={loading}>
-              {loading ? 'Memproses...' : 'Masuk ke Dashboard'}
-            </Button>
+        <Card className="shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 rounded-2xl overflow-hidden bg-white">
+          <CardHeader className="space-y-1 pb-6 pt-8 text-center border-b border-gray-50/50">
+            <CardTitle className="text-lg font-semibold tracking-tight">Selamat Datang Kembali</CardTitle>
+            <CardDescription className="text-xs text-gray-400 font-medium">
+              Masukkan kredensial Anda untuk mengakses panel kontrol.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-8 pb-8">
+            <form onSubmit={handleLogin} className="space-y-5">
+              <div className="space-y-1.5">
+                <Label htmlFor="email" className="text-[11px] font-bold text-gray-400 uppercase tracking-wider ml-1">Email Karyawan</Label>
+                <div className="relative group">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-500 transition-colors">
+                    <Mail className="h-4 w-4" />
+                  </div>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="admin@kelasasn.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    disabled={loading}
+                    className="h-11 bg-gray-50/50 border-gray-100 pl-10 text-sm focus:bg-white focus:ring-0 focus:border-gray-200 transition-all rounded-xl"
+                  />
+                </div>
+              </div>
 
-            <div className="text-center pt-4 space-y-3">
-              <button
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center ml-1">
+                  <Label htmlFor="password" className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Kata Sandi</Label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowForgotPasswordDialog(true);
+                      setResetEmail(email);
+                    }}
+                    className="text-[10px] text-blue-500 hover:text-blue-600 font-bold uppercase tracking-wider"
+                    disabled={loading}
+                  >
+                    Lupa Password?
+                  </button>
+                </div>
+                <div className="relative group">
+                   <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-500 transition-colors">
+                    <Shield className="h-4 w-4" />
+                  </div>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    disabled={loading}
+                    className="h-11 bg-gray-50/50 border-gray-100 pl-10 text-sm focus:bg-white focus:ring-0 focus:border-gray-200 transition-all rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <Button 
+                type="submit" 
+                className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-xl transition-all shadow-sm shadow-blue-100" 
+                disabled={loading}
+              >
+                {loading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                    <span>Otentikasi...</span>
+                  </div>
+                ) : (
+                  'Masuk ke Dashboard'
+                )}
+              </Button>
+            </form>
+          </CardContent>
+          <div className="px-8 py-4 bg-gray-50/50 border-t border-gray-100 flex justify-center">
+             <button
                 type="button"
                 onClick={() => navigate('/')}
-                className="text-sm text-blue-600 hover:text-blue-700 hover:underline block w-full font-medium"
+                className="text-[11px] text-gray-400 hover:text-gray-600 font-bold uppercase tracking-widest transition-colors flex items-center gap-2"
               >
-                ← Kembali ke halaman utama
+                ← Kembali ke Situs
               </button>
-              <div className="text-xs text-gray-600 pt-3 border-t">
-                Belum punya akun admin?{' '}
-                <a
-                  href="/create-admin.html"
-                  target="_blank"
-                  className="text-blue-600 hover:text-blue-700 hover:underline font-medium"
-                >
-                  Buat akun admin
-                </a>
-              </div>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+          </div>
+        </Card>
+        
+        <div className="mt-8 text-center text-[10px] text-gray-300 font-bold uppercase tracking-[0.2em]">
+           &copy; 2024 KelasASN Admin System
+        </div>
+      </motion.div>
 
       <Dialog open={showForgotPasswordDialog} onOpenChange={setShowForgotPasswordDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Mail className="w-5 h-5 text-blue-600" />
-              Lupa Password Admin?
-            </DialogTitle>
-            <DialogDescription>
-              {resetEmailSent ? (
-                'Email reset password berhasil dikirim!'
-              ) : (
-                'Masukkan email admin Anda dan kami akan mengirimkan link untuk reset password'
-              )}
-            </DialogDescription>
-          </DialogHeader>
-
-          {resetEmailSent ? (
-            <div className="py-4">
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-                <CheckCircle2 className="w-12 h-12 text-green-600 mx-auto mb-3" />
-                <p className="text-sm text-gray-700 mb-2">
-                  Kami telah mengirimkan link reset password ke:
-                </p>
-                <p className="text-sm font-semibold text-gray-900">
-                  {resetEmail}
-                </p>
-                <p className="text-xs text-gray-600 mt-3">
-                  Silakan cek email Anda dan klik link untuk reset password
-                </p>
+        <DialogContent className="sm:max-w-md border-0 shadow-2xl rounded-2xl p-0 overflow-hidden">
+          <div className="bg-white p-8">
+            <DialogHeader className="space-y-3">
+              <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center mb-2">
+                 <Mail className="w-5 h-5 text-blue-600" />
               </div>
-            </div>
-          ) : (
-            <form onSubmit={handleSendPasswordReset} className="space-y-4 pt-4">
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-blue-600 w-5 h-5" />
-                <Input
-                  type="email"
-                  placeholder="Email Admin"
-                  value={resetEmail}
-                  onChange={(e) => setResetEmail(e.target.value)}
-                  required
-                  disabled={sendingResetEmail}
-                  className="pl-12 h-11"
-                />
-              </div>
+              <DialogTitle className="text-xl font-bold tracking-tight text-gray-900">
+                Lupa Password Admin?
+              </DialogTitle>
+              <DialogDescription className="text-sm text-gray-500 leading-relaxed font-medium">
+                {resetEmailSent ? (
+                  'Email pemulihan telah dikirim. Periksa kotak masuk Anda.'
+                ) : (
+                  'Masukkan email administratif Anda untuk menerima tautan pemulihan kata sandi.'
+                )}
+              </DialogDescription>
+            </DialogHeader>
 
-              {resetError && (
-                <div className="flex items-start gap-2 text-sm text-red-600 bg-red-50 p-3 rounded-lg">
-                  <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                  <span>{resetError}</span>
+            {resetEmailSent ? (
+              <div className="py-8">
+                <div className="bg-green-50/50 border border-green-100 rounded-xl p-6 text-center">
+                  <div className="w-12 h-12 bg-green-100/50 rounded-full flex items-center justify-center mx-auto mb-4 border border-green-200">
+                    <CheckCircle2 className="w-6 h-6 text-green-600" />
+                  </div>
+                  <h4 className="text-sm font-bold text-green-900 mb-1">Email Terkirim!</h4>
+                  <p className="text-xs text-green-700 font-medium">
+                    Tautan telah dikirim ke: <br/> 
+                    <span className="font-bold underline mt-1 block">{resetEmail}</span>
+                  </p>
                 </div>
-              )}
-
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setShowForgotPasswordDialog(false);
-                    setResetEmail('');
-                    setResetError('');
-                  }}
-                  disabled={sendingResetEmail}
-                  className="flex-1"
-                >
-                  Batal
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={sendingResetEmail}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700"
-                >
-                  {sendingResetEmail ? 'Mengirim...' : 'Kirim Link Reset'}
-                </Button>
               </div>
-            </form>
-          )}
+            ) : (
+              <form onSubmit={handleSendPasswordReset} className="space-y-6 pt-6">
+                <div className="space-y-1.5">
+                  <Label htmlFor="reset-email" className="text-[11px] font-bold text-gray-400 uppercase tracking-wider ml-1">Email Administratif</Label>
+                  <div className="relative group">
+                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-500 transition-colors">
+                      <Mail className="h-4 w-4" />
+                    </div>
+                    <Input
+                      id="reset-email"
+                      type="email"
+                      placeholder="admin@kelasasn.com"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      required
+                      disabled={sendingResetEmail}
+                      className="h-11 bg-gray-50 border-gray-100 pl-10 text-sm focus:bg-white focus:ring-0 focus:border-gray-200 transition-all rounded-xl"
+                    />
+                  </div>
+                </div>
+
+                {resetError && (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="flex items-start gap-2 text-xs font-semibold text-red-600 bg-red-50/50 border border-red-100 p-3 rounded-lg"
+                  >
+                    <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    <span>{resetError}</span>
+                  </motion.div>
+                )}
+
+                <div className="flex gap-3">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => {
+                      setShowForgotPasswordDialog(false);
+                      setResetEmail('');
+                      setResetError('');
+                    }}
+                    disabled={sendingResetEmail}
+                    className="flex-1 h-11 text-xs font-bold uppercase tracking-wider text-gray-400 hover:text-gray-600 hover:bg-gray-50"
+                  >
+                    Batal
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={sendingResetEmail}
+                    className="flex-[2] h-11 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-sm shadow-blue-100"
+                  >
+                    {sendingResetEmail ? 'Mengirim...' : 'Kirim Link Reset'}
+                  </Button>
+                </div>
+              </form>
+            )}
+          </div>
+          <div className="bg-gray-50 py-4 px-8 border-t border-gray-100 text-center">
+            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+              Keamanan Sistem KelasASN
+            </p>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

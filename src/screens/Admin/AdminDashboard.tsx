@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { LayoutDashboard, BookOpen, LogOut, Menu, X, Ticket, Users, CreditCard, Search, Command, Bell, Activity, User as UserIcon } from 'lucide-react';
+import { LayoutDashboard, BookOpen, LogOut, Menu, Ticket, Users, CreditCard, Search, Command, Bell, User as UserIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export const AdminDashboard: React.FC = () => {
@@ -22,6 +21,7 @@ export const AdminDashboard: React.FC = () => {
       items: [
         { path: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
         { path: '/admin/tryouts', icon: BookOpen, label: 'Kelola Try Out' },
+        { path: '/admin/questions', icon: BookOpen, label: 'Bank Soal' },
       ]
     },
     {
@@ -40,7 +40,7 @@ export const AdminDashboard: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB]">
+    <div className="min-h-screen bg-[#F9FAFB] font-sans antialiased text-gray-900">
       {/* Top Header */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-100">
         <div className="flex items-center justify-between h-16 px-4 lg:px-8">

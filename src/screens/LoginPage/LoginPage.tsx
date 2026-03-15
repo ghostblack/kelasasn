@@ -18,13 +18,7 @@ export const LoginPage = () => {
 
   useEffect(() => {
     if (user) {
-      const isGoogleUser = user.providerData.some(
-        provider => provider.providerId === 'google.com'
-      );
-
-      if (isGoogleUser || user.emailVerified) {
-        checkUserProfile();
-      }
+      checkUserProfile();
     }
   }, [user]);
 

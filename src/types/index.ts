@@ -71,6 +71,13 @@ export interface Question {
     d: number;
     e: number;
   };
+  optionImages?: {
+    a?: string;
+    b?: string;
+    c?: string;
+    d?: string;
+    e?: string;
+  };
 }
 
 export interface TryoutSession {

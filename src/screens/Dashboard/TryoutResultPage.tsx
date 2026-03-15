@@ -98,14 +98,14 @@ export const TryoutResultPage: React.FC = () => {
     );
   }
 
-  const twkTotal = result.twkTotal || tryout.twkQuestions || 1;
-  const tiuTotal = result.tiuTotal || tryout.tiuQuestions || 1;
-  const tkpMaxScore = (tryout.tkpQuestions || 45) * 5;
-  const tkpTotal = result.tkpTotal || tkpMaxScore;
+  const twkMaxScore = result.maxTwkScore || (tryout.twkQuestions || 30) * 5;
+  const tiuMaxScore = result.maxTiuScore || (tryout.tiuQuestions || 35) * 5;
+  const tkpMaxScore = result.maxTkpScore || (tryout.tkpQuestions || 45) * 5;
+  const totalMaxScore = result.maxTotalScore || (twkMaxScore + tiuMaxScore + tkpMaxScore);
 
-  const twkPercentage = (result.twkCorrect / twkTotal) * 100;
-  const tiuPercentage = (result.tiuCorrect / tiuTotal) * 100;
-  const tkpPercentage = (result.tkpScore / tkpTotal) * 100;
+  const twkTotal = tryout.twkQuestions || 30;
+  const tiuTotal = tryout.tiuQuestions || 35;
+  const tkpTotal = tryout.tkpQuestions || 45;
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -174,7 +174,7 @@ export const TryoutResultPage: React.FC = () => {
             <p className="text-sm text-gray-500 mb-1">Skor Total</p>
             <div className="flex items-baseline gap-2">
               <span className="text-4xl text-gray-900">{result.totalScore}</span>
-              <span className="text-lg text-gray-400">/ 525</span>
+              <span className="text-lg text-gray-400">/ {totalMaxScore}</span>
             </div>
           </div>
           <Badge className={`text-sm px-4 py-1 ${result.isPassed ? 'bg-green-600' : 'bg-red-600'}`}>
@@ -194,7 +194,7 @@ export const TryoutResultPage: React.FC = () => {
             </div>
             <div className="flex items-baseline gap-1 mb-1">
               <span className="text-2xl text-gray-900">{result.twkScore}</span>
-              <span className="text-sm text-gray-500">/ 175</span>
+              <span className="text-sm text-gray-500">/ {twkMaxScore}</span>
             </div>
             <p className="text-xs text-gray-500">{result.twkCorrect}/{twkTotal} benar</p>
           </div>
@@ -210,7 +210,7 @@ export const TryoutResultPage: React.FC = () => {
             </div>
             <div className="flex items-baseline gap-1 mb-1">
               <span className="text-2xl text-gray-900">{result.tiuScore}</span>
-              <span className="text-sm text-gray-500">/ 175</span>
+              <span className="text-sm text-gray-500">/ {tiuMaxScore}</span>
             </div>
             <p className="text-xs text-gray-500">{result.tiuCorrect}/{tiuTotal} benar</p>
           </div>
@@ -226,9 +226,9 @@ export const TryoutResultPage: React.FC = () => {
             </div>
             <div className="flex items-baseline gap-1 mb-1">
               <span className="text-2xl text-gray-900">{result.tkpScore}</span>
-              <span className="text-sm text-gray-500">/ {tkpTotal}</span>
+              <span className="text-sm text-gray-500">/ {tkpMaxScore}</span>
             </div>
-            <p className="text-xs text-gray-500">Nilai benar: {result.tkpScore}/{tkpTotal}</p>
+            <p className="text-xs text-gray-500">Nilai: {result.tkpScore}/{tkpMaxScore}</p>
           </div>
         </div>
       </div>

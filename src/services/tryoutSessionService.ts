@@ -7,8 +7,7 @@ import {
   getDoc,
   addDoc,
   updateDoc,
-  serverTimestamp,
-  Timestamp
+  serverTimestamp
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { TryoutSession, TryoutResult } from '@/types';
@@ -204,8 +203,8 @@ export const completeTryoutSession = async (
     console.log('tryoutName:', tryoutName);
     console.log('scores:', scores);
 
-    const totalScore = scores.twkScore + scores.tiuScore + scores.tkpScore;
-    const maxTotalScore = scores.maxTwkScore + scores.maxTiuScore + scores.maxTkpScore;
+    const totalScore = Number(scores.twkScore || 0) + Number(scores.tiuScore || 0) + Number(scores.tkpScore || 0);
+    const maxTotalScore = Number(scores.maxTwkScore || 0) + Number(scores.maxTiuScore || 0) + Number(scores.maxTkpScore || 0);
     console.log('totalScore:', totalScore);
     console.log('maxTotalScore:', maxTotalScore);
 

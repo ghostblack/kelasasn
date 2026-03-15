@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Plus, Edit2, Trash2, ChevronDown, ChevronUp, Search } from 'lucide-react';
+import { ArrowLeft, Plus, Edit2, Trash2, ChevronDown, ChevronUp, Search, FileSpreadsheet } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getQuestionsForTryoutDisplaying, deleteQuestion, removeQuestionFromTryout } from '@/services/questionService';
+import { getQuestionsForTryoutDisplaying, deleteQuestion, removeQuestionFromAllTryouts, deleteAllQuestionsInCategory } from '@/services/questionService';
+import { ImportQuestionsDialog } from './ImportQuestionsDialog';
 import { Question } from '@/types';
+import { MathText } from '@/components/MathText';
 
 export const TryoutQuestionList: React.FC = () => {
   const navigate = useNavigate();
@@ -19,26 +22,14 @@ export const TryoutQuestionList: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(new Set());
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const categoryName = (category?.toUpperCase() || 'TWK') as 'TWK' | 'TIU' | 'TKP';
 
-  const categoryInfo = {
-    TWK: {
-      title: 'Tes Wawasan Kebangsaan',
-      color: 'bg-blue-600',
-      description: 'Daftar soal wawasan kebangsaan',
-    },
-    TIU: {
-      title: 'Tes Intelegensia Umum',
-      color: 'bg-purple-600',
-      description: 'Daftar soal intelegensia umum',
-    },
-    TKP: {
-      title: 'Tes Karakteristik Pribadi',
-      color: 'bg-orange-600',
-      description: 'Daftar soal karakteristik pribadi',
-    },
-  }[categoryName];
 
   useEffect(() => {
     loadQuestions();
@@ -63,27 +54,73 @@ export const TryoutQuestionList: React.FC = () => {
   };
 
   const handleDelete = async (questionId: string) => {
-    if (!confirm('Yakin ingin menghapus soal ini? Soal akan dihapus secara permanen.')) return;
+    setConfirmingDeleteId(questionId);
+  };
+
+  const executeDelete = async () => {
+    if (!confirmingDeleteId) return;
+    const questionId = confirmingDeleteId;
+    setConfirmingDeleteId(null);
 
     try {
-      await deleteQuestion(questionId);
+      setDeletingIds(prev => new Set(prev).add(questionId));
 
-      if (tryoutId) {
-        await removeQuestionFromTryout(tryoutId, questionId);
-      }
+      // 1. Bersihkan dari semua tryout (termasuk yang sekarang)
+      await removeQuestionFromAllTryouts(questionId);
+
+      // 2. Hapus dokumen soal secara permanen
+      await deleteQuestion(questionId);
 
       toast({
         title: 'Berhasil',
-        description: 'Soal berhasil dihapus',
+        description: 'Soal berhasil dihapus secara permanen',
       });
       loadQuestions();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting question:', error);
+      let errorDescription = 'Gagal menghapus soal';
+      
+      if (error?.code === 'permission-denied') {
+        errorDescription = 'Permission Denied: Anda tidak memiliki akses untuk menghapus soal.';
+      }
+
       toast({
         title: 'Error',
-        description: 'Gagal menghapus soal',
+        description: errorDescription,
         variant: 'destructive',
       });
+    } finally {
+      setDeletingIds(prev => {
+        const next = new Set(prev);
+        next.delete(questionId);
+        return next;
+      });
+    }
+  };
+
+  const executeBulkDelete = async () => {
+    if (!tryoutId) return;
+    
+    try {
+      setBulkDeleting(true);
+      await deleteAllQuestionsInCategory(tryoutId, categoryName);
+      
+      toast({
+        title: 'Berhasil',
+        description: `Semua soal ${categoryName} berhasil dihapus dari paket ini`,
+      });
+      
+      setShowBulkDeleteConfirm(false);
+      loadQuestions();
+    } catch (error: any) {
+      console.error('Error bulk deleting questions:', error);
+      toast({
+        title: 'Error',
+        description: 'Gagal menghapus semua soal. Silakan coba lagi.',
+        variant: 'destructive',
+      });
+    } finally {
+      setBulkDeleting(false);
     }
   };
 
@@ -119,13 +156,34 @@ export const TryoutQuestionList: React.FC = () => {
               <p className="text-sm text-gray-500">{filteredQuestions.length} soal</p>
             </div>
           </div>
-          <Button
-            onClick={() => navigate(`/admin/tryouts/${tryoutId}/questions/${category}/input`)}
-            size="sm"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Tambah Soal
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => setShowImportDialog(true)}
+              variant="outline"
+              size="sm"
+              className="border-gray-200"
+            >
+              <FileSpreadsheet className="w-4 h-4 mr-2 text-green-600" />
+              Import Excel
+            </Button>
+            <Button
+              onClick={() => navigate(`/admin/tryouts/${tryoutId}/questions/${category}/input`)}
+              size="sm"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Tambah Soal
+            </Button>
+            {questions.length > 0 && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setShowBulkDeleteConfirm(true)}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Hapus Semua Soal
+              </Button>
+            )}
+          </div>
         </div>
 
         <Card className="p-4">
@@ -168,7 +226,7 @@ export const TryoutQuestionList: React.FC = () => {
                           {question.subcategory}
                         </Badge>
                       )}
-                      <p className="text-sm text-gray-900 truncate flex-1">{question.questionText}</p>
+                      <MathText text={question.questionText} className="text-sm text-gray-900 truncate flex-1" />
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
                       <Button
@@ -185,13 +243,18 @@ export const TryoutQuestionList: React.FC = () => {
                       <Button
                         variant="ghost"
                         size="sm"
+                        disabled={deletingIds.has(question.id)}
                         className="text-red-600 hover:text-red-700 hover:bg-red-50 h-8 w-8 p-0"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleDelete(question.id);
                         }}
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        {deletingIds.has(question.id) ? (
+                          <div className="w-3.5 h-3.5 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Trash2 className="w-3.5 h-3.5" />
+                        )}
                       </Button>
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                         {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -211,9 +274,7 @@ export const TryoutQuestionList: React.FC = () => {
                         <div className="px-3 pb-3 pt-2 border-t bg-gray-50 text-sm">
                           <div className="mb-2">
                             <p className="font-medium text-gray-700 mb-1.5 text-xs">Pertanyaan:</p>
-                            <p className="text-gray-900 whitespace-pre-wrap">
-                              {question.questionText}
-                            </p>
+                            <MathText text={question.questionText} className="text-gray-900 whitespace-pre-wrap" />
                             {question.questionImage && (
                               <img
                                 src={question.questionImage}
@@ -235,10 +296,19 @@ export const TryoutQuestionList: React.FC = () => {
                                 }`}
                               >
                                 <div className="flex items-center justify-between gap-2">
-                                  <p className="text-gray-900 flex-1">
-                                    <span className="font-medium mr-1.5">{option.toUpperCase()}.</span>
-                                    {question.options[option as keyof typeof question.options]}
-                                  </p>
+                                  <div className="flex flex-col gap-2 flex-1">
+                                    <div className="text-gray-900">
+                                      <span className="font-medium mr-1.5">{option.toUpperCase()}.</span>
+                                      <MathText text={question.options[option as keyof typeof question.options]} />
+                                    </div>
+                                    {question.optionImages?.[option as 'a'|'b'|'c'|'d'|'e'] && (
+                                      <img 
+                                        src={question.optionImages[option as 'a'|'b'|'c'|'d'|'e']} 
+                                        alt={`Option ${option.toUpperCase()}`} 
+                                        className="max-w-xs h-auto rounded border bg-white"
+                                      />
+                                    )}
+                                  </div>
                                   {categoryName === 'TKP' && question.tkpScoring && (
                                     <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700">
                                       {question.tkpScoring[option as 'a' | 'b' | 'c' | 'd' | 'e']}
@@ -252,9 +322,7 @@ export const TryoutQuestionList: React.FC = () => {
                           {question.explanation && (
                             <div className="p-2 bg-blue-50 rounded border border-blue-200">
                               <p className="text-xs font-medium text-blue-900 mb-1">Pembahasan:</p>
-                              <p className="text-sm text-blue-800 whitespace-pre-wrap">
-                                {question.explanation}
-                              </p>
+                              <MathText text={question.explanation} className="text-sm text-blue-800 whitespace-pre-wrap" />
                             </div>
                           )}
                         </div>
@@ -282,7 +350,93 @@ export const TryoutQuestionList: React.FC = () => {
               </div>
             )}
           </div>
-        )}
+      )}
+
+      {/* Confirmation Dialog for Deletion */}
+      <Dialog open={!!confirmingDeleteId} onOpenChange={(open: boolean) => !open && setConfirmingDeleteId(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-red-900 flex items-center gap-2">
+              <Trash2 className="w-5 h-5" />
+              Konfirmasi Hapus Soal
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-gray-600 leading-relaxed">
+              Apakah Anda yakin ingin menghapus soal ini secara permanen dari bank soal dan SEMUA paket try out?
+            </p>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setConfirmingDeleteId(null)}
+              className="rounded-none h-11"
+            >
+              Batal
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={executeDelete}
+              className="rounded-none h-11 bg-red-600 hover:bg-red-700"
+            >
+              Hapus Secara Permanen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation Dialog for Bulk Deletion */}
+      <Dialog open={showBulkDeleteConfirm} onOpenChange={setShowBulkDeleteConfirm}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-red-900 flex items-center gap-2">
+              <Trash2 className="w-5 h-5" />
+              Konfirmasi Hapus Semua Soal
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-gray-600 leading-relaxed">
+              Apakah Anda yakin ingin menghapus <span className="font-bold text-red-600">SEMUA ({questions.length}) soal {categoryName}</span> di paket ini secara permanen?
+            </p>
+            <p className="text-xs text-gray-500 mt-2 italic">
+              *Tindakan ini tidak dapat dibatalkan.
+            </p>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setShowBulkDeleteConfirm(false)}
+              className="rounded-none h-11"
+              disabled={bulkDeleting}
+            >
+              Batal
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={executeBulkDelete}
+              className="rounded-none h-11 bg-red-600 hover:bg-red-700"
+              disabled={bulkDeleting}
+            >
+              {bulkDeleting ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                  <span>Menghapus...</span>
+                </div>
+              ) : (
+                'Ya, Hapus Semua'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <ImportQuestionsDialog
+        isOpen={showImportDialog}
+        onOpenChange={setShowImportDialog}
+        onSuccess={loadQuestions}
+        fixedCategory={categoryName}
+        fixedTryoutId={tryoutId}
+      />
     </div>
   );
 };

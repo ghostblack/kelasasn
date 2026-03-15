@@ -41,15 +41,6 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  const isGoogleUser = user.providerData.some(
-    provider => provider.providerId === 'google.com'
-  );
-
-  if (!isGoogleUser && !user.emailVerified) {
-    console.log('ProtectedRoute: Email not verified, redirecting');
-    return <Navigate to="/verify-email" replace />;
-  }
-
   console.log('ProtectedRoute: User authenticated, rendering protected content');
   return <>{children}</>;
 };

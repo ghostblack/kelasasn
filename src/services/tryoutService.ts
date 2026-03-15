@@ -220,7 +220,7 @@ export const getUserStats = async (userId: string): Promise<UserStats> => {
   let totalMaxScore = 0;
 
   results.forEach(r => {
-    const maxScore = r.maxTotalScore || 2080;
+    const maxScore = r.maxTotalScore || 550;
     const scorePercentage = (r.totalScore / maxScore) * 100;
 
     if (scorePercentage > (highestScore / highestMaxScore) * 100) {

@@ -4,8 +4,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { DesignLandingPage } from "./screens/DesignLandingPage";
 import { LoginPage } from "./screens/LoginPage";
 import { RegisterPage } from "./screens/RegisterPage";
-import { VerifyEmailPage } from "./screens/VerifyEmailPage";
-import { WaitingVerificationPage } from "./screens/WaitingVerificationPage";
 import { SetupUsernamePage } from "./screens/SetupUsernamePage";
 import { SetupProfilePage } from "./screens/SetupProfilePage";
 import { HomePage } from "./screens/Dashboard";
@@ -36,6 +34,7 @@ import { TryoutQuestionInput } from "./screens/Admin/TryoutQuestionInput";
 import { TryoutQuestionList } from "./screens/Admin/TryoutQuestionList";
 import { UsersMonitoring } from "./screens/Admin/UsersMonitoring";
 import { PaymentsManagement } from "./screens/Admin/PaymentsManagement";
+import { QuestionsManagement } from "./screens/Admin/QuestionsManagement";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AdminProtectedRoute } from "./components/AdminProtectedRoute";
@@ -60,8 +59,6 @@ function AppWrapper() {
           <Route path="/" element={<DesignLandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
-          <Route path="/verify-email" element={<VerifyEmailPage />} />
-          <Route path="/waiting-verification" element={<WaitingVerificationPage />} />
           <Route path="/setup-username" element={<SetupUsernamePage />} />
           <Route path="/setup-profile" element={<SetupProfilePage />} />
 
@@ -252,6 +249,7 @@ function AppWrapper() {
             <Route path="claim-codes" element={<ClaimCodesManagement />} />
             <Route path="users" element={<UsersMonitoring />} />
             <Route path="payments" element={<PaymentsManagement />} />
+            <Route path="questions" element={<QuestionsManagement />} />
           </Route>
         </Routes>
         <Toaster />

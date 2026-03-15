@@ -30,10 +30,15 @@ export const TryoutQuestionInput: React.FC = () => {
     optionC: '',
     optionD: '',
     optionE: '',
+    optionImageA: '',
+    optionImageB: '',
+    optionImageC: '',
+    optionImageD: '',
+    optionImageE: '',
     correctAnswer: 'a' as 'a' | 'b' | 'c' | 'd' | 'e',
     explanation: '',
     subcategory: '',
-    weight: 1,
+    weight: 5,
     tkpScoreA: 5,
     tkpScoreB: 4,
     tkpScoreC: 3,
@@ -65,6 +70,11 @@ export const TryoutQuestionInput: React.FC = () => {
           optionC: question.options.c,
           optionD: question.options.d,
           optionE: question.options.e,
+          optionImageA: question.optionImages?.a || '',
+          optionImageB: question.optionImages?.b || '',
+          optionImageC: question.optionImages?.c || '',
+          optionImageD: question.optionImages?.d || '',
+          optionImageE: question.optionImages?.e || '',
           correctAnswer: (question.correctAnswer?.toLowerCase() as any) || 'a',
           explanation: question.explanation || '',
           subcategory: question.subcategory || '',
@@ -98,6 +108,11 @@ export const TryoutQuestionInput: React.FC = () => {
       optionC: '',
       optionD: '',
       optionE: '',
+      optionImageA: '',
+      optionImageB: '',
+      optionImageC: '',
+      optionImageD: '',
+      optionImageE: '',
       correctAnswer: 'a',
       explanation: '',
       subcategory: '',
@@ -139,6 +154,13 @@ export const TryoutQuestionInput: React.FC = () => {
         category: categoryName,
         weight: formData.weight,
         tryoutId: tryoutId || '',
+        optionImages: {
+          a: formData.optionImageA || '',
+          b: formData.optionImageB || '',
+          c: formData.optionImageC || '',
+          d: formData.optionImageD || '',
+          e: formData.optionImageE || '',
+        }
       };
 
       if (!isTKP) questionData.correctAnswer = formData.correctAnswer;
@@ -267,16 +289,27 @@ export const TryoutQuestionInput: React.FC = () => {
                 <Label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Pilihan Jawaban</Label>
                 <div className="space-y-4">
                   {['A', 'B', 'C', 'D', 'E'].map((letter) => (
-                    <div key={letter} className="relative">
-                      <div className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center border border-gray-100 text-[10px] font-bold text-gray-400">
-                        {letter}
+                    <div key={letter} className="space-y-2">
+                      <div className="relative">
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center border border-gray-100 text-[10px] font-bold text-gray-400">
+                          {letter}
+                        </div>
+                        <Input
+                          className="pl-16 h-14 border-gray-100 focus-visible:ring-0 focus-visible:border-blue-600 rounded-none text-sm"
+                          value={formData[`option${letter}` as keyof typeof formData] as string}
+                          onChange={(e) => setFormData({ ...formData, [`option${letter}`]: e.target.value })}
+                          placeholder={`Teks pilihan ${letter}`}
+                        />
                       </div>
-                      <Input
-                        className="pl-16 h-14 border-gray-100 focus-visible:ring-0 focus-visible:border-blue-600 rounded-none text-sm"
-                        value={formData[`option${letter}` as keyof typeof formData] as string}
-                        onChange={(e) => setFormData({ ...formData, [`option${letter}`]: e.target.value })}
-                        placeholder={`Teks pilihan ${letter}`}
-                      />
+                      <div className="pl-16">
+                        <Label className="text-[9px] font-bold uppercase tracking-widest text-gray-300 mb-1 block">Image URL for {letter} (Optional)</Label>
+                        <Input
+                          className="h-10 border-gray-50 focus-visible:ring-0 focus-visible:border-blue-400 rounded-none text-[11px]"
+                          value={formData[`optionImage${letter}` as keyof typeof formData] as string}
+                          onChange={(e) => setFormData({ ...formData, [`optionImage${letter}`]: e.target.value })}
+                          placeholder="https://..."
+                        />
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -442,13 +475,22 @@ export const TryoutQuestionInput: React.FC = () => {
                           }`}>
                             {letter}
                           </div>
-                          <span className={`text-sm font-medium ${
-                             !isTKP && formData.correctAnswer === letter.toLowerCase()
-                             ? 'text-blue-900'
-                             : 'text-gray-500'
-                          }`}>
-                            {formData[`option${letter}` as keyof typeof formData] || `Option ${letter}...`}
-                          </span>
+                          <div className="flex flex-col gap-2 flex-1">
+                            <span className={`text-sm font-medium ${
+                               !isTKP && formData.correctAnswer === letter.toLowerCase()
+                               ? 'text-blue-900'
+                               : 'text-gray-500'
+                            }`}>
+                              {formData[`option${letter}` as keyof typeof formData] || `Option ${letter}...`}
+                            </span>
+                            {formData[`optionImage${letter}` as keyof typeof formData] && (
+                              <img 
+                                src={formData[`optionImage${letter}` as keyof typeof formData] as string} 
+                                alt={`Option ${letter}`} 
+                                className="max-w-full h-auto rounded border" 
+                              />
+                            )}
+                          </div>
                         </div>
                       ))}
                    </div>

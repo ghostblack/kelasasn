@@ -299,3 +299,103 @@ export const removeQuestionFromTryout = async (tryoutId: string, questionId: str
     updatedAt: serverTimestamp(),
   });
 };
+export const removeQuestionFromAllTryouts = async (questionId: string): Promise<void> => {
+  const tryoutsRef = collection(db, 'tryout_packages');
+  // Mencari semua tryout yang mengandung questionId ini di array questionIds
+  const q = query(tryoutsRef, where('questionIds', 'array-contains', questionId));
+  const snapshot = await getDocs(q);
+
+  if (snapshot.empty) return;
+
+  const batch = writeBatch(db);
+  snapshot.docs.forEach((tryoutDoc) => {
+    const data = tryoutDoc.data();
+    const currentIds = data.questionIds || [];
+    const updatedIds = currentIds.filter((id: string) => id !== questionId);
+    
+    batch.update(tryoutDoc.ref, {
+      questionIds: updatedIds,
+      updatedAt: serverTimestamp(),
+    });
+  });
+
+  await batch.commit();
+};
+
+export const importQuestionsToTryout = async (
+  tryoutId: string,
+  category: 'TWK' | 'TIU' | 'TKP',
+  questions: Omit<Question, 'id'>[]
+): Promise<void> => {
+  const batch = writeBatch(db);
+  const questionsRef = collection(db, 'questions');
+  const tryoutRef = doc(db, 'tryout_packages', tryoutId);
+  
+  const tryoutSnap = await getDoc(tryoutRef);
+  if (!tryoutSnap.exists()) {
+    throw new Error('Tryout tidak ditemukan');
+  }
+  
+  const currentQuestionIds = tryoutSnap.data().questionIds || [];
+  const newQuestionIds: string[] = [];
+
+  for (const question of questions) {
+    const newDocRef = doc(questionsRef);
+    const cleanData: any = {
+      ...question,
+      category, // Ensure it matches the folder
+      tryoutId, // Link to this tryout
+      createdAt: serverTimestamp(),
+    };
+    
+    // Ensure nested objects are handled if not already
+    batch.set(newDocRef, cleanData);
+    newQuestionIds.push(newDocRef.id);
+  }
+
+  batch.update(tryoutRef, {
+    questionIds: [...currentQuestionIds, ...newQuestionIds],
+    updatedAt: serverTimestamp(),
+  });
+
+  await batch.commit();
+};
+
+export const deleteAllQuestionsInCategory = async (
+  tryoutId: string,
+  category: 'TWK' | 'TIU' | 'TKP'
+): Promise<void> => {
+  const tryoutRef = doc(db, 'tryout_packages', tryoutId);
+  const tryoutSnap = await getDoc(tryoutRef);
+
+  if (!tryoutSnap.exists()) {
+    throw new Error('Tryout tidak ditemukan');
+  }
+
+  // 1. Dapatkan soal-soal yang sesuai kategori di tryout ini
+  // Menggunakan helper yang sudah ada
+  const questions = await getQuestionsForTryoutDisplaying(tryoutId, category);
+  
+  if (questions.length === 0) return;
+
+  const questionIdsToDelete = questions.map(q => q.id);
+  const batch = writeBatch(db);
+
+  // 2. Hapus dari array questionIds di tryout_packages
+  const currentTryoutQuestionIds = tryoutSnap.data().questionIds || [];
+  const updatedTryoutQuestionIds = currentTryoutQuestionIds.filter(
+    (id: string) => !questionIdsToDelete.includes(id)
+  );
+
+  batch.update(tryoutRef, {
+    questionIds: updatedTryoutQuestionIds,
+    updatedAt: serverTimestamp(),
+  });
+
+  // 3. Hapus dokumen soal secara permanen
+  questions.forEach((q) => {
+    batch.delete(doc(db, 'questions', q.id));
+  });
+
+  await batch.commit();
+};

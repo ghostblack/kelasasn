@@ -3,12 +3,15 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { getTryoutById, purchaseTryout, getUserTryouts, resetTryoutAttempt, getUserResultsByTryout } from '@/services/tryoutService';
 import { getActiveTryoutSession } from '@/services/tryoutSessionService';
+import { validateClaimCode, useClaimCode } from '@/services/claimCodeService';
 import { TryoutPackage, UserTryout, TryoutSession } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { LoadingScreen } from '@/components/ui/spinner';
 import { useToast } from '@/hooks/use-toast';
-import { Clock, FileText, CircleCheck as CheckCircle, ShoppingCart, Play, CircleAlert as AlertCircle, Gift, Info, ArrowLeft, RotateCcw } from 'lucide-react';
+import { Clock, FileText, CircleCheck as CheckCircle, ShoppingCart, Play, CircleAlert as AlertCircle, Gift, Info, ArrowLeft, RotateCcw, Send, Instagram, ExternalLink } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -17,6 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
 
 export const TryoutDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -32,7 +36,9 @@ export const TryoutDetailPage: React.FC = () => {
   const [attempts, setAttempts] = useState<number>(0);
   const [showConfirmationDialog, setShowConfirmationDialog] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
-  const [showFreeRegistrationDialog, setShowFreeRegistrationDialog] = useState(false);
+  const [showClaimCodeDialog, setShowClaimCodeDialog] = useState(false);
+  const [claimCode, setClaimCode] = useState('');
+  const [claiming, setClaiming] = useState(false);
 
   useEffect(() => {
     if (authLoading) {
@@ -105,8 +111,7 @@ export const TryoutDetailPage: React.FC = () => {
       setPurchasing(true);
 
       if (tryout.price === 0) {
-        setShowFreeRegistrationDialog(true);
-        setPurchasing(false);
+        setShowClaimCodeDialog(true);
       } else {
         navigate(`/dashboard/payment/${tryout.id}/qris`);
       }
@@ -117,35 +122,70 @@ export const TryoutDetailPage: React.FC = () => {
         description: 'Gagal membeli try out',
         variant: 'destructive',
       });
+    } finally {
       setPurchasing(false);
     }
   };
 
-  const handleConfirmFreeRegistration = async () => {
-    if (!tryout || !user) return;
+  const handleClaimWithCode = async () => {
+    if (!tryout || !user || !claimCode.trim()) {
+      toast({
+        title: 'Input Diperlukan',
+        description: 'Silakan masukkan kode klaim terlebih dahulu',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     try {
-      setPurchasing(true);
+      setClaiming(true);
+      
+      // 1. Validate code
+      const validation = await validateClaimCode(claimCode.toUpperCase(), user.uid);
+      
+      if (!validation.valid) {
+        toast({
+          title: 'Gagal Klaim',
+          description: validation.message,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      if (validation.tryoutId !== tryout.id) {
+        toast({
+          title: 'Kode Tidak Sesuai',
+          description: 'Kode ini bukan untuk paket try out ini.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // 2. Use code
+      await useClaimCode(claimCode.toUpperCase(), user.uid);
+
+      // 3. Purchase (Grant Access)
       await purchaseTryout(user.uid, tryout.id, tryout.name);
 
       toast({
-        title: 'Berhasil',
-        description: 'Try out gratis berhasil didaftarkan! Anda dapat mulai mengerjakan.',
+        title: 'Klaim Berhasil!',
+        description: 'Kode klaim berhasil digunakan. Selamat belajar!',
       });
 
-      setShowFreeRegistrationDialog(false);
-
+      setShowClaimCodeDialog(false);
+      setClaimCode('');
+      
       await new Promise(resolve => setTimeout(resolve, 500));
       await loadTryoutDetail();
     } catch (error) {
-      console.error('Error registering free tryout:', error);
+      console.error('Error claiming code:', error);
       toast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Gagal mendaftar try out',
+        description: error instanceof Error ? error.message : 'Gagal menggunakan kode klaim',
         variant: 'destructive',
       });
     } finally {
-      setPurchasing(false);
+      setClaiming(false);
     }
   };
 
@@ -395,6 +435,17 @@ export const TryoutDetailPage: React.FC = () => {
                     </>
                   )}
                 </Button>
+                
+                {tryout.price > 0 && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowClaimCodeDialog(true)}
+                    className="w-full h-11 text-sm font-semibold border-2 border-blue-100 hover:border-blue-200 hover:bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center gap-2 transition-all"
+                  >
+                    <Gift className="h-4 w-4" />
+                    Punya Kode Klaim?
+                  </Button>
+                )}
               </div>
             ) : isCompleted ? (
               <div className="space-y-3">
@@ -508,6 +559,17 @@ export const TryoutDetailPage: React.FC = () => {
                   </>
                 )}
               </Button>
+              
+              {tryout.price > 0 && (
+                <Button
+                  variant="outline"
+                  onClick={() => setShowClaimCodeDialog(true)}
+                  className="w-full h-12 text-sm font-semibold border-2 border-blue-100 text-blue-600 rounded-lg"
+                >
+                  <Gift className="mr-2 h-4 w-4" />
+                  Gunakan Kode Klaim
+                </Button>
+              )}
             </div>
           ) : isCompleted ? (
             <div className="space-y-2">
@@ -575,90 +637,114 @@ export const TryoutDetailPage: React.FC = () => {
         </div>
       </div>
 
-      <Dialog open={showFreeRegistrationDialog} onOpenChange={setShowFreeRegistrationDialog}>
-        <DialogContent className="sm:max-w-md max-sm:fixed max-sm:bottom-0 max-sm:top-auto max-sm:left-0 max-sm:right-0 max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-b-none max-sm:rounded-t-3xl max-sm:max-h-[90vh] max-sm:overflow-y-auto max-sm:w-full max-sm:data-[state=open]:animate-slide-in-from-bottom max-sm:data-[state=closed]:animate-slide-out-to-bottom">
+      <Dialog open={showClaimCodeDialog} onOpenChange={setShowClaimCodeDialog}>
+        <DialogContent className="sm:max-w-md max-sm:fixed max-sm:bottom-0 max-sm:top-auto max-sm:left-0 max-sm:right-0 max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-b-none max-sm:rounded-t-3xl max-sm:max-h-[95vh] max-sm:overflow-y-auto max-sm:w-full">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-lg">
-              <Gift className="w-5 h-5 text-green-600" />
-              Daftar Try Out Gratis
+              <Gift className="w-5 h-5 text-blue-600" />
+              Klaim Try Out Gratis
             </DialogTitle>
             <DialogDescription>
-              Dapatkan akses ke try out gratis dan bergabung dengan komunitas belajar
+              Ikuti langkah-langkah di bawah ini untuk mendapatkan akses gratis melalui kode klaim.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <p className="text-sm font-semibold text-gray-900 mb-3">
-                Untuk pengalaman belajar yang lebih maksimal, kami merekomendasikan:
-              </p>
+          <div className="space-y-6 pt-4">
+            {/* Step by Step Instructions */}
+            <div className="space-y-3">
+              <div className="flex items-start gap-4 p-4 bg-gray-50 border border-gray-100 rounded-2xl group hover:border-blue-100 transition-colors">
+                <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
+                  <Instagram className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-bold text-gray-900 leading-none">1. Follow Instagram</h4>
+                    <a href="https://www.instagram.com/kelasasn.id" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-600">
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  </div>
+                  <p className="text-[11px] font-medium text-gray-500 mt-1.5 leading-relaxed">
+                    Follow akun <span className="text-gray-900 font-bold">@kelasasn.id</span> & <span className="text-gray-900 font-bold">Tag 2 teman</span> di komentar postingan terakhir untuk mendapatkan update materi dan informasi tryout terbaru.
+                  </p>
+                </div>
+              </div>
 
-              <div className="space-y-3">
-                <a
-                  href="https://www.instagram.com/kelasasn.id"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors group"
-                >
-                  <div className="w-10 h-10 bg-gradient-to-br from-purple-500 via-pink-500 to-orange-500 rounded-lg flex items-center justify-center shrink-0">
-                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
-                    </svg>
+              <div className="flex items-start gap-4 p-4 bg-gray-50 border border-gray-100 rounded-2xl group hover:border-blue-100 transition-colors">
+                <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
+                  <Send className="w-5 h-5 text-white ml-[-1px]" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-bold text-gray-900 leading-none">2. Join Telegram</h4>
+                    <a href="https://t.me/KelasASN" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-600">
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-gray-900 group-hover:text-blue-600">Follow Instagram Kami</p>
-                    <p className="text-xs text-gray-600">@kelasasn.id - Tips dan materi belajar</p>
-                  </div>
-                  <svg className="w-4 h-4 text-gray-400 group-hover:text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </a>
+                  <p className="text-[11px] font-medium text-gray-500 mt-1.5 leading-relaxed">
+                    Masuk ke grup diskusi <span className="text-gray-900 font-bold">@KelasASN</span> untuk belajar bersama kawan-kawan seperjuangan lainnya.
+                  </p>
+                </div>
+              </div>
 
-                <a
-                  href="https://t.me/KelasASN"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors group"
-                >
-                  <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center shrink-0">
-                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-gray-900 group-hover:text-blue-600">Join Grup Telegram</p>
-                    <p className="text-xs text-gray-600">Diskusi dan tanya jawab bersama</p>
-                  </div>
-                  <svg className="w-4 h-4 text-gray-400 group-hover:text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </a>
+              <div className="flex items-start gap-4 p-4 bg-blue-50/50 border border-blue-100 rounded-2xl">
+                <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
+                  <Info className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-bold text-gray-900 leading-none">3. Kirim Bukti DM</h4>
+                  <p className="text-[11px] font-medium text-gray-500 mt-1.5 leading-relaxed">
+                    Screenshot bukti follow IG & Join Telegram, kirim melalui <span className="text-blue-600 font-bold underline">DM Instagram Admin</span> untuk mendapatkan <span className="text-blue-600 font-bold">Kode Klaim</span> unik.
+                  </p>
+                </div>
               </div>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <p className="text-xs text-gray-700 text-center">
-                <Info className="w-3 h-3 inline mr-1" />
-                Anda dapat langsung mendaftar tanpa mengikuti rekomendasi di atas
+            <Separator className="bg-gray-100" />
+
+            {/* Code Input */}
+            <div className="space-y-3 pb-4">
+              <Label htmlFor="claim-code" className="text-[11px] font-bold text-gray-400 uppercase tracking-widest ml-1">Masukkan Kode Klaim</Label>
+              <div className="relative group">
+                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-600 transition-colors">
+                  <Gift className="h-4 w-4" />
+                </div>
+                <Input
+                  id="claim-code"
+                  placeholder="CONTOH: KASN2024"
+                  value={claimCode}
+                  onChange={(e) => setClaimCode(e.target.value)}
+                  className="h-12 bg-gray-50 border-gray-100 pl-10 text-sm font-bold tracking-widest focus:bg-white focus:ring-0 focus:border-blue-200 transition-all rounded-xl placeholder:tracking-normal placeholder:font-normal uppercase"
+                  disabled={claiming}
+                />
+              </div>
+              <p className="text-[10px] text-center text-gray-400 font-medium italic">
+                *Satu kode hanya berlaku untuk satu akun
               </p>
             </div>
           </div>
 
           <DialogFooter className="flex gap-2 sm:gap-2">
             <Button
-              variant="outline"
-              onClick={() => setShowFreeRegistrationDialog(false)}
-              className="flex-1"
-              disabled={purchasing}
+              variant="ghost"
+              onClick={() => setShowClaimCodeDialog(false)}
+              className="flex-1 h-11 text-xs font-bold uppercase tracking-wider text-gray-400 hover:text-gray-600"
+              disabled={claiming}
             >
-              Batal
+              Nanti Saja
             </Button>
             <Button
-              onClick={handleConfirmFreeRegistration}
-              disabled={purchasing}
-              className="flex-1 bg-green-600 hover:bg-green-700"
+              onClick={handleClaimWithCode}
+              disabled={claiming || !claimCode.trim()}
+              className="flex-[2] h-11 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-sm shadow-blue-100"
             >
-              {purchasing ? 'Memproses...' : 'Daftar Sekarang'}
+              {claiming ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                  <span>Memproses...</span>
+                </div>
+              ) : (
+                'Klaim Sekarang'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getAllPayments, updatePaymentStatus } from '@/services/paymentService';
 import { PaymentTransaction } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Check, X } from 'lucide-react';
+import { Check, X, Search } from 'lucide-react';
 
 export const PaymentsManagement: React.FC = () => {
     const [payments, setPayments] = useState<PaymentTransaction[]>([]);
@@ -81,26 +81,42 @@ export const PaymentsManagement: React.FC = () => {
     }
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold text-gray-900">Kelola Pembayaran</h1>
-                <Button onClick={loadPayments} variant="outline" size="sm">Refresh</Button>
+        <div className="space-y-10">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-gray-100 pb-10">
+                <div>
+                   <div className="flex items-center gap-2 mb-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+                      <span className="text-[10px] font-bold text-gray-400 capitalize tracking-wider">Revenue & Transactions</span>
+                   </div>
+                   <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight leading-none">
+                     Kelola <span className="text-gray-400 font-medium ml-2">Pembayaran</span>
+                   </h1>
+                   <p className="text-sm text-gray-500 mt-4 leading-relaxed max-w-xl">
+                     Verifikasi pembayaran manual, pantau riwayat transaksi, dan kelola status langganan peserta tryout secara real-time.
+                   </p>
+                </div>
+                <div className="flex items-center gap-3">
+                   <Button onClick={loadPayments} className="bg-gray-900 hover:bg-black text-white px-6 h-11 rounded-none text-xs font-bold uppercase tracking-widest transition-all shadow-sm">
+                      <Search className="w-4 h-4 mr-2" />
+                      Refresh History
+                   </Button>
+                </div>
             </div>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Daftar Transaksi</CardTitle>
-                </CardHeader>
-                <CardContent>
+            <Card className="bg-white border border-gray-100 rounded-none shadow-sm overflow-hidden">
+                <div className="p-6 border-b border-gray-100 bg-gray-50/30">
+                    <h2 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Transaction Records</h2>
+                </div>
+                <div className="overflow-x-auto">
                     <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Tanggal</TableHead>
-                                <TableHead>User</TableHead>
-                                <TableHead>Try Out</TableHead>
-                                <TableHead>Total</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead className="text-right">Aksi</TableHead>
+                        <TableHeader className="bg-gray-50/50">
+                            <TableRow className="border-gray-100 hover:bg-transparent">
+                                <TableHead className="text-[10px] font-bold text-gray-400 uppercase tracking-widest py-4">Timestamp</TableHead>
+                                <TableHead className="text-[10px] font-bold text-gray-400 uppercase tracking-widest py-4">Customer Details</TableHead>
+                                <TableHead className="text-[10px] font-bold text-gray-400 uppercase tracking-widest py-4">Product</TableHead>
+                                <TableHead className="text-[10px] font-bold text-gray-400 uppercase tracking-widest py-4">Amount</TableHead>
+                                <TableHead className="text-[10px] font-bold text-gray-400 uppercase tracking-widest py-4 text-center">Status</TableHead>
+                                <TableHead className="text-right text-[10px] font-bold text-gray-400 uppercase tracking-widest py-4 px-6">Verification</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -112,51 +128,55 @@ export const PaymentsManagement: React.FC = () => {
                                 </TableRow>
                             ) : (
                                 payments.map((payment) => (
-                                    <TableRow key={payment.id}>
-                                        <TableCell className="text-xs">
-                                            {payment.createdAt.toLocaleDateString('id-ID')}
-                                            <br />
-                                            {payment.createdAt.toLocaleTimeString('id-ID')}
+                                    <TableRow key={payment.id} className="border-gray-50 hover:bg-gray-50/50 transition-colors">
+                                        <TableCell className="py-4">
+                                            <div className="text-xs font-bold text-gray-900">{payment.createdAt.toLocaleDateString('id-ID')}</div>
+                                            <div className="text-[10px] font-medium text-gray-400">{payment.createdAt.toLocaleTimeString('id-ID')}</div>
                                         </TableCell>
-                                        <TableCell>
-                                            <div className="text-sm font-medium">{(payment as any).customerName || 'N/A'}</div>
-                                            <div className="text-xs text-gray-500">{(payment as any).customerPhone || 'N/A'}</div>
+                                        <TableCell className="py-4">
+                                            <div className="text-sm font-bold text-gray-900 uppercase tracking-tight">{(payment as any).customerName || 'N/A'}</div>
+                                            <div className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">{(payment as any).customerPhone || 'N/A'}</div>
                                         </TableCell>
-                                        <TableCell className="text-sm font-medium">{payment.tryoutName}</TableCell>
-                                        <TableCell className="text-sm font-bold">
-                                            Rp {payment.totalAmount.toLocaleString('id-ID')}
+                                        <TableCell className="py-4">
+                                            <div className="text-xs font-bold text-gray-700">{payment.tryoutName}</div>
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="py-4">
+                                            <div className="text-sm font-black text-gray-900">
+                                                Rp {payment.totalAmount.toLocaleString('id-ID')}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-center py-4">
                                             {payment.status === 'PAID' && (
-                                                <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-green-200">Disetujui</Badge>
+                                                <Badge className="bg-green-50 text-green-600 rounded-none border-none text-[10px] font-bold tracking-tighter">SUCCESS</Badge>
                                             )}
                                             {payment.status === 'PENDING_CONFIRMATION' && (
-                                                <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-blue-200">Menunggu Konfirmasi</Badge>
+                                                <Badge className="bg-blue-50 text-blue-600 rounded-none border-none text-[10px] font-bold tracking-tighter italic">WAITING</Badge>
                                             )}
                                             {payment.status === 'UNPAID' && (
-                                                <Badge className="bg-yellow-100 text-yellow-700 hover:bg-yellow-100 border-yellow-200">Belum Bayar</Badge>
+                                                <Badge className="bg-yellow-50 text-yellow-600 rounded-none border-none text-[10px] font-bold tracking-tighter">UNPAID</Badge>
                                             )}
                                             {payment.status === 'FAILED' && (
-                                                <Badge className="bg-red-100 text-red-700 hover:bg-red-100 border-red-200">Ditolak</Badge>
+                                                <Badge className="bg-red-50 text-red-600 rounded-none border-none text-[10px] font-bold tracking-tighter">FAILED</Badge>
                                             )}
                                             {payment.status === 'EXPIRED' && (
-                                                <Badge className="bg-gray-100 text-gray-700 hover:bg-gray-100 border-gray-200">Expired</Badge>
+                                                <Badge className="bg-gray-50 text-gray-400 rounded-none border-none text-[10px] font-bold tracking-tighter">EXPIRED</Badge>
                                             )}
                                         </TableCell>
-                                        <TableCell className="text-right">
+                                        <TableCell className="text-right py-4 px-6">
                                             {payment.status === 'PENDING_CONFIRMATION' && (
-                                                <div className="flex justify-end gap-2">
+                                                <div className="flex justify-end gap-1">
                                                     <Button
-                                                        variant="default"
+                                                        variant="ghost"
                                                         size="sm"
-                                                        className="bg-green-600 hover:bg-green-700"
+                                                        className="h-9 w-9 p-0 text-green-600 hover:bg-green-50 rounded-none"
                                                         onClick={() => handleApprove(payment)}
                                                     >
                                                         <Check className="w-4 h-4" />
                                                     </Button>
                                                     <Button
-                                                        variant="destructive"
+                                                        variant="ghost"
                                                         size="sm"
+                                                        className="h-9 w-9 p-0 text-red-500 hover:bg-red-50 rounded-none"
                                                         onClick={() => handleReject(payment)}
                                                     >
                                                         <X className="w-4 h-4" />
@@ -169,7 +189,7 @@ export const PaymentsManagement: React.FC = () => {
                             )}
                         </TableBody>
                     </Table>
-                </CardContent>
+                </div>
             </Card>
         </div>
     );

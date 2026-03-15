@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getTryoutById, getUserResultsByTryout } from '@/services/tryoutService';
 import { getQuestionsByIds } from '@/services/questionService';
 import { TryoutResult, TryoutPackage, Question } from '@/types';
+import { MathText } from '@/components/MathText';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -253,7 +254,7 @@ export const TryoutReviewPage: React.FC = () => {
 
               <div className="p-4 md:p-6">
                 <div className="mb-6">
-                  <p className="text-sm leading-relaxed text-gray-900">{currentQuestion.questionText}</p>
+                  <MathText text={currentQuestion.questionText} className="text-sm leading-relaxed text-gray-900" />
                   {currentQuestion.questionImage && (
                     <img
                       src={currentQuestion.questionImage}
@@ -292,7 +293,7 @@ export const TryoutReviewPage: React.FC = () => {
                           >
                             {key.toUpperCase()}
                           </div>
-                          <span className="flex-1 text-sm text-gray-900 leading-relaxed pt-0.5">{value}</span>
+                          <MathText text={value} className="flex-1 text-sm text-gray-900 leading-relaxed pt-0.5" />
                           {isCorrectAnswer && (
                             <span className="text-xs px-2 py-0.5 bg-green-600 text-white rounded">
                               Jawaban Benar
@@ -310,7 +311,7 @@ export const TryoutReviewPage: React.FC = () => {
                 {currentQuestion.explanation && (
                   <div className="pt-4 border-t">
                     <h4 className="text-sm text-gray-900 mb-2">Pembahasan</h4>
-                    <p className="text-sm text-gray-700 leading-relaxed bg-blue-50 p-4 rounded-lg border border-blue-100">{currentQuestion.explanation}</p>
+                    <MathText text={currentQuestion.explanation} className="text-sm text-gray-700 leading-relaxed bg-blue-50 p-4 rounded-lg border border-blue-100 block" />
                   </div>
                 )}
 

@@ -4,9 +4,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { LoadingScreen } from '@/components/ui/spinner';
-import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { User, Mail, Phone, Save, CheckCircle2, XCircle, Calendar, Hash } from 'lucide-react';
+import { User, Mail, Phone, Save, Calendar, Hash } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getUserProfile, updateUserProfile, createUserProfile } from '@/services/userService';
 import { UserProfile } from '@/types';
@@ -127,17 +126,7 @@ export const ProfilePage = () => {
               </h2>
               <p className="text-sm text-gray-500 mt-1">{user?.email}</p>
             </div>
-            {user?.emailVerified ? (
-              <Badge className="bg-green-50 text-green-700 border-green-200 hover:bg-green-50">
-                <CheckCircle2 className="h-3 w-3 mr-1" />
-                Terverifikasi
-              </Badge>
-            ) : (
-              <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
-                <XCircle className="h-3 w-3 mr-1" />
-                Belum Terverifikasi
-              </Badge>
-            )}
+            {/* Email verification badge removed as requested */}
           </div>
 
           <div className="flex-1 space-y-6">
