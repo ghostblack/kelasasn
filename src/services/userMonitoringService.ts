@@ -1,4 +1,4 @@
-import { collection, getDocs, query, orderBy, where } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { UserProfile, TryoutSession, TryoutResult } from '@/types';
 
@@ -9,6 +9,8 @@ export interface UserMonitoringData {
   inProgressTryouts: number;
   lastActivity?: Date;
   tryoutSessions: Array<{
+    id: string;
+    tryoutId: string;
     tryoutName: string;
     status: string;
     startTime: Date;
@@ -109,7 +111,6 @@ export const getAllUsersWithActivity = async (): Promise<UserMonitoringData[]> =
             getUserTryoutResults(user.uid)
           ]);
 
-          const completedSessions = sessions.filter(s => s.status === 'completed');
           const inProgressSessions = sessions.filter(s => s.status === 'active' || s.status === 'paused');
 
           const lastActivity = sessions.length > 0
@@ -119,6 +120,8 @@ export const getAllUsersWithActivity = async (): Promise<UserMonitoringData[]> =
             : undefined;
 
           const tryoutSessions = results.map(result => ({
+            id: result.id,
+            tryoutId: result.tryoutId,
             tryoutName: result.tryoutName || tryoutsMap.get(result.tryoutId) || 'Unknown Tryout',
             status: 'completed',
             startTime: result.completedAt,

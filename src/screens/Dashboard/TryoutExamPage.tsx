@@ -2,13 +2,14 @@ import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { getTryoutById, getUserTryouts } from '@/services/tryoutService';
-import { getQuestionsByIds } from '@/services/questionService';
+import { getQuestionsByIds, getTryoutQuestionIds } from '@/services/questionService';
 import {
   createTryoutSession,
   getActiveTryoutSession,
   saveAnswer,
   completeTryoutSession,
   updateTryoutSession,
+  shuffleQuestionsByCategory,
 } from '@/services/tryoutSessionService';
 import { Question, TryoutPackage, TryoutSession } from '@/types';
 import { MathText } from '@/components/MathText';
@@ -132,6 +133,9 @@ export const TryoutExamPage: React.FC = () => {
 
       setTryout(tryoutData);
 
+      // Get ALL questions belonging to this tryout (unified definition)
+      const allPackageQuestionIds = await getTryoutQuestionIds(id);
+
       let sessionData = await getActiveTryoutSession(user.uid, id);
 
       if (!sessionData) {
@@ -140,12 +144,30 @@ export const TryoutExamPage: React.FC = () => {
           userTryout.id,
           id,
           tryoutData.totalDuration,
-          tryoutData.questionIds || []
+          allPackageQuestionIds
         );
         sessionData = await getActiveTryoutSession(user.uid, id);
+      } else if (
+        sessionData.shuffledQuestionIds &&
+        allPackageQuestionIds &&
+        sessionData.shuffledQuestionIds.length !== allPackageQuestionIds.length
+      ) {
+        // Fix for existing sessions that were created with missing questions or wrong count
+        console.log(`Detected incomplete session question list (${sessionData.shuffledQuestionIds.length} vs ${allPackageQuestionIds.length}). Fixing...`);
+        const newShuffledIds = await shuffleQuestionsByCategory(allPackageQuestionIds);
+        
+        await updateTryoutSession(sessionData.id, {
+          shuffledQuestionIds: newShuffledIds
+        } as any);
+        
+        // Update local session data
+        sessionData = {
+          ...sessionData,
+          shuffledQuestionIds: newShuffledIds
+        };
       }
 
-      const shuffledQuestionIds = sessionData?.shuffledQuestionIds || tryoutData.questionIds || [];
+      const shuffledQuestionIds = sessionData?.shuffledQuestionIds || allPackageQuestionIds;
       const questionsData = await getQuestionsByIds(shuffledQuestionIds);
 
       if (questionsData.length === 0) {
@@ -159,6 +181,12 @@ export const TryoutExamPage: React.FC = () => {
       if (sessionData) {
         setSession(sessionData);
         setTimeLeft(sessionData.totalTimeLeft);
+
+        // Ensure current section matches the first question's category
+        if (questionsData.length > 0) {
+          const firstCat = (questionsData[0].category?.toUpperCase().trim() || 'TWK') as ExamSection;
+          setCurrentSection(firstCat);
+        }
       }
     } catch (error) {
       console.error('Error initializing exam:', error);
@@ -169,7 +197,7 @@ export const TryoutExamPage: React.FC = () => {
   };
 
   const getCurrentSectionQuestions = useMemo(() => {
-    return questions.filter((q) => q.category === currentSection);
+    return questions.filter((q) => q.category?.toUpperCase().trim() === currentSection);
   }, [questions, currentSection]);
 
   const getCurrentQuestion = useMemo(() => {
@@ -346,7 +374,7 @@ export const TryoutExamPage: React.FC = () => {
     } as any);
 
     setCurrentSection(section);
-    const firstQuestionInSection = questions.findIndex(q => q.category === section);
+    const firstQuestionInSection = questions.findIndex(q => q.category?.toUpperCase().trim() === section);
     if (firstQuestionInSection !== -1) {
       setCurrentQuestionIndex(firstQuestionInSection);
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -366,9 +394,9 @@ export const TryoutExamPage: React.FC = () => {
     
     const uniqueQuestions = Array.from(uniqueQuestionsMap.values());
 
-    const twkQuestions = uniqueQuestions.filter((q) => q.category === 'TWK');
-    const tiuQuestions = uniqueQuestions.filter((q) => q.category === 'TIU');
-    const tkpQuestions = uniqueQuestions.filter((q) => q.category === 'TKP');
+    const twkQuestions = uniqueQuestions.filter((q) => q.category?.toUpperCase().trim() === 'TWK');
+    const tiuQuestions = uniqueQuestions.filter((q) => q.category?.toUpperCase().trim() === 'TIU');
+    const tkpQuestions = uniqueQuestions.filter((q) => q.category?.toUpperCase().trim() === 'TKP');
 
     let twkCorrect = 0;
     let tiuCorrect = 0;
@@ -458,7 +486,7 @@ export const TryoutExamPage: React.FC = () => {
 
   const getAnsweredCount = useCallback((section: ExamSection): number => {
     if (!session) return 0;
-    const sectionQuestions = questions.filter((q) => q.category === section);
+    const sectionQuestions = questions.filter((q) => q.category?.toUpperCase().trim() === section);
     return sectionQuestions.filter((q) => session.answers[q.id]).length;
   }, [session, questions]);
 

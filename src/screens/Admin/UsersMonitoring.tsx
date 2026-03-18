@@ -17,6 +17,7 @@ import { userService } from '@/services/userService';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { Link } from 'react-router-dom';
 
 export const UsersMonitoring: React.FC = () => {
   const { toast } = useToast();
@@ -399,9 +400,18 @@ export const UsersMonitoring: React.FC = () => {
                             )}
                           </div>
                         </div>
-                        <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
-                          {session.status === 'completed' ? 'Selesai' : 'Progress'}
-                        </Badge>
+                        <div className="flex items-center gap-4">
+                          <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
+                            {session.status === 'completed' ? 'Selesai' : 'Progress'}
+                          </Badge>
+                          {session.status === 'completed' && session.id && (
+                            <Link to={`/admin/users/${selectedUser.user.uid}/result/${session.id}`}>
+                              <Button variant="outline" size="sm" className="h-8 text-[10px] font-bold uppercase tracking-widest rounded-none">
+                                Lihat Detail
+                              </Button>
+                            </Link>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>

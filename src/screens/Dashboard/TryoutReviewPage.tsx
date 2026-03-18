@@ -57,6 +57,11 @@ export const TryoutReviewPage: React.FC = () => {
         const shuffledQuestionIds = results[0].shuffledQuestionIds || tryoutData.questionIds;
         const questionsData = await getQuestionsByIds(shuffledQuestionIds);
         setQuestions(questionsData);
+
+        if (questionsData.length > 0) {
+          const firstCat = (questionsData[0].category?.toUpperCase().trim() || 'TWK') as ExamSection;
+          setCurrentSection(firstCat);
+        }
       }
     } catch (error) {
       console.error('Error loading review:', error);
@@ -66,7 +71,7 @@ export const TryoutReviewPage: React.FC = () => {
   };
 
   const getCurrentSectionQuestions = (): Question[] => {
-    return questions.filter((q) => q.category === currentSection);
+    return questions.filter((q) => q.category?.toUpperCase().trim() === currentSection);
   };
 
   const getCurrentQuestion = (): Question | null => {
@@ -76,13 +81,13 @@ export const TryoutReviewPage: React.FC = () => {
 
   const handleQuestionClick = (globalIndex: number) => {
     const question = questions[globalIndex];
-    const questionCategory = question.category as ExamSection;
+    const questionCategory = question.category?.toUpperCase().trim() as ExamSection;
 
     if (questionCategory !== currentSection) {
       setCurrentSection(questionCategory);
     }
 
-    const sectionQuestions = questions.filter(q => q.category === questionCategory);
+    const sectionQuestions = questions.filter(q => q.category?.toUpperCase().trim() === questionCategory);
     const sectionIndex = sectionQuestions.findIndex(q => q.id === question.id);
     setCurrentQuestionIndex(sectionIndex);
   };
@@ -95,13 +100,13 @@ export const TryoutReviewPage: React.FC = () => {
 
     if (currentGlobalIndex < questions.length - 1) {
       const nextQuestion = questions[currentGlobalIndex + 1];
-      const nextCategory = nextQuestion.category as ExamSection;
+      const nextCategory = nextQuestion.category?.toUpperCase().trim() as ExamSection;
 
       if (nextCategory !== currentSection) {
         setCurrentSection(nextCategory);
       }
 
-      const nextSectionQuestions = questions.filter(q => q.category === nextCategory);
+      const nextSectionQuestions = questions.filter(q => q.category?.toUpperCase().trim() === nextCategory);
       const nextIndex = nextSectionQuestions.findIndex(q => q.id === nextQuestion.id);
       setCurrentQuestionIndex(nextIndex);
     }
@@ -115,13 +120,13 @@ export const TryoutReviewPage: React.FC = () => {
 
     if (currentGlobalIndex > 0) {
       const prevQuestion = questions[currentGlobalIndex - 1];
-      const prevCategory = prevQuestion.category as ExamSection;
+      const prevCategory = prevQuestion.category?.toUpperCase().trim() as ExamSection;
 
       if (prevCategory !== currentSection) {
         setCurrentSection(prevCategory);
       }
 
-      const prevSectionQuestions = questions.filter(q => q.category === prevCategory);
+      const prevSectionQuestions = questions.filter(q => q.category?.toUpperCase().trim() === prevCategory);
       const prevIndex = prevSectionQuestions.findIndex(q => q.id === prevQuestion.id);
       setCurrentQuestionIndex(prevIndex);
     }

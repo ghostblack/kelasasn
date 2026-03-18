@@ -21,9 +21,9 @@ const shuffleArray = <T>(array: T[]): T[] => {
   return shuffled;
 };
 
-const shuffleQuestionsByCategory = async (questionIds: string[]): Promise<string[]> => {
+export const shuffleQuestionsByCategory = async (questionIds: string[]): Promise<string[]> => {
   const BATCH_SIZE = 10;
-  const questionsMap = new Map<string, { id: string; category: string }>();
+  const questionsMap = new Map<string, string>(); // id -> category
 
   for (let i = 0; i < questionIds.length; i += BATCH_SIZE) {
     const batch = questionIds.slice(i, i + BATCH_SIZE);
@@ -36,23 +36,38 @@ const shuffleQuestionsByCategory = async (questionIds: string[]): Promise<string
     snapshots.forEach((snap) => {
       if (snap.exists()) {
         const data = snap.data();
-        questionsMap.set(snap.id, {
-          id: snap.id,
-          category: data.category
-        });
+        questionsMap.set(snap.id, data.category || 'OTHERS');
+      } else {
+        questionsMap.set(snap.id, 'NOT_FOUND');
       }
     });
   }
 
-  const twkQuestions = questionIds.filter(id => questionsMap.get(id)?.category === 'TWK');
-  const tiuQuestions = questionIds.filter(id => questionsMap.get(id)?.category === 'TIU');
-  const tkpQuestions = questionIds.filter(id => questionsMap.get(id)?.category === 'TKP');
+  const twkQuestions: string[] = [];
+  const tiuQuestions: string[] = [];
+  const tkpQuestions: string[] = [];
+  const otherQuestions: string[] = [];
+
+  questionIds.forEach(id => {
+    const rawCategory = questionsMap.get(id) || '';
+    const category = rawCategory.toUpperCase().trim();
+    if (category === 'TWK') {
+      twkQuestions.push(id);
+    } else if (category === 'TIU') {
+      tiuQuestions.push(id);
+    } else if (category === 'TKP') {
+      tkpQuestions.push(id);
+    } else {
+      otherQuestions.push(id);
+    }
+  });
 
   const shuffledTwk = shuffleArray(twkQuestions);
   const shuffledTiu = shuffleArray(tiuQuestions);
   const shuffledTkp = shuffleArray(tkpQuestions);
+  const shuffledOthers = shuffleArray(otherQuestions);
 
-  return [...shuffledTwk, ...shuffledTiu, ...shuffledTkp];
+  return [...shuffledTwk, ...shuffledTiu, ...shuffledTkp, ...shuffledOthers];
 };
 
 export const createTryoutSession = async (

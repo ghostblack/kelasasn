@@ -35,6 +35,7 @@ import { TryoutQuestionList } from "./screens/Admin/TryoutQuestionList";
 import { UsersMonitoring } from "./screens/Admin/UsersMonitoring";
 import { PaymentsManagement } from "./screens/Admin/PaymentsManagement";
 import { QuestionsManagement } from "./screens/Admin/QuestionsManagement";
+import { UserTryoutDetails } from "./screens/Admin/UserTryoutDetails";
 import { AuthProvider } from "./contexts/AuthContext";
 import { MaintenanceProvider, useMaintenanceMode } from "./contexts/MaintenanceContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -259,6 +260,7 @@ function AppWrapper() {
             <Route path="tryouts/:tryoutId/questions/:category/edit/:questionId" element={<TryoutQuestionInput />} />
             <Route path="claim-codes" element={<ClaimCodesManagement />} />
             <Route path="users" element={<UsersMonitoring />} />
+            <Route path="users/:userId/result/:resultId" element={<UserTryoutDetails />} />
             <Route path="payments" element={<PaymentsManagement />} />
             <Route path="questions" element={<QuestionsManagement />} />
           </Route>

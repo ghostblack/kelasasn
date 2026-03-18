@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { getTryoutById, getUserResultsByTryout } from '@/services/tryoutService';
-import { getQuestionsByIds } from '@/services/questionService';
+import { getQuestionsByIds, getTryoutQuestionIds } from '@/services/questionService';
 import { TryoutResult, TryoutPackage, Question } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -56,7 +56,8 @@ export const TryoutResultPage: React.FC = () => {
       setTryout(tryoutData);
 
       if (tryoutData) {
-        const questionsData = await getQuestionsByIds(tryoutData.questionIds);
+        const allQuestionIds = await getTryoutQuestionIds(id);
+        const questionsData = await getQuestionsByIds(allQuestionIds);
         setQuestions(questionsData);
       }
     } catch (error) {

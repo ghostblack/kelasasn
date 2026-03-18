@@ -399,3 +399,18 @@ export const deleteAllQuestionsInCategory = async (
 
   await batch.commit();
 };
+
+export const getTryoutQuestionIds = async (tryoutId: string): Promise<string[]> => {
+  const tryoutRef = doc(db, 'tryout_packages', tryoutId);
+  const tryoutSnap = await getDoc(tryoutRef);
+  
+  const arrayIds = tryoutSnap.exists() ? (tryoutSnap.data().questionIds || []) : [];
+
+  const questionsRef = collection(db, 'questions');
+  const q = query(questionsRef, where('tryoutId', '==', tryoutId));
+  const snapshot = await getDocs(q);
+  const fieldIds = snapshot.docs.map(doc => doc.id);
+
+  // Combine and deduplicate
+  return Array.from(new Set([...arrayIds, ...fieldIds]));
+};
