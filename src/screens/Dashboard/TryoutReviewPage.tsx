@@ -6,8 +6,6 @@ import { getQuestionsByIds } from '@/services/questionService';
 import { TryoutResult, TryoutPackage, Question } from '@/types';
 import { MathText } from '@/components/MathText';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { CircleCheck, XCircle, ChevronLeft, ChevronRight, ArrowLeft } from 'lucide-react';
 
 type ExamSection = 'TWK' | 'TIU' | 'TKP';
@@ -273,7 +271,17 @@ export const TryoutReviewPage: React.FC = () => {
                   {['a', 'b', 'c', 'd', 'e'].map((key) => {
                     const value = currentQuestion.options[key as keyof typeof currentQuestion.options];
                     const isUserAnswer = userAnswer === key;
-                    const isCorrectAnswer = currentQuestion.correctAnswer === key;
+                    const isTKP = currentQuestion.category?.toUpperCase().trim() === 'TKP';
+                    
+                    let isCorrectAnswer = false;
+                    let tkpScore = 0;
+                    
+                    if (isTKP && currentQuestion.tkpScoring) {
+                      tkpScore = currentQuestion.tkpScoring[key as keyof typeof currentQuestion.tkpScoring] || 0;
+                      isCorrectAnswer = tkpScore === 5;
+                    } else {
+                      isCorrectAnswer = currentQuestion.correctAnswer === key;
+                    }
 
                     return (
                       <div
@@ -299,9 +307,16 @@ export const TryoutReviewPage: React.FC = () => {
                             {key.toUpperCase()}
                           </div>
                           <MathText text={value} className="flex-1 text-sm text-gray-900 leading-relaxed pt-0.5" />
+                          
+                          {isTKP && currentQuestion.tkpScoring && (
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${tkpScore === 5 ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                              +{tkpScore}
+                            </span>
+                          )}
+
                           {isCorrectAnswer && (
                             <span className="text-xs px-2 py-0.5 bg-green-600 text-white rounded">
-                              Jawaban Benar
+                              {isTKP ? 'Jawaban Terbaik' : 'Jawaban Benar'}
                             </span>
                           )}
                           {isUserAnswer && !isCorrectAnswer && (
