@@ -41,16 +41,15 @@ export default async function handler(req: Request, context: Context) {
     });
   }
 
-  // Fetch langsung ke BKN — tidak perlu CORS proxy karena ini server-side
+    // Fetch langsung ke Upstream Vercel Proxy
   try {
     const upstream = await fetch(upstreamUrl, {
+      method: "GET",
       headers: {
-        Accept: "application/json",
-        "User-Agent": "Mozilla/5.0 (compatible; KelasASN-Proxy/1.0)",
-        Origin: "https://sscasn.bkn.go.id",
-        Referer: "https://sscasn.bkn.go.id/",
-      },
-      signal: AbortSignal.timeout(10_000), // 10 detik timeout
+        "Accept": "application/json"
+        // Menghapus 'Origin', 'Referer', dsb karena vercel proxy sudah menanganinya
+        // Menghapus User-Agent custom yang mungkin di-block oleh firewall
+      }
     });
 
     if (!upstream.ok) {
