@@ -244,10 +244,11 @@ export const HeaderSection = (): JSX.Element => {
 
               <Button
                 onClick={handleTelegramClick}
-                className="group inline-flex items-center justify-center gap-3 px-6 py-3 bg-white border border-gray-200 hover:border-blue-400 rounded-[32px] h-auto transition-all duration-300 hover:scale-105 hover:shadow-lg active:scale-95 shadow-sm"
+                variant="outline"
+                className="group inline-flex items-center justify-center gap-3 px-6 py-3 bg-white border-gray-200 text-[#1f1f1f] hover:bg-blue-50/50 hover:border-[#229ED9]/30 rounded-[32px] h-auto transition-all duration-300 hover:scale-105 hover:shadow-lg active:scale-95 shadow-sm"
               >
                 <Send className="w-5 h-5 text-[#229ED9] group-hover:scale-110 transition-transform" />
-                <span className="[font-family:'PP_Neue_Montreal-Medium',Helvetica] font-medium text-[#1f1f1f] text-sm sm:text-base tracking-[0] leading-6">
+                <span className="[font-family:'PP_Neue_Montreal-Medium',Helvetica] font-medium text-sm sm:text-base tracking-[0] leading-6">
                   Gabung Telegram
                 </span>
               </Button>
