@@ -1,4 +1,9 @@
-import type { Context } from "@netlify/functions";
+import type { Context, Config } from "@netlify/functions";
+
+export const config: Config = {
+  path: "/api/sscasn/*"
+};
+
 
 // ===================================================
 // Server-side cache untuk metadata (instansi, jabatan, pendidikan)

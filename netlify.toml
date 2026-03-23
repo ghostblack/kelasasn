@@ -6,11 +6,6 @@
 [functions]
   node_bundler = "esbuild"
 
-# Arahkan semua permintaan /api/sscasn/* ke Netlify Function
-[[redirects]]
-  from = "/api/sscasn/*"
-  to = "/.netlify/functions/sscasn-proxy/:splat"
-  status = 200
 
 # SPA catch-all — harus paling bawah
 [[redirects]]
