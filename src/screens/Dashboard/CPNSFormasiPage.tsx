@@ -514,23 +514,28 @@ export function CPNSFormasiPage() {
           <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] animate-in fade-in duration-300" />
           <div 
             className={cn(
-              "relative w-full max-w-sm bg-white h-full shadow-2xl flex flex-col transform transition-transform duration-300 ease-out font-mono animate-in slide-in-from-right",
+              "relative w-[90vw] sm:max-w-sm bg-white h-full shadow-2xl flex flex-col transform transition-all duration-300 ease-in-out font-mono border-l border-gray-100",
               isFilterModalOpen ? "translate-x-0" : "translate-x-full"
             )}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-white">
               <div className="flex items-center gap-3">
-                <Filter className="h-4 w-4 text-blue-600" />
-                <h2 className="text-xs font-black uppercase tracking-[0.2em] text-gray-900">FILTER KRITERIA</h2>
+                <div className="h-10 w-10 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-100">
+                  <Filter className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-[11px] font-black text-gray-900 uppercase tracking-widest">Filter Lanjutan</h2>
+                  <p className="text-[8px] text-gray-400 font-bold uppercase mt-0.5">Sesuaikan Pencarian</p>
+                </div>
               </div>
               <Button 
                 variant="ghost" 
                 size="icon" 
                 onClick={() => setIsFilterModalOpen(false)}
-                className="rounded-none hover:bg-white h-8 w-8"
+                className="h-10 w-10 rounded-2xl hover:bg-gray-50 text-gray-400 hover:text-gray-900 transition-all active:scale-95"
               >
-                <LayoutGrid className="h-4 w-4 text-gray-400 rotate-45" />
+                <X className="h-5 w-5" />
               </Button>
             </div>
 
@@ -1095,8 +1100,8 @@ export function CPNSFormasiPage() {
                     Menampilkan {allSortedFormasi.length} data terurut dari 100 hasil terbaik · Gunakan filter instansi/jenjang untuk mempersempit
                   </div>
                 )}
-                {/* Rigid Light Boxy Table View */}
-                <div className="bg-white border border-gray-200 overflow-x-auto rounded-none shadow-sm">
+                {/* Rigid Light Boxy Table View - Desktop Only */}
+                <div className="hidden md:block bg-white border border-gray-200 overflow-x-auto rounded-none shadow-sm">
                   <Table className="border-collapse border border-gray-200 font-mono">
                     <TableHeader className="bg-gray-50/80">
                       <TableRow className="hover:bg-transparent border-gray-200">
@@ -1150,6 +1155,64 @@ export function CPNSFormasiPage() {
                       })}
                     </TableBody>
                   </Table>
+                </div>
+
+                {/* Mobile Card View - Mobile Only */}
+                <div className="md:hidden space-y-4">
+                  {formasi.map((item) => {
+                    const ratioInfo = getRatioInfo(item.jumlah_ms, item.jumlah_formasi);
+                    const placement = formatPlacement(item.lokasi_nm, item.ins_nm);
+                    
+                    return (
+                      <div 
+                        key={item.formasi_id}
+                        onClick={() => handleRowClick(item.formasi_id)}
+                        className="bg-white border border-gray-200 p-4 active:bg-blue-50 transition-colors shadow-sm"
+                      >
+                        <div className="space-y-3">
+                          <div className="space-y-1">
+                            <h4 className="text-[11px] font-black text-blue-600 uppercase leading-tight line-clamp-2">
+                              {item.jabatan_nm}
+                            </h4>
+                            <p className="text-[9px] font-bold text-gray-500 uppercase tracking-tight line-clamp-1">
+                              {item.ins_nm}
+                            </p>
+                            <div className="flex items-center gap-1.5 text-[8px] font-black text-gray-400 border-t border-gray-50 pt-1.5 mt-1.5 uppercase">
+                              <MapPin className="h-2.5 w-2.5" />
+                              <span className="truncate">{placement}</span>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-2 py-2 border-y border-gray-50">
+                            <div className="text-center">
+                              <p className="text-[7px] font-black text-gray-300 uppercase tracking-widest mb-0.5">Kuota</p>
+                              <p className="text-xs font-black text-gray-900">{item.jumlah_formasi}</p>
+                            </div>
+                            <div className="text-center border-x border-gray-50">
+                              <p className="text-[7px] font-black text-gray-300 uppercase tracking-widest mb-0.5">Pelamar</p>
+                              <p className="text-xs font-black text-blue-600">{formatNumber(item.jumlah_ms)}</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-[7px] font-black text-gray-300 uppercase tracking-widest mb-0.5">Ratio</p>
+                              <span className={cn(
+                                "text-[9px] font-black uppercase px-1.5 py-0.5 inline-block",
+                                ratioInfo.ratio > 20 ? "text-rose-600 bg-rose-50" : "text-emerald-600 bg-emerald-50"
+                              )}>
+                                1:{ratioInfo.ratio}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-1">
+                            <span className="text-[8px] font-black text-gray-300 uppercase tracking-widest">Estimasi Gaji</span>
+                            <span className="text-[10px] font-black text-gray-800 uppercase tracking-tighter">
+                              {formatCurrency(item.gaji_max)} JT / BLN
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
 
                 {/* Rigid Light Pagination */}
