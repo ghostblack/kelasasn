@@ -68,6 +68,7 @@ export interface FilterOptions {
   jabatan_kode?: string;
   pendidikan_kode?: string;
   level?: string;
+  wilayah?: string;
   min_gaji?: number;
   max_gaji?: number;
   sort?: 'jumlah_formasi' | 'jumlah_pelamar' | 'gaji_min' | 'gaji_max' | 'terketat' | 'tidak_ketat' | 'pelamar_sedikit' | 'none';

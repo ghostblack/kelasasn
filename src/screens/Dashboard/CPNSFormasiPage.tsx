@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Filter, BarChart3, LayoutGrid, ChevronDown, X, Lock, KeyRound } from 'lucide-react';
+import { Search, Filter, BarChart3, LayoutGrid, ChevronDown, X, Lock, KeyRound, Send, ExternalLink, MapPin } from 'lucide-react';
 import { sscasnService, FilterOptions } from '@/services/sscasnService';
 import { SSCASNFormation } from '@/types/sscasn';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,6 +10,28 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { checkUserFormasiAccess, useFormasiCode } from '@/services/formasiAccessCodeService';
+
+const PROVINSI_LIST = [
+  'ACEH', 'BALI', 'BANTEN', 'BENGKULU', 'DI YOGYAKARTA', 'DKI JAKARTA', 
+  'GORONTALO', 'JAMBI', 'JAWA BARAT', 'JAWA TENGAH', 'JAWA TIMUR', 
+  'KALIMANTAN BARAT', 'KALIMANTAN SELATAN', 'KALIMANTAN TENGAH', 
+  'KALIMANTAN TIMUR', 'KALIMANTAN UTARA', 'KEPULAUAN BANGKA BELITUNG', 
+  'KEPULAUAN RIAU', 'LAMPUNG', 'MALUKU', 'MALUKU UTARA', 
+  'NUSA TENGGARA BARAT', 'NUSA TENGGARA TIMUR', 'PAPUA', 'PAPUA BARAT', 
+  'PAPUA DAYA', 'PAPUA PEGUNUNGAN', 'PAPUA SELATAN', 'PAPUA TENGAH', 
+  'RIAU', 'SULAWESI BARAT', 'SULAWESI SELATAN', 'SULAWESI TENGAH', 
+  'SULAWESI TENGGARA', 'SULAWESI UTARA', 'SUMATERA BARAT', 
+  'SUMATERA SELATAN', 'SUMATERA UTARA'
+];
+
+const PROVINSI_SEARCH_MAP: Record<string, string> = {
+  'DI YOGYAKARTA': 'YOGYAKARTA',
+  'DKI JAKARTA': 'JAKARTA',
+  'NUSA TENGGARA BARAT': 'NUSA TENGGARA BARAT',
+  'NUSA TENGGARA TIMUR': 'NUSA TENGGARA TIMUR',
+  'KEPULAUAN BANGKA BELITUNG': 'BANGKA BELITUNG',
+  'KEPULAUAN RIAU': 'KEPULAUAN RIAU',
+};
 
 export function CPNSFormasiPage() {
   const { user } = useAuth();
@@ -32,20 +54,27 @@ export function CPNSFormasiPage() {
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [isSortMode, setIsSortMode] = useState(false); // true saat sort aktif → client-side paginasi
   
+  // Detail Modal State
+  const [selectedFormasi, setSelectedFormasi] = useState<SSCASNFormation | null>(null);
+  const [isDetailLoading, setIsDetailLoading] = useState(false);
+  
   // Filter Metadata State
   const [instansiList, setInstansiList] = useState<any[]>([]);
   const [jabatanList, setJabatanList] = useState<any[]>([]);
   const [prodiList, setProdiList] = useState<any[]>([]);
   const [metadataLoading, setMetadataLoading] = useState(false);
   const [searchProdi, setSearchProdi] = useState('');
+  const [searchWilayah, setSearchWilayah] = useState('');
   const [isProdiOpen, setIsProdiOpen] = useState(false);
   const [isInstansiOpen, setIsInstansiOpen] = useState(false);
   const [isJabatanOpen, setIsJabatanOpen] = useState(false);
+  const [isWilayahOpen, setIsWilayahOpen] = useState(false);
   const [searchInstansi, setSearchInstansi] = useState('');
   const [searchJabatan, setSearchJabatan] = useState('');
   const prodiComboRef = useRef<HTMLDivElement>(null);
   const instansiComboRef = useRef<HTMLDivElement>(null);
   const jabatanComboRef = useRef<HTMLDivElement>(null);
+  const wilayahComboRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Tutup semua combobox kalau klik di luar
@@ -54,6 +83,7 @@ export function CPNSFormasiPage() {
       if (prodiComboRef.current && !prodiComboRef.current.contains(e.target as Node)) setIsProdiOpen(false);
       if (instansiComboRef.current && !instansiComboRef.current.contains(e.target as Node)) setIsInstansiOpen(false);
       if (jabatanComboRef.current && !jabatanComboRef.current.contains(e.target as Node)) setIsJabatanOpen(false);
+      if (wilayahComboRef.current && !wilayahComboRef.current.contains(e.target as Node)) setIsWilayahOpen(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -153,10 +183,15 @@ export function CPNSFormasiPage() {
         ? filters.pendidikan_kode 
         : (filters.level && filters.level !== 'all' ? filters.level : undefined);
       
-      const { level, pendidikan_kode: _pc, sort: rawSort, ...cleanFilters } = filters;
+      const { level, pendidikan_kode: _pc, sort: rawSort, wilayah, ...cleanFilters } = filters;
       const s = rawSort as string | undefined;
       const isSorting = !!(s && s !== 'none');
       setIsSortMode(isSorting);
+
+      const wilayahSearch = wilayah ? (PROVINSI_SEARCH_MAP[wilayah] || wilayah) : '';
+      const combinedSearch = wilayahSearch 
+        ? (debouncedSearchTerm ? `${debouncedSearchTerm} ${wilayahSearch}` : wilayahSearch)
+        : debouncedSearchTerm;
 
       if (isSorting) {
         // ── SORT MODE ──────────────────────────────────────────────────────────
@@ -172,7 +207,7 @@ export function CPNSFormasiPage() {
           (s === 'tidak_ketat' || s === 'pelamar_sedikit') ? 'asc' :
           (s === 'terketat')   ? 'desc' : 'desc';
 
-        const result = await sscasnService.getFormasi(1, 100, debouncedSearchTerm, {
+        const result = await sscasnService.getFormasi(1, 100, combinedSearch, {
           ...cleanFilters,
           pendidikan_kode,
           ...(apiProxySort ? { sort: apiProxySort as any, order: apiProxyOrder } : {}),
@@ -193,7 +228,7 @@ export function CPNSFormasiPage() {
         }
       } else {
         // ── NORMAL PAGINATION MODE ─────────────────────────────────────────────
-        const result = await sscasnService.getFormasi(currentPage, PAGE_SIZE, debouncedSearchTerm, {
+        const result = await sscasnService.getFormasi(currentPage, PAGE_SIZE, combinedSearch, {
           ...cleanFilters,
           pendidikan_kode,
         });
@@ -239,6 +274,44 @@ export function CPNSFormasiPage() {
   const formatNumber = (num: number) => new Intl.NumberFormat('id-ID').format(num);
   const formatCurrency = (amount: number) => (amount / 1000000).toFixed(1);
 
+  const formatPlacement = (lokasi: string, instansi: string) => {
+    if (!lokasi) return '-';
+    let clean = lokasi.trim();
+    
+    // Pattern 1: | Agency Name (Usually Pusat/National)
+    if (clean.startsWith('|')) {
+      const part = clean.replace(/^\|\s*/, '').trim();
+      if (part.toUpperCase() === instansi.toUpperCase()) return 'PUSAT / SELURUH INDONESIA';
+      return part;
+    }
+
+    // Pattern 2: Agency Name | Specific Location
+    if (clean.includes('|')) {
+      const parts = clean.split('|').map(p => p.trim());
+      // Ambil bagian yang bukan nama instansi
+      const specific = parts.find(p => 
+        p.toUpperCase() !== instansi.toUpperCase() && 
+        !instansi.toUpperCase().includes(p.toUpperCase()) &&
+        p !== ''
+      );
+      if (specific) return specific;
+      return parts[parts.length - 1];
+    }
+    
+    // Pattern 3: KANWIL / KANTOR REGIONAL
+    if (clean.toUpperCase().includes('KANTOR WILAYAH') || clean.toUpperCase().includes('KANWIL')) {
+      // Seringkali sudah cukup spesifik
+      return clean;
+    }
+
+    // Jika sama dengan instansi, tandai sebagai pusat
+    if (clean.toUpperCase() === instansi.toUpperCase()) {
+      return 'PUSAT / UNIT UTAMA';
+    }
+
+    return clean;
+  };
+
   const getRatioInfo = (ms: number, quota: number) => {
     if (quota === 0) return { ratio: 0, color: 'bg-gray-100 text-gray-600' };
     const ratio = ms / quota;
@@ -274,6 +347,24 @@ export function CPNSFormasiPage() {
       setAccessError(err.message || 'Gagal memverifikasi kode akses');
     } finally {
       setAccessLoading(false);
+    }
+  };
+
+  const handleRowClick = async (formasiId: string) => {
+    setIsDetailLoading(true);
+    try {
+      // Set to basic data first to open modal immediately
+      const basicData = formasi.find(f => f.formasi_id === formasiId) || allSortedFormasi.find(f => f.formasi_id === formasiId);
+      if (basicData) setSelectedFormasi(basicData);
+      
+      const detail = await sscasnService.getFormasiById(formasiId);
+      if (detail) {
+        setSelectedFormasi(detail);
+      }
+    } catch (err) {
+      console.error('Error fetching formasi details:', err);
+    } finally {
+      setIsDetailLoading(false);
     }
   };
 
@@ -332,6 +423,34 @@ export function CPNSFormasiPage() {
                 </div>
               )}
             </Button>
+
+            <div className="pt-2">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-gray-100"></span>
+                </div>
+                <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-widest text-gray-300">
+                  <span className="bg-white px-2">Belum punya kode?</span>
+                </div>
+              </div>
+              
+              <a 
+                href="https://t.me/KelasASN" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="mt-4 flex items-center justify-center gap-3 w-full h-12 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all group border border-blue-100/50 shadow-sm shadow-blue-50/50"
+              >
+                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                  <Send className="w-4 h-4 text-white ml-[-1px]" />
+                </div>
+                <div className="text-left">
+                  <p className="text-[10px] font-black uppercase tracking-widest leading-none">Dapatkan di Telegram</p>
+                  <p className="text-[9px] font-bold text-blue-400 mt-1 flex items-center gap-1">
+                    Grup Diskusi @KelasASN <ExternalLink className="w-2.5 h-2.5" />
+                  </p>
+                </div>
+              </a>
+            </div>
           </div>
         </div>
       </div>
@@ -533,21 +652,60 @@ export function CPNSFormasiPage() {
                             .filter(prodi => {
                               const levelCode = filters.level;
                               const prodiTk = String(prodi.tk_pend || '');
-                              const prodiName = (prodi.nama_pend || '').toUpperCase();
-                              const q = searchProdi.toUpperCase();
+                              
+                              // Normalisasi prodi Name dan Query untuk pencarian yang lebih tahan banting
+                              // S-1 -> S1, D-III -> D3, D-IV -> D4, tanda baca dihapus
+                              const normalizeStr = (s: string) => {
+                                let norm = s.toUpperCase();
+                                // Synonyms / Common Typos normalization
+                                norm = norm.replace(/AKUTANSI/g, 'AKUNTANSI');
+                                norm = norm.replace(/AKUNTASI/g, 'AKUNTANSI');
+                                
+                                norm = norm.replace(/S-1/g, 'S1');
+                                norm = norm.replace(/S-2/g, 'S2');
+                                norm = norm.replace(/S-3/g, 'S3');
+                                norm = norm.replace(/D-I\b/g, 'D1');
+                                norm = norm.replace(/D-II\b/g, 'D2');
+                                norm = norm.replace(/D-III\b/g, 'D3');
+                                norm = norm.replace(/D-IV\b/g, 'D4');
+                                norm = norm.replace(/D-V\b/g, 'D5');
+                                norm = norm.replace(/[^A-Z0-9]/g, ' '); // Ganti tanda baca dengan spasi
+                                norm = norm.replace(/\s+/g, ' ').trim(); // Hapus spasi berlebih
+                                return norm;
+                              };
+                              
+                              const prodiNameNorm = normalizeStr(prodi.nama_pend || '');
+                              const qNorm = normalizeStr(searchProdi);
 
                               let isLevelMatch = false;
-                              if (!levelCode || levelCode === 'all') isLevelMatch = true;
-                              else if (levelCode === '10') isLevelMatch = prodiTk === '15';
-                              else if (levelCode === '30') isLevelMatch = prodiTk === '30';
-                              else if (levelCode === '40') isLevelMatch = prodiTk === '40';
-                              else if (levelCode === '45') isLevelMatch = prodiTk === '45';
-                              else if (levelCode === '50') isLevelMatch = prodiTk === '50';
-                              else isLevelMatch = prodiTk === levelCode;
+                              if (!levelCode || levelCode === 'all') {
+                                isLevelMatch = true;
+                              } else {
+                                if (levelCode === '10') {
+                                  isLevelMatch = ['10', '15', '17', '18'].includes(prodiTk);
+                                } else if (levelCode === '30') {
+                                  isLevelMatch = ['30', '31'].includes(prodiTk);
+                                } else if (levelCode === '40') {
+                                  isLevelMatch = ['40', '35', '36', '37', '38', '39'].includes(prodiTk);
+                                } else if (levelCode === '35') {
+                                  isLevelMatch = ['35', '40'].includes(prodiTk);
+                                } else if (levelCode === '45') {
+                                  isLevelMatch = ['45', '80'].includes(prodiTk);
+                                } else if (levelCode === '50') {
+                                  isLevelMatch = prodiTk === '50';
+                                } else {
+                                  isLevelMatch = prodiTk === levelCode;
+                                }
+                              }
 
-                              return isLevelMatch && (!q || prodiName.includes(q));
+                              if (!isLevelMatch) return false;
+                              if (!qNorm) return true;
+                              
+                              // Split query into words and check if all words exist in the prodi name
+                              const searchTerms = qNorm.split(' ').filter(t => t.trim() !== '');
+                              return searchTerms.every(term => prodiNameNorm.includes(term));
                             })
-                            .slice(0, 200)
+                            .slice(0, 500)
                             .map(prodi => (
                               <button
                                 key={prodi.kode_pend}
@@ -587,6 +745,59 @@ export function CPNSFormasiPage() {
                     )}
                   </div>
                 )}
+              </div>
+
+              {/* Wilayah (Provinsi) — Searchable Combobox */}
+              <div className="space-y-3 pt-6 border-t border-gray-100">
+                <Label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Wilayah (Provinsi)</Label>
+                <div ref={wilayahComboRef} className="relative">
+                  <button
+                    type="button"
+                    onClick={() => { setIsWilayahOpen(v => !v); setSearchWilayah(''); }}
+                    className="w-full h-11 flex items-center justify-between px-3 border border-gray-200 bg-white text-[10px] font-bold uppercase tracking-wide text-gray-700 hover:bg-gray-50 cursor-pointer transition-colors"
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <MapPin className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+                      <span className="truncate">
+                        {filters.wilayah || 'SEMUA WILAYAH / NASIONAL'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {filters.wilayah && (
+                        <X className="h-3 w-3 text-gray-400 hover:text-gray-700" onClick={e => { e.stopPropagation(); setFilters(prev => ({ ...prev, wilayah: undefined })); }} />
+                      )}
+                      <ChevronDown className={cn("h-3.5 w-3.5 text-gray-400 transition-transform", isWilayahOpen && "rotate-180")} />
+                    </div>
+                  </button>
+                  {isWilayahOpen && (
+                    <div className="absolute z-50 top-full left-0 right-0 bg-white border border-gray-200 border-t-0 shadow-lg">
+                      <div className="relative border-b border-gray-100">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                        <input 
+                          autoFocus 
+                          placeholder="Cari provinsi..." 
+                          value={searchWilayah}
+                          onChange={e => setSearchWilayah(e.target.value)}
+                          className="w-full pl-9 pr-3 h-10 text-[10px] font-bold uppercase bg-gray-50 outline-none placeholder:text-gray-300" 
+                        />
+                      </div>
+                      <div className="max-h-56 overflow-y-auto">
+                        <button type="button" className="w-full text-left px-3 py-2 text-[10px] font-bold uppercase text-gray-400 hover:bg-gray-50"
+                          onClick={() => { setFilters(prev => ({ ...prev, wilayah: undefined })); setIsWilayahOpen(false); }}>Semua Wilayah</button>
+                        {PROVINSI_LIST
+                          .filter(p => !searchWilayah || p.toUpperCase().includes(searchWilayah.toUpperCase()))
+                          .map(p => (
+                            <button key={p} type="button"
+                              className={cn("w-full text-left px-3 py-2 text-[10px] font-bold uppercase hover:bg-blue-50 hover:text-blue-700 transition-colors",
+                                filters.wilayah === p ? "bg-blue-50 text-blue-700" : "text-gray-700")}
+                              onClick={() => { setFilters(prev => ({ ...prev, wilayah: p })); setIsWilayahOpen(false); setSearchWilayah(''); }}>
+                              {p}
+                            </button>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Salary Range */}
@@ -892,6 +1103,7 @@ export function CPNSFormasiPage() {
                         <TableHead className="w-12 text-center text-[10px] font-bold uppercase text-gray-500 border-r border-gray-200 h-10">No</TableHead>
                         <TableHead className="text-[10px] font-bold uppercase text-gray-900 border-r border-gray-200 h-10 px-4">Jabatan</TableHead>
                         <TableHead className="text-[10px] font-bold uppercase text-gray-500 border-r border-gray-200 h-10 px-4">Instansi</TableHead>
+                        <TableHead className="text-[10px] font-bold uppercase text-gray-500 border-r border-gray-200 h-10 px-4">Penempatan</TableHead>
                         <TableHead className="text-center text-[10px] font-bold uppercase text-gray-900 border-r border-gray-200 h-10 px-2">Kuota</TableHead>
                         <TableHead className="text-center text-[10px] font-bold uppercase text-blue-600 border-r border-gray-200 h-10 px-2">Pelamar</TableHead>
                         <TableHead className="text-center text-[10px] font-bold uppercase text-gray-900 border-r border-gray-200 h-10 px-2">Ratio</TableHead>
@@ -902,15 +1114,22 @@ export function CPNSFormasiPage() {
                       {formasi.map((item, index) => {
                         const ratioInfo = getRatioInfo(item.jumlah_ms, item.jumlah_formasi);
                         return (
-                          <TableRow key={item.formasi_id} className="hover:bg-gray-50 border-gray-200 transition-colors h-11">
-                            <TableCell className="text-center text-[10px] text-gray-400 border-r border-gray-200 py-1 font-bold">
+                          <TableRow 
+                            key={item.formasi_id} 
+                            onClick={() => handleRowClick(item.formasi_id)}
+                            className="hover:bg-blue-50/50 cursor-pointer border-gray-200 transition-colors h-11 group"
+                          >
+                            <TableCell className="text-center text-[10px] text-gray-400 border-r border-gray-200 py-1 font-bold group-hover:text-blue-600 transition-colors">
                               {(currentPage - 1) * 10 + index + 1}
                             </TableCell>
                             <TableCell className="text-[10px] text-gray-900 border-r border-gray-200 py-1 font-black uppercase px-4 truncate max-w-[220px]">
                               {item.jabatan_nm}
                             </TableCell>
-                            <TableCell className="text-[10px] text-gray-500 border-r border-gray-200 py-1 uppercase px-4 truncate max-w-[160px]">
+                            <TableCell className="text-[10px] text-gray-500 border-r border-gray-200 py-1 uppercase px-4 truncate max-w-[150px]">
                               {item.ins_nm}
+                            </TableCell>
+                            <TableCell className="text-[10px] text-blue-700 border-r border-gray-200 py-1 font-bold uppercase px-4 truncate max-w-[180px]">
+                              {formatPlacement(item.lokasi_nm, item.ins_nm)}
                             </TableCell>
                             <TableCell className="text-center text-[10px] text-gray-900 border-r border-gray-200 py-1 font-black">
                               {item.jumlah_formasi}
@@ -1002,6 +1221,127 @@ export function CPNSFormasiPage() {
         </main>
       </div>
       
+      {/* Formasi Details Modal */}
+      {selectedFormasi && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          onClick={() => setSelectedFormasi(null)}
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] animate-in fade-in duration-300" />
+          <div 
+            className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-6 flex justify-between items-start">
+              <div className="text-white space-y-1 pr-8">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[10px] font-black tracking-widest uppercase bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm">
+                    {selectedFormasi.formasi_id}
+                  </span>
+                  {(selectedFormasi as any).jenis_formasi_nm && (
+                    <span className="text-[10px] font-black tracking-widest uppercase bg-amber-500 text-amber-50 px-2 py-0.5 rounded-full">
+                      {(selectedFormasi as any).jenis_formasi_nm}
+                    </span>
+                  )}
+                </div>
+                <h2 className="text-xl font-black leading-tight uppercase">
+                  {selectedFormasi.jabatan_nm}
+                </h2>
+                <p className="text-blue-100 text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 opacity-90 line-clamp-2">
+                  {selectedFormasi.ins_nm} <br/> {selectedFormasi.lokasi_nm}
+                </p>
+              </div>
+              <button 
+                onClick={() => setSelectedFormasi(null)}
+                className="absolute top-4 right-4 p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 max-h-[70vh] overflow-y-auto custom-scrollbar bg-gray-50">
+              {isDetailLoading ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <div className="h-8 w-8 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin mb-4" />
+                  <p className="text-xs font-bold text-gray-400 tracking-widest uppercase">Mengambil Data Detail...</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Kualifikasi Pendidikan */}
+                  <div className="md:col-span-2 space-y-2 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                    <Label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Kualifikasi Pendidikan</Label>
+                    <p className="text-xs font-bold text-gray-900 leading-relaxed uppercase">
+                      {selectedFormasi.pendidikan_nm}
+                    </p>
+                  </div>
+
+                  {/* Statistik Persaingan */}
+                  <div className="space-y-4 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                    <Label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Statistik Pelamar</Label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <span className="text-[10px] text-gray-500 font-bold uppercase">Kebutuhan</span>
+                        <p className="text-2xl font-black text-gray-900">{selectedFormasi.jumlah_formasi}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[10px] text-gray-500 font-bold uppercase">Pendaftar Lulus Admin</span>
+                        <p className="text-2xl font-black text-blue-600">{formatNumber(selectedFormasi.jumlah_ms)}</p>
+                      </div>
+                    </div>
+                    <div className="pt-3 border-t border-gray-100">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-bold text-gray-500 uppercase">Estimasi Rasio</span>
+                        <span className={cn(
+                          "text-xs font-black px-2 py-0.5 rounded-md uppercase",
+                          getRatioInfo(selectedFormasi.jumlah_ms, selectedFormasi.jumlah_formasi).ratio > 20 
+                            ? "bg-rose-50 text-rose-600 border border-rose-100" 
+                            : "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                        )}>
+                          1 : {getRatioInfo(selectedFormasi.jumlah_ms, selectedFormasi.jumlah_formasi).ratio}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Info Pendapatan & Lainnya */}
+                  <div className="space-y-4 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                    <Label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Info Tambahan</Label>
+                    <div className="space-y-3">
+                      <div>
+                        <span className="text-[9px] text-gray-500 font-bold uppercase block mb-0.5">Rentang Penghasilan</span>
+                        <p className="text-xs font-black text-emerald-600">
+                          Rp {formatNumber(selectedFormasi.gaji_min)} - {formatNumber(selectedFormasi.gaji_max)}
+                        </p>
+                      </div>
+                      {/* Tampilkan data tambahan lain jika ada dari detail API BKN */}
+                      {(selectedFormasi as any).disable !== undefined && (
+                         <div>
+                           <span className="text-[9px] text-gray-500 font-bold uppercase block mb-0.5">Status Disabilitas</span>
+                           <p className="text-xs font-black text-gray-900 uppercase">
+                             {(selectedFormasi as any).disable === 1 ? 'Menerima Disabilitas' : 'Formasi Umum/Non-Disabilitas'}
+                           </p>
+                         </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="p-4 bg-white border-t border-gray-100 flex justify-end">
+              <Button 
+                onClick={() => setSelectedFormasi(null)}
+                className="bg-gray-900 hover:bg-gray-800 text-white text-[10px] font-bold uppercase tracking-widest h-10 px-6 rounded-xl"
+              >
+                Tutup
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="text-center pt-12 pb-6">
         <div className="h-px bg-gradient-to-r from-transparent via-gray-100 to-transparent w-64 mx-auto mb-6" />
         <p className="text-[10px] text-gray-200 font-black uppercase tracking-[0.5em] px-4 text-center">
