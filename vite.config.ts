@@ -51,6 +51,16 @@ export default defineConfig({
           });
         },
       },
+      // Proxy lokal untuk SSCASN — development only
+      // Pakai api-sscasn.vercel.app karena path-nya sama (/formasi, /ref/instansi, dll)
+      // Tidak ada CORS karena request ini dari Vite server, bukan browser
+      // Di production, /api/sscasn/* ditangani Netlify Function
+      '/api/sscasn': {
+        target: 'https://api-sscasn.vercel.app/api',
+        changeOrigin: true,
+        secure: true,
+        rewrite: (path) => path.replace(/^\/api\/sscasn/, ''),
+      },
     },
   },
 });

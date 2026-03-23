@@ -152,6 +152,27 @@ service cloud.firestore {
                         !(request.auth.uid in resource.data.usedBy)));
     }
 
+    // ===== Formasi Access Codes Collection =====
+    // Users can read codes to validate them
+    // Users can update codes when claiming them (if valid)
+    // Only admins can create and delete
+    match /formasi_access_codes/{codeId} {
+      allow read: if isAuthenticated();
+      allow create, delete: if isAdmin();
+      allow update: if isAuthenticated() &&
+                      (isAdmin() ||
+                       (resource.data.isActive == true &&
+                        resource.data.currentUses < resource.data.maxUses &&
+                        !(request.auth.uid in resource.data.usedBy)));
+    }
+
+    // ===== User Formasi Access Tracking Collection =====
+    // Users can read and write their own access records
+    // Admins can manage all records
+    match /user_formasi_access/{userId} {
+      allow read, write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+    }
+
     // ===== Default Deny All =====
     // Block everything else that's not explicitly allowed
     match /{document=**} {

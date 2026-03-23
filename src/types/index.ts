@@ -246,3 +246,21 @@ export interface ClaimCode {
   createdAt: Date;
   createdBy: string;
 }
+
+export interface FormasiAccessCode {
+  id: string;
+  code: string;
+  maxUses: number;
+  currentUses: number;
+  isActive: boolean;
+  expiryDate?: Date;
+  usedBy: string[];
+  createdAt: Date;
+  createdBy: string;
+}
+
+export interface UserFormasiAccess {
+  userId: string;
+  unlockedAt: Date;
+  expiresAt: Date;
+}

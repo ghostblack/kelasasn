@@ -11,6 +11,7 @@ import { TryoutsPage } from "./screens/Dashboard/TryoutsPage";
 import { RankingPage } from "./screens/Dashboard/RankingPage";
 import { JabatanPage } from "./screens/Dashboard/JabatanPage";
 import { ProfilePage } from "./screens/Dashboard/ProfilePage";
+import { CPNSFormasiPage } from "./screens/Dashboard/CPNSFormasiPage";
 import { TryoutDetailPage } from "./screens/Dashboard/TryoutDetailPage";
 import { TryoutExamPage } from "./screens/Dashboard/TryoutExamPage";
 import { TryoutResultPage } from "./screens/Dashboard/TryoutResultPage";
@@ -34,6 +35,7 @@ import { TryoutQuestionInput } from "./screens/Admin/TryoutQuestionInput";
 import { TryoutQuestionList } from "./screens/Admin/TryoutQuestionList";
 import { UsersMonitoring } from "./screens/Admin/UsersMonitoring";
 import { PaymentsManagement } from "./screens/Admin/PaymentsManagement";
+import { FormasiAccessManagement } from "./screens/Admin/FormasiAccessManagement";
 import { QuestionsManagement } from "./screens/Admin/QuestionsManagement";
 import { UserTryoutDetails } from "./screens/Admin/UserTryoutDetails";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -110,6 +112,16 @@ function AppWrapper() {
               <ProtectedRoute>
                 <DashboardLayout>
                   <JabatanPage />
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/formasi"
+            element={
+              <ProtectedRoute>
+                <DashboardLayout>
+                  <CPNSFormasiPage />
                 </DashboardLayout>
               </ProtectedRoute>
             }
@@ -262,6 +274,7 @@ function AppWrapper() {
             <Route path="users" element={<UsersMonitoring />} />
             <Route path="users/:userId/result/:resultId" element={<UserTryoutDetails />} />
             <Route path="payments" element={<PaymentsManagement />} />
+            <Route path="formasi-access" element={<FormasiAccessManagement />} />
             <Route path="questions" element={<QuestionsManagement />} />
           </Route>
         </Routes>

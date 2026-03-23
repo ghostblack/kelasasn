@@ -37,6 +37,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@netlify/functions": "^5.1.5",
     "@types/react": "18.2.0",
     "@types/react-dom": "18.2.0",
     "@types/react-katex": "^3.0.4",

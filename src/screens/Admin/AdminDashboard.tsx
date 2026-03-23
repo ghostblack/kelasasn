@@ -29,6 +29,7 @@ export const AdminDashboard: React.FC = () => {
       items: [
         { path: '/admin/payments', icon: CreditCard, label: 'Kelola Pembayaran' },
         { path: '/admin/claim-codes', icon: Ticket, label: 'Kode Klaim' },
+        { path: '/admin/formasi-access', icon: Ticket, label: 'Akses Formasi' },
       ]
     },
     {

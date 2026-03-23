@@ -1,6 +1,6 @@
 import { useState, useEffect, ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Chrome as Home, FileText, Trophy, User, LogOut, Menu, X, Receipt } from 'lucide-react';
+import { Chrome as Home, FileText, Trophy, User, LogOut, Menu, X, Receipt, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -22,6 +22,7 @@ const menuItems = [
   { icon: FileText, label: 'Mulai Belajar', path: '/dashboard/tryouts' },
   { icon: Receipt, label: 'Riwayat Pembayaran', path: '/dashboard/payment-history' },
   { icon: Trophy, label: 'Ranking', path: '/dashboard/ranking' },
+  { icon: Building2, label: 'Formasi CPNS', path: '/dashboard/formasi' },
 ];
 
 export const DashboardLayout = ({ children }: DashboardLayoutProps) => {

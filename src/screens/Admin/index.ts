@@ -8,3 +8,4 @@ export { TryoutQuestionInput } from './TryoutQuestionInput';
 export { TryoutQuestionList } from './TryoutQuestionList';
 export { AssignQuestionsToTryout } from './AssignQuestionsToTryout';
 export { UsersMonitoring } from './UsersMonitoring';
+export { FormasiAccessManagement } from './FormasiAccessManagement';
