@@ -8,16 +8,24 @@ const CACHE = new Map<string, { data: any; timestamp: number }>();
 const CACHE_TTL_METADATA = 60 * 60 * 1000; // 1 jam — metadata jarang berubah
 const CACHE_TTL_FORMASI   = 2  * 60 * 1000; // 2 menit — formasi/pelamar bisa berubah
 
-// Target upstream: bisa langsung ke BKN atau ke api-sscasn.vercel.app
-const UPSTREAM_BASE = "https://api-sscasn.bkn.go.id/2024";
+// Target upstream yang terpercaya dan sudah menangani mapping endpoint BKN
+const UPSTREAM_BASE = "https://api-sscasn.vercel.app/api";
 
 // Endpoint mana yang dianggap "metadata" (cache panjang)
-const METADATA_PATHS = ["/ref/instansi", "/ref/jabatan", "/ref/pendidikan"];
+const METADATA_PATHS = ["/instansi", "/jabatan", "/pendidikan"];
 
 export default async function handler(req: Request, context: Context) {
-  // Ambil path setelah /api/sscasn  →  e.g. /formasi atau /ref/instansi
+  // Ambil path setelah /api/sscasn atau setelah sscasn-proxy
   const url = new URL(req.url);
-  const rawPath = url.pathname.replace(/^\/api\/sscasn/, "") || "/";
+  let rawPath = url.pathname;
+  
+  // Jika di-redirect oleh Netlify, pathname bisa mengandung .netlify/functions/sscasn-proxy
+  if (rawPath.includes("sscasn-proxy")) {
+    rawPath = rawPath.split("sscasn-proxy")[1] || "/";
+  } else {
+    rawPath = rawPath.replace(/^\/api\/sscasn/, "") || "/";
+  }
+
   const upstreamUrl = `${UPSTREAM_BASE}${rawPath}${url.search ? url.search : ""}`;
 
   // Pilih TTL berdasar jenis endpoint
