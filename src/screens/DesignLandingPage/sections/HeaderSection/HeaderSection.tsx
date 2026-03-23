@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Badge } from "../../../../components/ui/badge";
 import { Button } from "../../../../components/ui/button";
 import { Card, CardContent } from "../../../../components/ui/card";
-import { Menu, X, LayoutDashboard } from "lucide-react";
+import { Menu, X, LayoutDashboard, Send } from "lucide-react";
 import { useAuth } from "../../../../contexts/AuthContext";
 import { useScrollAnimation } from "../../../../hooks/useScrollAnimation";
 import { AnimatedTextSwitcher } from "../../../../components/AnimatedTextSwitcher";
@@ -75,6 +75,10 @@ export const HeaderSection = (): JSX.Element => {
 
   const handleDashboardClick = () => {
     navigate('/dashboard');
+  };
+
+  const handleTelegramClick = () => {
+    window.open('https://t.me/KelasASN', '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -223,19 +227,31 @@ export const HeaderSection = (): JSX.Element => {
               </p>
             </div>
 
-            <Button
-              onClick={handleTryoutClick}
-              className="group inline-flex items-center justify-center gap-2 sm:gap-3 pl-4 sm:pl-5 pr-1 py-1 bg-[#050505] hover:bg-[#050505]/90 rounded-[32px] h-auto transition-all duration-300 hover:scale-105 hover:shadow-lg active:scale-95"
-            >
-              <span className="[font-family:'PP_Neue_Montreal-Medium',Helvetica] font-medium text-white text-sm sm:text-base tracking-[0] leading-6">
-                Mulai Try Out Gratis
-              </span>
-              <img
-                className="w-10 h-10 sm:w-12 sm:h-12 transition-transform duration-300 group-hover:-rotate-45"
-                alt="Sign up icon"
-                src="/sign-up-icon-container.svg"
-              />
-            </Button>
+            <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+              <Button
+                onClick={handleTryoutClick}
+                className="group inline-flex items-center justify-center gap-2 sm:gap-3 pl-4 sm:pl-5 pr-1 py-1 bg-[#050505] hover:bg-[#050505]/90 rounded-[32px] h-auto transition-all duration-300 hover:scale-105 hover:shadow-lg active:scale-95"
+              >
+                <span className="[font-family:'PP_Neue_Montreal-Medium',Helvetica] font-medium text-white text-sm sm:text-base tracking-[0] leading-6">
+                  Mulai Try Out Gratis
+                </span>
+                <img
+                  className="w-10 h-10 sm:w-12 sm:h-12 transition-transform duration-300 group-hover:-rotate-45"
+                  alt="Sign up icon"
+                  src="/sign-up-icon-container.svg"
+                />
+              </Button>
+
+              <Button
+                onClick={handleTelegramClick}
+                className="group inline-flex items-center justify-center gap-3 px-6 py-3 bg-white border border-gray-200 hover:border-blue-400 rounded-[32px] h-auto transition-all duration-300 hover:scale-105 hover:shadow-lg active:scale-95 shadow-sm"
+              >
+                <Send className="w-5 h-5 text-[#229ED9] group-hover:scale-110 transition-transform" />
+                <span className="[font-family:'PP_Neue_Montreal-Medium',Helvetica] font-medium text-[#1f1f1f] text-sm sm:text-base tracking-[0] leading-6">
+                  Gabung Telegram
+                </span>
+              </Button>
+            </div>
           </div>
 
           <div className="flex items-start gap-4 sm:gap-6 lg:gap-[34px] flex-wrap">

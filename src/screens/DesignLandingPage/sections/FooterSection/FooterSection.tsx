@@ -1,5 +1,5 @@
-import React from "react";
 import { Separator } from "../../../../components/ui/separator";
+import { Instagram, Send, MessageSquare } from "lucide-react";
 
 const navigationLinks = [
   { label: "Home", href: "#" },
@@ -41,16 +41,36 @@ export const FooterSection = (): JSX.Element => {
               Tempat Tryout CPNS Terbaik
             </div>
           </div>
-
           <div className="flex items-center gap-4 lg:gap-6 flex-wrap">
             <div className="[font-family:'PP_Neue_Montreal-Book',Helvetica] font-normal text-[#ffffffb2] text-lg tracking-[-0.18px] leading-6 whitespace-nowrap">
               Temukan Kami Di
             </div>
-            <img
-              className="flex-shrink-0"
-              alt="Social media icons"
-              src="/frame-1321314414.svg"
-            />
+            <div className="flex items-center gap-4">
+              <a 
+                href="https://www.instagram.com/kelasasn.id/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors border border-white/10 text-white"
+              >
+                <Instagram className="w-5 h-5" />
+              </a>
+              <a 
+                href="https://www.threads.net/@kelasasn.id" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors border border-white/10 text-white"
+              >
+                <MessageSquare className="w-5 h-5" />
+              </a>
+              <a 
+                href="https://t.me/KelasASN" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors border border-white/10 text-white"
+              >
+                <Send className="w-5 h-5" />
+              </a>
+            </div>
           </div>
         </div>
 
