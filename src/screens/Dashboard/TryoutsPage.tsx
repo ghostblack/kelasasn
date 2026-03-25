@@ -197,7 +197,7 @@ export const TryoutsPage = () => {
                   </div>
                 )}
 
-                {tryout.totalDuration && tryout.totalDuration > 0 && (
+                {!tryout.isBundle && tryout.totalDuration && tryout.totalDuration > 0 && (
                   <div className="absolute bottom-3 right-3 z-10 bg-white/95 text-gray-700 px-2.5 py-1 rounded-lg flex items-center gap-1.5 text-xs font-medium shadow-sm backdrop-blur-sm">
                     <Clock className="h-3.5 w-3.5" />
                     {tryout.totalDuration} menit
@@ -208,7 +208,12 @@ export const TryoutsPage = () => {
               <div className="p-4 flex flex-col flex-grow">
                 <div className="flex-grow">
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
-                    {tryout.type && (
+                    {tryout.isBundle && (
+                      <Badge className="bg-purple-100 text-purple-700 border-purple-200 text-xs px-2 py-0.5 font-bold uppercase hover:bg-purple-100">
+                        📦 Paket Bundling
+                      </Badge>
+                    )}
+                    {tryout.type && !tryout.isBundle && (
                       <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs px-2 py-0.5 hover:bg-blue-100">
                         {tryout.type}
                       </Badge>

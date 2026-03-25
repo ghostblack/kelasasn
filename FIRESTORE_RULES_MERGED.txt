@@ -173,6 +173,14 @@ service cloud.firestore {
       allow read, write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
     }
 
+    // ===== Tryout Feedbacks Collection =====
+    // Users can create feedback
+    // Admins can read and manage all feedback
+    match /tryout_feedbacks/{feedbackId} {
+      allow create: if isAuthenticated();
+      allow read, update, delete: if isAdmin();
+    }
+
     // ===== Default Deny All =====
     // Block everything else that's not explicitly allowed
     match /{document=**} {

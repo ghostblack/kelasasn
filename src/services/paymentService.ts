@@ -163,19 +163,48 @@ export const updatePaymentStatus = async (
   await updateDoc(docRef, updateData);
 
   if (status === 'PAID') {
+    const tryoutRef = doc(db, 'tryout_packages', payment.tryoutId);
+    const tryoutSnap = await getDoc(tryoutRef);
+    const tryoutData = tryoutSnap.exists() ? tryoutSnap.data() : null;
+    const isBundle = tryoutData?.isBundle || false;
+
     const userTryoutsRef = collection(db, 'user_tryouts');
+    
     await addDoc(userTryoutsRef, {
       userId: payment.userId,
       tryoutId: payment.tryoutId,
       tryoutName: payment.tryoutName,
       purchaseDate: serverTimestamp(),
-      status: 'not_started',
+      status: isBundle ? 'completed' : 'not_started',
       paymentStatus: 'success',
       transactionId: payment.reference,
       attempts: 0,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
+
+    if (isBundle && tryoutData?.includedTryoutIds) {
+      for (const incId of tryoutData.includedTryoutIds) {
+        const incRef = doc(db, 'tryout_packages', incId);
+        const incSnap = await getDoc(incRef);
+        if (incSnap.exists()) {
+          const incData = incSnap.data();
+          await addDoc(userTryoutsRef, {
+            userId: payment.userId,
+            tryoutId: incId,
+            tryoutName: incData.name,
+            purchaseDate: serverTimestamp(),
+            status: 'not_started',
+            paymentStatus: 'success',
+            transactionId: `${payment.reference}-BNDL`,
+            bundleId: payment.tryoutId,
+            attempts: 0,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          });
+        }
+      }
+    }
   }
 };
 
@@ -249,8 +278,6 @@ export const createQRISPaymentTransaction = async (
     paymentMethod: 'QRIS',
     paymentMethodCode: 'QRIS',
     status: 'UNPAID',
-    payUrl: undefined,
-    checkoutUrl: undefined,
     qrUrl: 'https://i.imgur.com/QWw8pWy.jpeg',
     expiredTime,
     createdAt: serverTimestamp(),
@@ -266,4 +293,26 @@ export const createQRISPaymentTransaction = async (
     createdAt: new Date(),
     updatedAt: new Date(),
   } as PaymentTransaction;
+};
+
+export const notifyAdminPayment = async (data: {
+  customerName: string;
+  tryoutName: string;
+  amount: number;
+  reference: string;
+}): Promise<boolean> => {
+  try {
+    const response = await fetch('/api/telegram-notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...data,
+        timestamp: new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }),
+      }),
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Failed to notify admin via Telegram:', error);
+    return false;
+  }
 };

@@ -8,20 +8,43 @@ import { SSCASNFormation, SSCASNResponse } from '../types/sscasn';
 // ====================================================
 const PROXY_BASE = '/api/sscasn';
 
-// Browser-side in-memory cache (layer kedua setelah server cache)
 const BROWSER_CACHE = new Map<string, { data: any; timestamp: number }>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 menit
+const CACHE_TTL = 5 * 60 * 1000; // 5 menit (Formasi)
+const METADATA_TTL = 24 * 60 * 60 * 1000; // 24 jam (Instansi, Prodi, dsb)
 
-async function fetchWithCache<T>(path: string): Promise<T> {
-  const cached = BROWSER_CACHE.get(path);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return cached.data as T;
+async function fetchWithCache<T>(path: string, isMetadata = false): Promise<T> {
+  const cacheKey = `sscasn_cache_${path}`;
+  
+  // 1. Check in-memory first
+  const memCached = BROWSER_CACHE.get(path);
+  if (memCached && Date.now() - memCached.timestamp < (isMetadata ? METADATA_TTL : CACHE_TTL)) {
+    return memCached.data as T;
+  }
+
+  // 2. Metadata: Check localStorage (Persistence across refreshes)
+  if (isMetadata) {
+    try {
+      const lsCached = localStorage.getItem(cacheKey);
+      if (lsCached) {
+        const parsed = JSON.parse(lsCached);
+        if (Date.now() - parsed.timestamp < METADATA_TTL) {
+          BROWSER_CACHE.set(path, parsed); // Sync to memory
+          return parsed.data as T;
+        }
+      }
+    } catch (e) { console.warn('LSCache read failed', e); }
   }
 
   const res = await fetch(`${PROXY_BASE}${path}`);
   if (!res.ok) throw new Error(`HTTP ${res.status} — ${res.statusText}`);
   const data: T = await res.json();
-  BROWSER_CACHE.set(path, { data, timestamp: Date.now() });
+  
+  const entry = { data, timestamp: Date.now() };
+  BROWSER_CACHE.set(path, entry);
+  if (isMetadata) {
+    try { localStorage.setItem(cacheKey, JSON.stringify(entry)); } catch (e) {}
+  }
+  
   return data;
 }
 
@@ -30,28 +53,40 @@ async function fetchWithCache<T>(path: string): Promise<T> {
  * API membatasi per_page = 100, jadi limit=7000 tidak berfungsi.
  */
 async function fetchAllPages<T>(basePath: string, perPage = 100): Promise<T[]> {
-  // Cek cache untuk full dataset
-  const cacheKey = `__all__${basePath}`;
-  const cached = BROWSER_CACHE.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return cached.data as T[];
+  const cacheKey = `sscasn_cache___all__${basePath}`;
+  
+  // 1. Memory Check
+  const memCached = BROWSER_CACHE.get(cacheKey);
+  if (memCached && Date.now() - memCached.timestamp < METADATA_TTL) {
+    return memCached.data as T[];
   }
 
-  // Ambil halaman 1 dulu untuk mengetahui total
-  const first = await fetchWithCache<any>(`${basePath}?limit=${perPage}&page=1`);
+  // 2. localStorage Check
+  try {
+    const lsCached = localStorage.getItem(cacheKey);
+    if (lsCached) {
+      const parsed = JSON.parse(lsCached);
+      if (Date.now() - parsed.timestamp < METADATA_TTL) {
+        BROWSER_CACHE.set(cacheKey, parsed);
+        return parsed.data as T[];
+      }
+    }
+  } catch (e) {}
+
+  // 3. Fetch (Heavy)
+  const first = await fetchWithCache<any>(`${basePath}?limit=${perPage}&page=1`, true);
   const totalItems: number = first?.pagination?.total_items ?? 0;
   const totalPages = Math.ceil(totalItems / perPage);
 
   let allData: T[] = [...(first?.data ?? [])];
 
   if (totalPages > 1) {
-    // Fetch semua halaman sisanya secara paralel, batch 20 halaman sekaligus
-    const BATCH = 20;
+    const BATCH = 15; // Reduce batch size slightly to be kinder to BKN
     for (let start = 2; start <= totalPages; start += BATCH) {
       const end = Math.min(start + BATCH - 1, totalPages);
       const pageNumbers = Array.from({ length: end - start + 1 }, (_, i) => start + i);
       const results = await Promise.all(
-        pageNumbers.map(p => fetchWithCache<any>(`${basePath}?limit=${perPage}&page=${p}`))
+        pageNumbers.map(p => fetchWithCache<any>(`${basePath}?limit=${perPage}&page=${p}`, true))
       );
       results.forEach(r => {
         if (r?.data) allData = allData.concat(r.data);
@@ -59,7 +94,10 @@ async function fetchAllPages<T>(basePath: string, perPage = 100): Promise<T[]> {
     }
   }
 
-  BROWSER_CACHE.set(cacheKey, { data: allData, timestamp: Date.now() });
+  const entry = { data: allData, timestamp: Date.now() };
+  BROWSER_CACHE.set(cacheKey, entry);
+  try { localStorage.setItem(cacheKey, JSON.stringify(entry)); } catch (e) {}
+  
   return allData;
 }
 

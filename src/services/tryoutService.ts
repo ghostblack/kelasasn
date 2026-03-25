@@ -12,6 +12,18 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { TryoutPackage, UserTryout, TryoutResult, UserStats } from '@/types';
+import { notifyAdminPayment } from './paymentService';
+
+export interface TryoutFeedback {
+  id?: string;
+  userId: string;
+  userName: string;
+  tryoutId: string;
+  tryoutName: string;
+  whatIsGood: string;
+  whatIsMissing: string;
+  createdAt: any;
+}
 
 export const getAllTryouts = async (): Promise<TryoutPackage[]> => {
   try {
@@ -99,6 +111,9 @@ export const purchaseTryout = async (
 
   console.log('Checking if tryout already purchased...', { userId, tryoutId });
 
+  const tryoutData = await getTryoutById(tryoutId);
+  const isBundle = tryoutData?.isBundle || false;
+
   const q = query(
     userTryoutsRef,
     where('userId', '==', userId),
@@ -117,13 +132,39 @@ export const purchaseTryout = async (
     tryoutId,
     tryoutName,
     purchaseDate: serverTimestamp(),
-    status: 'not_started',
+    status: isBundle ? 'completed' : 'not_started',
     paymentStatus: 'success',
     transactionId: `TRX-${Date.now()}`,
     attempts: 0,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
+
+  if (isBundle && tryoutData?.includedTryoutIds) {
+    console.log('Tryout is a bundle, adding included tryouts...', tryoutData.includedTryoutIds);
+    for (const incId of tryoutData.includedTryoutIds) {
+      const incData = await getTryoutById(incId);
+      if (incData) {
+        const incQ = query(userTryoutsRef, where('userId', '==', userId), where('tryoutId', '==', incId));
+        const incExisting = await getDocs(incQ);
+        if (incExisting.empty) {
+          await addDoc(userTryoutsRef, {
+            userId,
+            tryoutId: incId,
+            tryoutName: incData.name,
+            purchaseDate: serverTimestamp(),
+            status: 'not_started',
+            paymentStatus: 'success',
+            transactionId: `TRX-${Date.now()}-BNDL`,
+            bundleId: tryoutId,
+            attempts: 0,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          });
+        }
+      }
+    }
+  }
 
   console.log('Tryout purchased successfully, document ID:', docRef.id);
 
@@ -136,6 +177,15 @@ export const purchaseTryout = async (
   }
 
   console.log('Purchase verified successfully');
+
+  // 4. Notify admin (Async, don't block)
+  notifyAdminPayment({
+    customerName: 'User (Claim/Free)',
+    tryoutName: tryoutName,
+    amount: isBundle ? 0 : 0, // It's free if using purchaseTryout directly
+    reference: `FREE-${docRef.id}`,
+  }).catch(err => console.error('Failed to notify bundle purchase:', err));
+
   return docRef.id;
 };
 
@@ -232,9 +282,6 @@ export const getUserStats = async (userId: string): Promise<UserStats> => {
     totalMaxScore += maxScore;
   });
 
-  const averageScorePercentage = results.length > 0 ? (totalWeightedScore / totalMaxScore) * 100 : 0;
-  const highestScorePercentage = (highestScore / highestMaxScore) * 100;
-
   return {
     totalTryouts: tryouts.length,
     highestScore: Math.round(highestScore),
@@ -257,4 +304,34 @@ export const toggleTryoutStatus = async (tryoutId: string): Promise<void> => {
     isActive: !currentStatus,
     updatedAt: serverTimestamp(),
   });
+};
+
+export const submitTryoutFeedback = async (feedback: Omit<TryoutFeedback, 'id' | 'createdAt'>): Promise<void> => {
+  try {
+    const feedbacksRef = collection(db, 'tryout_feedbacks');
+    await addDoc(feedbacksRef, {
+      ...feedback,
+      createdAt: serverTimestamp(),
+    });
+  } catch (error) {
+    console.error('Error in submitTryoutFeedback:', error);
+    throw error;
+  }
+};
+
+export const getAllFeedbacks = async (): Promise<TryoutFeedback[]> => {
+  try {
+    const feedbacksRef = collection(db, 'tryout_feedbacks');
+    const q = query(feedbacksRef, orderBy('createdAt', 'desc'));
+    const snapshot = await getDocs(q);
+
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate() || new Date(),
+    })) as TryoutFeedback[];
+  } catch (error) {
+    console.error('Error in getAllFeedbacks:', error);
+    throw error;
+  }
 };

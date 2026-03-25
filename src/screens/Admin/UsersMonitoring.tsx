@@ -11,13 +11,14 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Search, Users, CheckCircle2, Clock, Calendar, User, Mail, Eye, Trash2 } from 'lucide-react';
+import { Loader2, Search, Users, CheckCircle2, Clock, User, Eye, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { userMonitoringService, UserMonitoringData } from '@/services/userMonitoringService';
 import { userService } from '@/services/userService';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
+import { cn } from '@/lib/utils';
 
 export const UsersMonitoring: React.FC = () => {
   const { toast } = useToast();
@@ -30,6 +31,10 @@ export const UsersMonitoring: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [confirmingDeleteUserId, setConfirmingDeleteUserId] = useState<string | null>(null);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     loadUsers();
@@ -37,7 +42,14 @@ export const UsersMonitoring: React.FC = () => {
 
   useEffect(() => {
     filterUsers();
+    setCurrentPage(1); // Reset to first page on search/sort
   }, [searchQuery, users, sortOrder]);
+
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const currentUsers = filteredUsers.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   const loadUsers = async () => {
     try {
@@ -241,90 +253,80 @@ export const UsersMonitoring: React.FC = () => {
           </Select>
         </div>
 
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader className="bg-gray-50/50">
-              <TableRow className="border-gray-100 hover:bg-transparent">
-                <TableHead className="text-[10px] font-bold text-gray-400 uppercase tracking-widest py-4">Pengguna</TableHead>
-                <TableHead className="text-[10px] font-bold text-gray-400 uppercase tracking-widest py-4">Credentials</TableHead>
-                <TableHead className="text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest py-4">Total</TableHead>
-                <TableHead className="text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest py-4">Done</TableHead>
-                <TableHead className="text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest py-4">Active</TableHead>
-                <TableHead className="text-[10px] font-bold text-gray-400 uppercase tracking-widest py-4">Last Sync</TableHead>
-                <TableHead className="text-right text-[10px] font-bold text-gray-400 uppercase tracking-widest py-4 px-6">Actions</TableHead>
+        <div className="overflow-x-auto overflow-y-hidden">
+          <Table className="border-collapse border border-gray-100 font-mono">
+            <TableHeader className="bg-gray-50/80">
+              <TableRow className="hover:bg-transparent border-gray-100">
+                <TableHead className="w-12 text-center text-[10px] font-bold uppercase text-gray-500 border-r border-gray-100 h-10">No</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase text-gray-900 border-r border-gray-100 h-10 px-4">Pengguna</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase text-gray-500 border-r border-gray-100 h-10 px-4">Akses Tryout</TableHead>
+                <TableHead className="text-center text-[10px] font-bold uppercase text-gray-900 border-r border-gray-100 h-10 px-2">Done</TableHead>
+                <TableHead className="text-center text-[10px] font-bold uppercase text-orange-600 border-r border-gray-100 h-10 px-2">Active</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase text-gray-400 border-r border-gray-100 h-10 px-4">Last Activity</TableHead>
+                <TableHead className="text-right text-[10px] font-bold uppercase text-gray-900 h-10 pr-6">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredUsers.length === 0 ? (
+              {currentUsers.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-12 text-gray-400 text-sm">
                     {searchQuery ? 'No matching records found' : 'No user data available'}
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredUsers.map((userData) => (
-                  <TableRow key={userData.user.uid} className="border-gray-50 hover:bg-gray-50/50 transition-colors">
-                    <TableCell className="py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="bg-gray-100 rounded-full w-9 h-9 flex items-center justify-center border border-gray-200">
-                          <User className="w-4 h-4 text-gray-500" />
+                currentUsers.map((userData, index) => (
+                  <TableRow key={userData.user.uid} className="hover:bg-blue-50/50 border-gray-100 transition-colors h-11 group">
+                    <TableCell className="text-center text-[10px] text-gray-400 border-r border-gray-100 py-1 font-bold">
+                      {(currentPage - 1) * itemsPerPage + index + 1}
+                    </TableCell>
+                    <TableCell className="border-r border-gray-100 py-1 px-4">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-black text-gray-900 uppercase truncate max-w-[180px] leading-tight">{userData.user.displayName}</span>
+                          <span className="text-[9px] font-medium text-gray-400 truncate max-w-[180px]">{userData.user.email}</span>
                         </div>
-                        <div>
-                          <p className="text-sm font-bold text-gray-900">{userData.user.displayName}</p>
-                          {userData.user.username && (
-                            <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">@{userData.user.username}</p>
-                          )}
-                        </div>
+                    </TableCell>
+                    <TableCell className="border-r border-gray-100 py-1 px-4 min-w-[200px]">
+                      <div className="flex flex-wrap gap-1">
+                        {userData.accessibleTryouts.length > 0 ? (
+                          userData.accessibleTryouts.map((name, i) => (
+                            <Badge key={i} className="bg-blue-50 text-blue-600 border-blue-100 text-[8px] font-black uppercase tracking-tighter rounded-none py-0 h-4">
+                              {name}
+                            </Badge>
+                          ))
+                        ) : (
+                          <span className="text-[9px] text-gray-300 font-bold uppercase italic">No Access</span>
+                        )}
                       </div>
                     </TableCell>
-                    <TableCell className="py-4">
-                      <div className="flex items-center gap-2 text-gray-500">
-                        <Mail className="w-3.5 h-3.5" />
-                        <span className="text-xs font-medium">{userData.user.email}</span>
-                      </div>
+                    <TableCell className="text-center text-[10px] text-gray-900 border-r border-gray-100 py-1 font-black">
+                      {userData.completedTryouts}
                     </TableCell>
-                    <TableCell className="text-center py-4">
-                      <span className="text-xs font-bold text-gray-900">{userData.totalTryouts}</span>
+                    <TableCell className="text-center text-[10px] text-orange-600 border-r border-gray-100 py-1 font-black">
+                      {userData.inProgressTryouts}
                     </TableCell>
-                    <TableCell className="text-center py-4">
-                      <Badge className="bg-green-50 text-green-600 rounded-none border-none text-[10px] font-bold tracking-tighter">
-                        {userData.completedTryouts} COMPLETED
-                      </Badge>
+                    <TableCell className="border-r border-gray-100 py-1 px-4">
+                       <span className="text-[10px] text-gray-400 font-bold uppercase truncate block w-full tracking-tighter">
+                          {formatDate(userData.lastActivity)}
+                       </span>
                     </TableCell>
-                    <TableCell className="text-center py-4">
-                      <Badge className="bg-orange-50 text-orange-600 rounded-none border-none text-[10px] font-bold tracking-tighter">
-                        {userData.inProgressTryouts} ACTIVE
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="py-4">
-                      <div className="flex items-center gap-2 text-gray-400">
-                        <Calendar className="w-3.5 h-3.5" />
-                        <span className="text-xs font-medium">{formatDate(userData.lastActivity)}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right py-4 px-6">
-                      <div className="flex items-center justify-end gap-2">
+                    <TableCell className="text-right py-1 pr-4">
+                      <div className="flex items-center justify-end gap-1">
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleViewDetails(userData)}
-                          className="rounded-none h-9 text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-gray-900 hover:bg-gray-50"
+                          className="h-7 w-7 p-0 text-gray-400 hover:text-blue-600 hover:bg-white rounded-none border border-transparent hover:border-blue-100"
                         >
-                          <Eye className="w-3.5 h-3.5 mr-2" />
-                          Details
+                          <Eye className="w-3.5 h-3.5" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
                           disabled={deletingIds.has(userData.user.uid)}
                           onClick={() => setConfirmingDeleteUserId(userData.user.uid)}
-                          className="rounded-none h-9 w-9 p-0 text-red-400 hover:text-red-600 hover:bg-red-50"
+                          className="h-7 w-7 p-0 text-gray-400 hover:text-red-600 hover:bg-white rounded-none border border-transparent hover:border-red-100"
                         >
-                          {deletingIds.has(userData.user.uid) ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <Trash2 className="w-3.5 h-3.5" />
-                          )}
+                          <Trash2 className="w-3.5 h-3.5" />
                         </Button>
                       </div>
                     </TableCell>
@@ -334,6 +336,53 @@ export const UsersMonitoring: React.FC = () => {
             </TableBody>
           </Table>
         </div>
+
+        {/* Formasi-style Pagination */}
+        {totalPages > 1 && (
+          <div className="p-6 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-center gap-4 font-mono">
+            <div className="flex items-center shadow-sm">
+              <Button
+                variant="outline"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(prev => prev - 1)}
+                className="w-10 h-10 p-0 rounded-none border-gray-200 bg-white text-gray-900 hover:bg-gray-50 disabled:opacity-20"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              
+              {[...Array(totalPages)].map((_, i) => (
+                <Button
+                  key={i + 1}
+                  variant="outline"
+                  onClick={() => setCurrentPage(i + 1)}
+                  className={cn(
+                    "w-10 h-10 p-0 rounded-none border-l-0 border-gray-200 font-black text-xs transition-all",
+                    currentPage === i + 1 ? "bg-blue-600 text-white border-blue-600 shadow-inner" : "bg-white text-gray-400 hover:bg-gray-50"
+                  )}
+                >
+                  {i + 1}
+                </Button>
+              ))}
+
+              <Button
+                variant="outline"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(prev => prev + 1)}
+                className="w-10 h-10 p-0 rounded-none border-l-0 border-gray-200 bg-white text-gray-900 hover:bg-gray-50 disabled:opacity-20"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">PAGE:</span>
+              <div className="w-12 h-10 bg-white border border-gray-200 flex items-center justify-center text-xs font-black text-gray-900">
+                {currentPage}
+              </div>
+              <span className="text-[10px] text-gray-300 font-bold uppercase">OF {totalPages}</span>
+            </div>
+          </div>
+        )}
       </Card>
 
       <Dialog open={showDetailModal} onOpenChange={setShowDetailModal}>

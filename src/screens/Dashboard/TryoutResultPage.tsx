@@ -1,17 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { getTryoutById, getUserResultsByTryout } from '@/services/tryoutService';
-import { getQuestionsByIds, getTryoutQuestionIds } from '@/services/questionService';
-import { TryoutResult, TryoutPackage, Question } from '@/types';
+import { getTryoutById, getUserResultsByTryout, submitTryoutFeedback } from '@/services/tryoutService';
+import { useToast } from '@/hooks/use-toast';
+import { Textarea } from '@/components/ui/textarea';
+import { TryoutResult, TryoutPackage } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Separator } from '@/components/ui/separator';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LoadingScreen } from '@/components/ui/spinner';
-import { Trophy, BookOpen, TrendingUp, Award, ArrowLeft } from 'lucide-react';
+import { BookOpen, TrendingUp, Award, ArrowLeft } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export const TryoutResultPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -21,8 +19,12 @@ export const TryoutResultPage: React.FC = () => {
   const [result, setResult] = useState<TryoutResult | null>(null);
   const [allResults, setAllResults] = useState<TryoutResult[]>([]);
   const [tryout, setTryout] = useState<TryoutPackage | null>(null);
-  const [questions, setQuestions] = useState<Question[]>([]);
   const [selectedAttempt, setSelectedAttempt] = useState<number>(0);
+  const [feedbackGood, setFeedbackGood] = useState('');
+  const [feedbackMissing, setFeedbackMissing] = useState('');
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (authLoading) {
@@ -55,11 +57,6 @@ export const TryoutResultPage: React.FC = () => {
       const tryoutData = await getTryoutById(id);
       setTryout(tryoutData);
 
-      if (tryoutData) {
-        const allQuestionIds = await getTryoutQuestionIds(id);
-        const questionsData = await getQuestionsByIds(allQuestionIds);
-        setQuestions(questionsData);
-      }
     } catch (error) {
       console.error('Error loading result:', error);
     } finally {
@@ -67,22 +64,43 @@ export const TryoutResultPage: React.FC = () => {
     }
   };
 
-  const getScoreColor = (score: number, maxScore: number): string => {
-    const percentage = (score / maxScore) * 100;
-    if (percentage >= 80) return 'text-green-600';
-    if (percentage >= 60) return 'text-blue-600';
-    if (percentage >= 40) return 'text-orange-600';
-    return 'text-red-600';
-  };
+  const handleFeedbackSubmit = async () => {
+    if (!id || !user || !tryout) return;
+    if (!feedbackGood.trim() && !feedbackMissing.trim()) {
+      toast({
+        title: "Input Kosong",
+        description: "Silakan isi feedback Anda",
+        variant: "destructive",
+      });
+      return;
+    }
 
-  const getScoreBgColor = (score: number, maxScore: number): string => {
-    const percentage = (score / maxScore) * 100;
-    if (percentage >= 80) return 'bg-green-50';
-    if (percentage >= 60) return 'bg-blue-50';
-    if (percentage >= 40) return 'bg-orange-50';
-    return 'bg-red-50';
+    try {
+      setSubmittingFeedback(true);
+      await submitTryoutFeedback({
+        userId: user.uid,
+        userName: user.displayName || 'Anonymous',
+        tryoutId: id,
+        tryoutName: tryout.name,
+        whatIsGood: feedbackGood,
+        whatIsMissing: feedbackMissing,
+      });
+      setFeedbackSubmitted(true);
+      toast({
+        title: "Terima Kasih",
+        description: "Feedback Anda telah berhasil dikirim",
+      });
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+      toast({
+        title: "Gagal Mengirim",
+        description: "Terjadi kesalahan saat mengirim feedback",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmittingFeedback(false);
+    }
   };
-
 
   if (loading) {
     return <LoadingScreen message="Memuat hasil try out..." type="spinner" fullScreen overlay />;
@@ -106,7 +124,6 @@ export const TryoutResultPage: React.FC = () => {
 
   const twkTotal = tryout.twkQuestions || 30;
   const tiuTotal = tryout.tiuQuestions || 35;
-  const tkpTotal = tryout.tkpQuestions || 45;
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -279,6 +296,65 @@ export const TryoutResultPage: React.FC = () => {
           Kembali ke List
         </Button>
       </div>
+
+      {tryout.category === 'free' && (
+        <div className="border rounded-lg p-6 bg-white mt-12 bg-gradient-to-br from-blue-50/50 to-white">
+          <div className="flex items-center gap-2 mb-6">
+            <TrendingUp className="w-5 h-5 text-blue-600" />
+            <h3 className="text-lg font-semibold text-gray-900">Bantu Kami Berkembang</h3>
+          </div>
+
+          {feedbackSubmitted ? (
+            <div className="text-center py-8">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-100 text-green-600 mb-4">
+                <Award className="w-6 h-6" />
+              </div>
+              <h4 className="text-lg font-medium text-gray-900 mb-2">Terima Kasih Atas Feedback Anda!</h4>
+              <p className="text-sm text-gray-500">Feedback Anda sangat berharga bagi kami untuk terus meningkatkan kualitas platform KelasASN.</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <p className="text-sm text-gray-600 leading-relaxed">
+                Karena ini adalah <span className="font-bold text-blue-600 underline decoration-blue-200 decoration-2">Try Out Gratis</span>, kami sangat menghargai jika Anda bersedia memberikan testimoni singkat untuk membantu kami memperbanyak try out gratis lainnya.
+              </p>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-2 block">
+                    Apa yang sudah bagus dari Try Out ini? (Testimoni)
+                  </label>
+                  <Textarea
+                    placeholder="Contoh: Soal-soalnya sangat relevan dengan kisi-kisi CPNS terbaru..."
+                    value={feedbackGood}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFeedbackGood(e.target.value)}
+                    className="min-h-[100px] border-gray-200 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-2 block">
+                    Apa yang masih kurang atau perlu kami perbaiki?
+                  </label>
+                  <Textarea
+                    placeholder="Contoh: Pembahasannya kurang mendalam di bagian TIU..."
+                    value={feedbackMissing}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFeedbackMissing(e.target.value)}
+                    className="min-h-[100px] border-gray-200 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                <Button
+                  onClick={handleFeedbackSubmit}
+                  disabled={submittingFeedback}
+                  className="w-full bg-gray-900 hover:bg-black text-white py-6 h-auto text-sm font-bold uppercase tracking-widest transition-all"
+                >
+                  {submittingFeedback ? 'Mengirim...' : 'Kirim Feedback & Testimoni'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

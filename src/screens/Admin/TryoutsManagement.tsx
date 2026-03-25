@@ -8,7 +8,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Edit, Trash2, Eye, EyeOff, FileEdit, RotateCcw } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Plus, Edit, Trash2, Eye, EyeOff, FileEdit, RotateCcw, AlertTriangle } from 'lucide-react';
 import { QuestionRecoveryModal } from '@/components/QuestionRecoveryModal';
 import { deleteAllRankings } from '@/services/rankingService';
 
@@ -18,6 +25,18 @@ export const TryoutsManagement: React.FC = () => {
   const [tryouts, setTryouts] = useState<TryoutPackage[]>([]);
   const [loading, setLoading] = useState(true);
   const [recoveryModal, setRecoveryModal] = useState<{
+    isOpen: boolean;
+    tryoutId: string;
+    tryoutName: string;
+  }>({ isOpen: false, tryoutId: '', tryoutName: '' });
+
+  const [confirmDelete, setConfirmDelete] = useState<{
+    isOpen: boolean;
+    tryoutId: string;
+    tryoutName: string;
+  }>({ isOpen: false, tryoutId: '', tryoutName: '' });
+
+  const [confirmReset, setConfirmReset] = useState<{
     isOpen: boolean;
     tryoutId: string;
     tryoutName: string;
@@ -65,9 +84,13 @@ export const TryoutsManagement: React.FC = () => {
   };
 
   const handleResetRankings = async (tryoutId: string, tryoutName: string) => {
-    if (!confirm(`Yakin ingin mereset semua data ranking untuk "${tryoutName}"? Tindakan ini akan menghapus semua hasil pengerjaan peserta untuk try out ini.`)) return;
+    setConfirmReset({ isOpen: true, tryoutId, tryoutName });
+  };
 
+  const executeResetRankings = async () => {
+    const { tryoutId, tryoutName } = confirmReset;
     try {
+      setConfirmReset(prev => ({ ...prev, isOpen: false }));
       setLoading(true);
       await deleteAllRankings(tryoutId);
       toast({
@@ -87,21 +110,27 @@ export const TryoutsManagement: React.FC = () => {
     }
   };
 
-  const handleDelete = async (tryoutId: string) => {
-    if (!confirm('Yakin ingin menghapus try out ini?')) return;
+  const handleDelete = async (tryoutId: string, tryoutName: string) => {
+    setConfirmDelete({ isOpen: true, tryoutId, tryoutName });
+  };
 
+  const executeDelete = async () => {
+    const { tryoutId } = confirmDelete;
     try {
+      setConfirmDelete(prev => ({ ...prev, isOpen: false }));
+      setLoading(true);
       await deleteDoc(doc(db, 'tryout_packages', tryoutId));
+      console.log('Successfully deleted tryout from Firestore:', tryoutId);
       toast({
         title: 'Berhasil',
         description: 'Try out berhasil dihapus',
       });
       loadData();
     } catch (error) {
-      console.error('Error deleting tryout:', error);
+      console.error('CRITICAL ERROR deleting tryout:', error);
       toast({
         title: 'Error',
-        description: 'Gagal menghapus try out',
+        description: error instanceof Error ? `Gagal: ${error.message}` : 'Gagal menghapus try out',
         variant: 'destructive',
       });
     }
@@ -161,6 +190,11 @@ export const TryoutsManagement: React.FC = () => {
                   <div className="flex-1">
                     <CardTitle className="text-lg font-bold text-gray-900 mb-1 leading-tight">{tryout.name}</CardTitle>
                     <div className="flex flex-wrap gap-2">
+                      {tryout.isBundle && (
+                        <Badge className="bg-purple-100 text-purple-700 border-purple-200 text-[10px] font-bold uppercase tracking-widest leading-none hover:bg-purple-100">
+                          📦 Paket Bundling
+                        </Badge>
+                      )}
                       <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none">{tryout.type}</span>
                       {!tryout.isActive && <span className="text-[10px] font-bold text-red-500 uppercase tracking-widest leading-none">Offline</span>}
                     </div>
@@ -182,9 +216,15 @@ export const TryoutsManagement: React.FC = () => {
                     </div>
                   </div>
                   <div className="bg-gray-50/50 p-4">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Quantity</span>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">
+                      {tryout.isBundle ? 'Contents' : 'Quantity'}
+                    </span>
                     <div className="text-sm font-bold text-gray-900">
-                      {tryout.totalQuestions} <span className="text-[10px] font-medium text-gray-400">Items</span>
+                      {tryout.isBundle ? (
+                        <span>{tryout.includedTryoutIds?.length || 0} <span className="text-[10px] font-medium text-gray-400">Tryouts</span></span>
+                      ) : (
+                        <span>{tryout.totalQuestions} <span className="text-[10px] font-medium text-gray-400">Items</span></span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -193,10 +233,10 @@ export const TryoutsManagement: React.FC = () => {
                   <Button
                     variant="outline"
                     className="w-full rounded-none h-11 border-gray-100 text-[10px] font-bold uppercase tracking-widest hover:bg-gray-50"
-                    onClick={() => navigate(`/admin/tryouts/${tryout.id}/questions`)}
+                    onClick={() => navigate(tryout.isBundle ? `/admin/tryouts/edit/${tryout.id}` : `/admin/tryouts/${tryout.id}/questions`)}
                   >
                     <FileEdit className="w-3.5 h-3.5 mr-2" />
-                    Manage Content
+                    {tryout.isBundle ? 'Manage Bundle' : 'Manage Content'}
                   </Button>
                   
                   <div className="flex gap-2">
@@ -212,7 +252,10 @@ export const TryoutsManagement: React.FC = () => {
                       variant="outline"
                       title="Reset Rankings"
                       className="flex-1 rounded-none h-11 border-gray-100 text-orange-500 hover:bg-orange-50 hover:border-orange-100 transition-all"
-                      onClick={() => handleResetRankings(tryout.id, tryout.name)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleResetRankings(tryout.id, tryout.name);
+                      }}
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
                     </Button>
@@ -226,7 +269,10 @@ export const TryoutsManagement: React.FC = () => {
                     <Button
                       variant="outline"
                       className="w-11 h-11 rounded-none p-0 border-gray-100 text-red-500 hover:bg-red-50 hover:border-red-100"
-                      onClick={() => handleDelete(tryout.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(tryout.id, tryout.name);
+                      }}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>
@@ -251,6 +297,88 @@ export const TryoutsManagement: React.FC = () => {
         tryoutName={recoveryModal.tryoutName}
         onRecoveryComplete={() => loadData()}
       />
+
+      {/* Custom Delete Confirmation Dialog */}
+      <Dialog open={confirmDelete.isOpen} onOpenChange={(open) => setConfirmDelete(prev => ({ ...prev, isOpen: open }))}>
+        <DialogContent className="sm:max-w-[400px] border-none shadow-2xl p-0 overflow-hidden rounded-none">
+          <div className="bg-red-500 p-6 flex flex-col items-center justify-center text-white">
+            <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mb-4">
+               <Trash2 className="w-8 h-8 text-white" />
+            </div>
+            <DialogTitle className="text-xl font-bold text-white uppercase tracking-tight">Hapus Try Out</DialogTitle>
+          </div>
+          <div className="p-8 space-y-6 text-center">
+            <DialogDescription className="text-gray-900 font-medium text-base">
+               Apakah Anda yakin ingin menghapus <span className="font-bold underline">"{confirmDelete.tryoutName}"</span>?
+            </DialogDescription>
+            <div className="bg-red-50 p-4 border border-red-100">
+               <div className="flex items-center gap-2 text-red-600 mb-1">
+                  <AlertTriangle className="w-4 h-4" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest">Warning</span>
+               </div>
+               <p className="text-[11px] text-red-500 leading-relaxed font-medium">
+                  Tindakan ini tidak dapat dibatalkan. Semua data terkait try out ini akan dihapus secara permanen.
+               </p>
+            </div>
+            <DialogFooter className="flex flex-col sm:flex-row gap-3 pt-4 sm:justify-center">
+              <Button 
+                variant="outline" 
+                onClick={() => setConfirmDelete(prev => ({ ...prev, isOpen: false }))}
+                className="rounded-none border-gray-200 h-11 px-8 text-[11px] font-bold uppercase tracking-widest hover:bg-gray-50"
+              >
+                Batal
+              </Button>
+              <Button 
+                onClick={executeDelete}
+                className="bg-red-600 hover:bg-red-700 text-white rounded-none h-11 px-8 text-[11px] font-bold uppercase tracking-widest shadow-sm"
+              >
+                Hapus Sekarang
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Custom Reset Rankings Confirmation Dialog */}
+      <Dialog open={confirmReset.isOpen} onOpenChange={(open) => setConfirmReset(prev => ({ ...prev, isOpen: open }))}>
+        <DialogContent className="sm:max-w-[400px] border-none shadow-2xl p-0 overflow-hidden rounded-none">
+          <div className="bg-orange-500 p-6 flex flex-col items-center justify-center text-white">
+            <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mb-4">
+               <RotateCcw className="w-8 h-8 text-white" />
+            </div>
+            <DialogTitle className="text-xl font-bold text-white uppercase tracking-tight">Reset Ranking</DialogTitle>
+          </div>
+          <div className="p-8 space-y-6 text-center">
+            <DialogDescription className="text-gray-900 font-medium text-base">
+               Ingin mereset seluruh data hasil pengerjaan untuk <span className="font-bold">"{confirmReset.tryoutName}"</span>?
+            </DialogDescription>
+            <div className="bg-orange-50 p-4 border border-orange-100">
+               <div className="flex items-center gap-2 text-orange-600 mb-1">
+                  <AlertTriangle className="w-4 h-4" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest">Caution</span>
+               </div>
+               <p className="text-[11px] text-orange-500 leading-relaxed font-medium">
+                  Seluruh data ranking dan poin peserta akan dihapus. Peserta dapat mengerjakan ulang try out ini dari awal.
+               </p>
+            </div>
+            <DialogFooter className="flex flex-col sm:flex-row gap-3 pt-4 sm:justify-center">
+              <Button 
+                variant="outline" 
+                onClick={() => setConfirmReset(prev => ({ ...prev, isOpen: false }))}
+                className="rounded-none border-gray-200 h-11 px-8 text-[11px] font-bold uppercase tracking-widest hover:bg-gray-50"
+              >
+                Batal
+              </Button>
+              <Button 
+                onClick={executeResetRankings}
+                className="bg-orange-600 hover:bg-orange-700 text-white rounded-none h-11 px-8 text-[11px] font-bold uppercase tracking-widest shadow-sm"
+              >
+                Reset Sekarang
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

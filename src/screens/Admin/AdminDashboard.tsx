@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { LayoutDashboard, BookOpen, LogOut, Menu, Ticket, Users, CreditCard, Search, Command, Bell, User as UserIcon } from 'lucide-react';
+import { LayoutDashboard, BookOpen, LogOut, Menu, Ticket, Users, CreditCard, Search, Command, Bell, User as UserIcon, MessageSquare } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export const AdminDashboard: React.FC = () => {
@@ -36,6 +36,7 @@ export const AdminDashboard: React.FC = () => {
       title: 'ADMINISTRATION',
       items: [
         { path: '/admin/users', icon: Users, label: 'Monitoring Pengguna' },
+        { path: '/admin/feedback', icon: MessageSquare, label: 'Feedback Pengguna' },
       ]
     }
   ];

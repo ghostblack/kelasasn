@@ -37,6 +37,7 @@ import { UsersMonitoring } from "./screens/Admin/UsersMonitoring";
 import { PaymentsManagement } from "./screens/Admin/PaymentsManagement";
 import { FormasiAccessManagement } from "./screens/Admin/FormasiAccessManagement";
 import { QuestionsManagement } from "./screens/Admin/QuestionsManagement";
+import { FeedbackManagement } from "./screens/Admin/FeedbackManagement";
 import { UserTryoutDetails } from "./screens/Admin/UserTryoutDetails";
 import { AuthProvider } from "./contexts/AuthContext";
 import { MaintenanceProvider, useMaintenanceMode } from "./contexts/MaintenanceContext";
@@ -276,6 +277,7 @@ function AppWrapper() {
             <Route path="payments" element={<PaymentsManagement />} />
             <Route path="formasi-access" element={<FormasiAccessManagement />} />
             <Route path="questions" element={<QuestionsManagement />} />
+            <Route path="feedback" element={<FeedbackManagement />} />
           </Route>
         </Routes>
         <Toaster />

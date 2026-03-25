@@ -61,6 +61,12 @@ export default defineConfig({
         secure: true,
         rewrite: (path) => path.replace(/^\/api\/sscasn/, ''),
       },
+      '/api/telegram-notify': {
+        target: 'http://localhost:8888/.netlify/functions/telegram-notify',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api\/telegram-notify/, ''),
+      },
     },
   },
 });

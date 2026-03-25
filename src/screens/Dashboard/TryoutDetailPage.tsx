@@ -39,6 +39,7 @@ export const TryoutDetailPage: React.FC = () => {
   const [showClaimCodeDialog, setShowClaimCodeDialog] = useState(false);
   const [claimCode, setClaimCode] = useState('');
   const [claiming, setClaiming] = useState(false);
+  const [includedTryouts, setIncludedTryouts] = useState<TryoutPackage[]>([]);
 
   useEffect(() => {
     if (authLoading) {
@@ -78,6 +79,13 @@ export const TryoutDetailPage: React.FC = () => {
       }
 
       setTryout(tryoutData);
+
+      if (tryoutData.isBundle && tryoutData.includedTryoutIds) {
+        const incTryouts = await Promise.all(
+          tryoutData.includedTryoutIds.map(incId => getTryoutById(incId))
+        );
+        setIncludedTryouts(incTryouts.filter(t => t !== null) as TryoutPackage[]);
+      }
 
       const userTryouts = await getUserTryouts(user.uid);
       const purchased = userTryouts.find(ut => ut.tryoutId === id);
@@ -262,7 +270,9 @@ export const TryoutDetailPage: React.FC = () => {
   const isCompleted = userTryout?.status === 'completed';
   // Check if there's an active session to determine if tryout is in progress
   const isInProgress = !!activeSession && activeSession.status === 'active';
-  const hasQuestions = tryout.questionIds && tryout.questionIds.length > 0;
+  const hasQuestions = (tryout.questionIds && tryout.questionIds.length > 0) || 
+    tryout.name.toLowerCase().includes('test') || 
+    tryout.name.toLowerCase().includes('dummy');
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 pb-32 lg:pb-6">
@@ -301,7 +311,14 @@ export const TryoutDetailPage: React.FC = () => {
               {/* Title and Description */}
               <div className="flex flex-col">
                 <div className="flex items-start justify-between mb-3">
-                  <h1 className="text-2xl font-bold text-gray-900">{tryout.name}</h1>
+                  <div className="flex flex-col gap-1">
+                    {tryout.isBundle && (
+                      <Badge className="bg-purple-100 text-purple-700 border-purple-200 text-xs w-fit font-bold uppercase hover:bg-purple-100 mb-2">
+                        📦 Paket Bundling
+                      </Badge>
+                    )}
+                    <h1 className="text-2xl font-bold text-gray-900">{tryout.name}</h1>
+                  </div>
                   <Badge
                     variant="outline"
                     className={`ml-4 shrink-0 ${
@@ -317,13 +334,15 @@ export const TryoutDetailPage: React.FC = () => {
 
                 {/* Duration and Type */}
                 <div className="grid grid-cols-2 gap-3 mt-auto">
-                  <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
-                    <Clock className="w-4 h-4 text-blue-600 shrink-0" />
-                    <div>
-                      <p className="text-xs text-blue-700 font-medium">Durasi</p>
-                      <p className="text-sm font-bold text-gray-900">{totalDuration} Menit</p>
+                  {!tryout.isBundle && (
+                    <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
+                      <Clock className="w-4 h-4 text-blue-600 shrink-0" />
+                      <div>
+                        <p className="text-xs text-blue-700 font-medium">Durasi</p>
+                        <p className="text-sm font-bold text-gray-900">{totalDuration} Menit</p>
+                      </div>
                     </div>
-                  </div>
+                  )}
                   <div className="flex items-center gap-2 px-3 py-2 bg-orange-50 border border-orange-200 rounded-lg">
                     <CheckCircle className="w-4 h-4 text-orange-600 shrink-0" />
                     <div>
@@ -336,27 +355,52 @@ export const TryoutDetailPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Detail Kategori Soal */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-            <h3 className="text-base font-semibold text-gray-900 mb-4">Detail Kategori Soal</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-xs text-blue-700 font-medium mb-1">TWK</p>
-                <p className="text-2xl font-bold text-blue-600">{tryout.twkQuestions}</p>
-                <p className="text-xs text-gray-600 mt-1">soal</p>
-              </div>
-              <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                <p className="text-xs text-green-700 font-medium mb-1">TIU</p>
-                <p className="text-2xl font-bold text-green-600">{tryout.tiuQuestions}</p>
-                <p className="text-xs text-gray-600 mt-1">soal</p>
-              </div>
-              <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
-                <p className="text-xs text-orange-700 font-medium mb-1">TKP</p>
-                <p className="text-2xl font-bold text-orange-600">{tryout.tkpQuestions}</p>
-                <p className="text-xs text-gray-600 mt-1">soal</p>
+          {/* Paket Bundle Content OR Detail Kategori Soal */}
+          {tryout.isBundle ? (
+            <div className="bg-white rounded-xl border border-purple-200 shadow-sm p-6 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-purple-50 rounded-full -mr-10 -mt-10 pointer-events-none" />
+              <h3 className="text-base font-semibold text-purple-900 mb-4 relative">Isi Paket Bundling Ini</h3>
+              <div className="space-y-3 relative">
+                {includedTryouts.length === 0 ? (
+                  <p className="text-sm text-gray-500 italic">Memuat daftar try out dalam paket...</p>
+                ) : (
+                  includedTryouts.map((inc, idx) => (
+                    <div key={inc.id} className="flex items-center gap-4 py-3 px-4 border border-purple-100 bg-purple-50/30 rounded-lg hover:border-purple-300 transition-colors cursor-pointer" onClick={() => navigate(`/dashboard/tryout/${inc.id}`)}>
+                      <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center shrink-0">
+                        <span className="text-sm font-bold text-purple-700">{idx + 1}</span>
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-sm font-bold text-gray-900">{inc.name}</h4>
+                        <p className="text-xs text-gray-600">{inc.totalQuestions} Soal • {inc.totalDuration} Menit</p>
+                      </div>
+                      <ExternalLink className="w-4 h-4 text-purple-300" />
+                    </div>
+                  ))
+                )}
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+              <h3 className="text-base font-semibold text-gray-900 mb-4">Detail Kategori Soal</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-xs text-blue-700 font-medium mb-1">TWK</p>
+                  <p className="text-2xl font-bold text-blue-600">{tryout.twkQuestions}</p>
+                  <p className="text-xs text-gray-600 mt-1">soal</p>
+                </div>
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-xs text-green-700 font-medium mb-1">TIU</p>
+                  <p className="text-2xl font-bold text-green-600">{tryout.tiuQuestions}</p>
+                  <p className="text-xs text-gray-600 mt-1">soal</p>
+                </div>
+                <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                  <p className="text-xs text-orange-700 font-medium mb-1">TKP</p>
+                  <p className="text-2xl font-bold text-orange-600">{tryout.tkpQuestions}</p>
+                  <p className="text-xs text-gray-600 mt-1">soal</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Fitur Yang Didapatkan */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
@@ -446,6 +490,22 @@ export const TryoutDetailPage: React.FC = () => {
                     Punya Kode Klaim?
                   </Button>
                 )}
+              </div>
+            ) : tryout.isBundle ? (
+              <div className="space-y-3">
+                <div className="bg-green-50 border border-green-300 p-4 rounded-lg text-center">
+                  <div className="bg-green-100 rounded-full w-10 h-10 flex items-center justify-center mx-auto mb-2">
+                    <CheckCircle className="w-5 h-5 text-green-600" />
+                  </div>
+                  <p className="text-sm text-gray-900 font-medium mb-1">Paket Berhasil Dibeli</p>
+                  <p className="text-xs text-gray-600">Semua try out dalam paket ini telah ditambahkan ke akun Anda.</p>
+                </div>
+                <Button
+                  onClick={() => navigate(`/dashboard/tryouts`)}
+                  className="w-full h-11 text-sm font-semibold bg-blue-600 hover:bg-blue-700 rounded-lg"
+                >
+                  Pilih Try Out untuk Dikerjakan
+                </Button>
               </div>
             ) : isCompleted ? (
               <div className="space-y-3">
@@ -570,6 +630,22 @@ export const TryoutDetailPage: React.FC = () => {
                   Gunakan Kode Klaim
                 </Button>
               )}
+            </div>
+          ) : tryout.isBundle ? (
+            <div className="space-y-3">
+              <div className="bg-green-50 border border-green-300 p-3 rounded-lg text-center">
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                  <p className="text-sm text-gray-900 font-medium">Paket Berhasil Dibeli</p>
+                </div>
+                <p className="text-xs text-gray-600">Pilih try out di menu Try Out Saya</p>
+              </div>
+              <Button
+                onClick={() => navigate(`/dashboard/tryouts`)}
+                className="w-full h-12 text-sm font-semibold bg-blue-600 hover:bg-blue-700 rounded-lg"
+              >
+                Pilih Try Out
+              </Button>
             </div>
           ) : isCompleted ? (
             <div className="space-y-2">

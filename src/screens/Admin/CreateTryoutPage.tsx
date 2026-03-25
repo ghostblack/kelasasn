@@ -10,7 +10,7 @@ import { motion } from 'framer-motion';
 import { collection, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getTryoutById } from '@/services/tryoutService';
+import { getTryoutById, getAllTryouts } from '@/services/tryoutService';
 
 export const CreateTryoutPage: React.FC = () => {
   const { toast } = useToast();
@@ -39,12 +39,25 @@ export const CreateTryoutPage: React.FC = () => {
     passingGradeTIU: 80,
     passingGradeTKP: 166,
     isActive: true,
+    isBundle: false,
+    includedTryoutIds: [] as string[],
   });
 
   const [featureInput, setFeatureInput] = useState('');
+  const [availableTryouts, setAvailableTryouts] = useState<any[]>([]);
 
 
   useEffect(() => {
+    const fetchAvailable = async () => {
+      try {
+        const tryouts = await getAllTryouts();
+        setAvailableTryouts(tryouts.filter(t => !t.isBundle && t.id !== id));
+      } catch (err) {
+        console.error('Failed to load available tryouts', err);
+      }
+    };
+    fetchAvailable();
+
     if (isEditMode && id) {
       loadTryoutData(id);
     }
@@ -82,6 +95,8 @@ export const CreateTryoutPage: React.FC = () => {
         passingGradeTIU: tryout.passingGradeTIU || 80,
         passingGradeTKP: tryout.passingGradeTKP || 166,
         isActive: tryout.isActive,
+        isBundle: tryout.isBundle || false,
+        includedTryoutIds: tryout.includedTryoutIds || [],
       });
 
     } catch (error) {
@@ -162,7 +177,9 @@ export const CreateTryoutPage: React.FC = () => {
           passingGradeTIU: tryoutInfo.passingGradeTIU,
           passingGradeTKP: tryoutInfo.passingGradeTKP,
           isActive: tryoutInfo.isActive,
-          totalQuestions,
+          isBundle: tryoutInfo.isBundle,
+          includedTryoutIds: tryoutInfo.isBundle ? tryoutInfo.includedTryoutIds : [],
+          totalQuestions: tryoutInfo.isBundle ? 0 : totalQuestions,
           updatedAt: serverTimestamp(),
           // JANGAN set questionIds - biarkan tetap existing
         };
@@ -172,12 +189,18 @@ export const CreateTryoutPage: React.FC = () => {
           title: 'Berhasil',
           description: 'Informasi try out berhasil diperbarui',
         });
-        navigate(`/admin/tryouts/${id}/questions`);
+        if (tryoutInfo.isBundle) {
+          navigate('/admin/tryouts');
+        } else {
+          navigate(`/admin/tryouts/${id}/questions`);
+        }
       } else {
         // Saat create: inisialisasi dengan questionIds kosong
         const tryoutData = {
           ...tryoutInfo,
-          totalQuestions,
+          isBundle: tryoutInfo.isBundle,
+          includedTryoutIds: tryoutInfo.isBundle ? tryoutInfo.includedTryoutIds : [],
+          totalQuestions: tryoutInfo.isBundle ? 0 : totalQuestions,
           questionIds: [],
           updatedAt: serverTimestamp(),
         };
@@ -188,9 +211,13 @@ export const CreateTryoutPage: React.FC = () => {
         });
         toast({
           title: 'Berhasil',
-          description: 'Try out berhasil dibuat. Silakan input soal.',
+          description: tryoutInfo.isBundle ? 'Paket Try out berhasil dibuat.' : 'Try out berhasil dibuat. Silakan input soal.',
         });
-        navigate(`/admin/tryouts/${docRef.id}/questions`);
+        if (tryoutInfo.isBundle) {
+          navigate('/admin/tryouts');
+        } else {
+          navigate(`/admin/tryouts/${docRef.id}/questions`);
+        }
       }
     } catch (error) {
       console.error('Error saving tryout:', error);
@@ -314,6 +341,58 @@ export const CreateTryoutPage: React.FC = () => {
               </div>
             </div>
 
+            <div className="flex items-center gap-2 p-4 border border-blue-100 bg-blue-50/50 rounded-xl">
+              <input
+                type="checkbox"
+                id="isBundle"
+                checked={tryoutInfo.isBundle}
+                onChange={(e) => setTryoutInfo({ ...tryoutInfo, isBundle: e.target.checked })}
+                className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
+              />
+              <div>
+                <Label htmlFor="isBundle" className="cursor-pointer font-bold text-blue-900 block mt-0.5">
+                  Jadikan sebagai Paket Bundling
+                </Label>
+                <p className="text-xs text-blue-700 mt-1 pb-0.5">Berisi kumpulan try out satuan. Tidak memiliki soal sendiri.</p>
+              </div>
+            </div>
+
+            {tryoutInfo.isBundle && (
+              <div className="space-y-3 p-5 border border-purple-200 rounded-xl bg-purple-50">
+                <Label className="text-base font-bold text-purple-900">Pilih Try Out untuk Paket Ini</Label>
+                <p className="text-xs text-purple-700 mb-2">Pilih try out mana saja yang akan dimasukkan ke dalam paket ini.</p>
+                <div className="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto p-2 bg-white rounded-lg border border-purple-100">
+                  {availableTryouts.length === 0 ? (
+                    <p className="text-sm text-gray-500 italic p-2">Tidak ada try out satuan yang tersedia.</p>
+                  ) : (
+                    availableTryouts.map(t => (
+                      <div key={t.id} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-md border border-gray-100">
+                        <input
+                          type="checkbox"
+                          id={`bundle-${t.id}`}
+                          checked={tryoutInfo.includedTryoutIds.includes(t.id)}
+                          onChange={(e) => {
+                            const newIds = e.target.checked 
+                              ? [...tryoutInfo.includedTryoutIds, t.id]
+                              : tryoutInfo.includedTryoutIds.filter(id => id !== t.id);
+                            setTryoutInfo({ ...tryoutInfo, includedTryoutIds: newIds });
+                          }}
+                          className="w-4 h-4"
+                        />
+                        <Label htmlFor={`bundle-${t.id}`} className="cursor-pointer flex-1 cursor-pointer">
+                          <span className="font-semibold block">{t.name}</span>
+                          <span className="text-xs text-gray-500">
+                            {t.category === 'free' ? 'Gratis' : `Rp ${t.price.toLocaleString('id-ID')}`}
+                          </span>
+                        </Label>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
+
             <div className="space-y-3 p-5 border border-slate-200 rounded-xl bg-slate-50">
               <Label className="text-base font-bold text-slate-900">Pengaturan Harga</Label>
 
@@ -366,6 +445,8 @@ export const CreateTryoutPage: React.FC = () => {
               </div>
             </div>
 
+            {!tryoutInfo.isBundle && (
+              <>
             <div className="space-y-3 p-5 border border-slate-200 rounded-xl bg-slate-50">
               <Label className="text-base font-bold text-slate-900">Konfigurasi Soal</Label>
 
@@ -443,6 +524,8 @@ export const CreateTryoutPage: React.FC = () => {
                 </div>
               </div>
             </div>
+            </>
+            )}
 
             <div className="space-y-2">
               <Label>Fitur</Label>
@@ -502,7 +585,11 @@ export const CreateTryoutPage: React.FC = () => {
             disabled={saving}
             className="bg-slate-900 hover:bg-slate-800"
           >
-            {saving ? 'Menyimpan...' : isEditMode ? 'Update & Lanjut Input Soal' : 'Simpan & Lanjut Input Soal'}
+            {saving 
+              ? 'Menyimpan...' 
+              : tryoutInfo.isBundle 
+                ? (isEditMode ? 'Update Paket' : 'Buat Paket') 
+                : (isEditMode ? 'Update & Lanjut Input Soal' : 'Simpan & Lanjut Input Soal')}
           </Button>
         </motion.div>
         </motion.div>

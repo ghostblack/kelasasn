@@ -8,6 +8,7 @@ export interface UserMonitoringData {
   completedTryouts: number;
   inProgressTryouts: number;
   lastActivity?: Date;
+  accessibleTryouts: string[];
   tryoutSessions: Array<{
     id: string;
     tryoutId: string;
@@ -85,6 +86,19 @@ export const getUserTryoutResults = async (userId: string): Promise<TryoutResult
   }
 };
 
+export const getUserAccessibleTryouts = async (userId: string): Promise<string[]> => {
+  try {
+    const userTryoutsRef = collection(db, 'user_tryouts');
+    const q = query(userTryoutsRef, where('userId', '==', userId));
+    const snapshot = await getDocs(q);
+
+    return snapshot.docs.map(doc => doc.data().tryoutId);
+  } catch (error) {
+    console.error('Error fetching user accessible tryouts:', error);
+    return [];
+  }
+};
+
 export const getAllUsersWithActivity = async (): Promise<UserMonitoringData[]> => {
   try {
     console.log('Starting to fetch all users with activity...');
@@ -106,12 +120,15 @@ export const getAllUsersWithActivity = async (): Promise<UserMonitoringData[]> =
     const usersWithActivity = await Promise.all(
       users.map(async (user) => {
         try {
-          const [sessions, results] = await Promise.all([
+          const [sessions, results, accessibleIds] = await Promise.all([
             getUserTryoutSessions(user.uid),
-            getUserTryoutResults(user.uid)
+            getUserTryoutResults(user.uid),
+            getUserAccessibleTryouts(user.uid)
           ]);
 
           const inProgressSessions = sessions.filter(s => s.status === 'active' || s.status === 'paused');
+          
+          const accessibleTryouts = accessibleIds.map(id => tryoutsMap.get(id) || 'Unknown Tryout');
 
           const lastActivity = sessions.length > 0
             ? sessions[0].startTime
@@ -134,6 +151,7 @@ export const getAllUsersWithActivity = async (): Promise<UserMonitoringData[]> =
             completedTryouts: results.length,
             inProgressTryouts: inProgressSessions.length,
             lastActivity,
+            accessibleTryouts,
             tryoutSessions,
           };
         } catch (error) {
@@ -144,6 +162,7 @@ export const getAllUsersWithActivity = async (): Promise<UserMonitoringData[]> =
             completedTryouts: 0,
             inProgressTryouts: 0,
             lastActivity: undefined,
+            accessibleTryouts: [],
             tryoutSessions: [],
           };
         }

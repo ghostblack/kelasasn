@@ -31,6 +31,8 @@ export interface TryoutPackage {
   isActive: boolean;
   createdAt: Date;
   questionIds: string[];
+  isBundle?: boolean;
+  includedTryoutIds?: string[];
 }
 
 export interface UserTryout {

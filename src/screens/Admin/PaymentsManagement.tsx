@@ -88,9 +88,16 @@ export const PaymentsManagement: React.FC = () => {
                       <div className="w-1.5 h-1.5 rounded-full bg-orange-500" />
                       <span className="text-[10px] font-bold text-gray-400 capitalize tracking-wider">Revenue & Transactions</span>
                    </div>
-                   <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight leading-none">
-                     Kelola <span className="text-gray-400 font-medium ml-2">Pembayaran</span>
-                   </h1>
+                   <div className="flex items-center gap-3">
+                     <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight leading-none">
+                       Kelola <span className="text-gray-400 font-medium ml-2">Pembayaran</span>
+                     </h1>
+                     {payments.filter(p => p.status === 'PENDING_CONFIRMATION').length > 0 && (
+                       <span className="inline-flex items-center justify-center min-w-[28px] h-7 px-2 bg-red-500 text-white text-xs font-bold rounded-full animate-pulse">
+                         {payments.filter(p => p.status === 'PENDING_CONFIRMATION').length}
+                       </span>
+                     )}
+                   </div>
                    <p className="text-sm text-gray-500 mt-4 leading-relaxed max-w-xl">
                      Verifikasi pembayaran manual, pantau riwayat transaksi, dan kelola status langganan peserta tryout secara real-time.
                    </p>
