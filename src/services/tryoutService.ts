@@ -12,7 +12,6 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { TryoutPackage, UserTryout, TryoutResult, UserStats } from '@/types';
-import { notifyAdminPayment } from './paymentService';
 
 export interface TryoutFeedback {
   id?: string;
@@ -178,13 +177,6 @@ export const purchaseTryout = async (
 
   console.log('Purchase verified successfully');
 
-  // 4. Notify admin (Async, don't block)
-  notifyAdminPayment({
-    customerName: 'User (Claim/Free)',
-    tryoutName: tryoutName,
-    amount: isBundle ? 0 : 0, // It's free if using purchaseTryout directly
-    reference: `FREE-${docRef.id}`,
-  }).catch(err => console.error('Failed to notify bundle purchase:', err));
 
   return docRef.id;
 };

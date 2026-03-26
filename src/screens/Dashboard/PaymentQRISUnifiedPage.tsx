@@ -160,13 +160,6 @@ export const PaymentQRISUnifiedPage: React.FC = () => {
         description: 'Pembayaran berhasil!',
       });
 
-      // Notify Admin
-      notifyAdminPayment({
-        customerName: user.displayName || user.email || 'User',
-        tryoutName: tryout.name,
-        amount: 0,
-        reference: `CLAIM-${claimCode}`,
-      }).catch(err => console.error('Failed to notify claim:', err));
 
       setShowSuccessMessage(true);
       setTimeout(() => {
