@@ -34,8 +34,8 @@ export const DesignLandingPage = (): JSX.Element => {
   return (
     <div className="bg-white w-full flex flex-col">
       <HeaderSection />
-      <MainContentSection />
       <FormasiPreviewSection />
+      <MainContentSection />
       <TrustSection />
       <TryOutSection />
       <TestimonialSection />

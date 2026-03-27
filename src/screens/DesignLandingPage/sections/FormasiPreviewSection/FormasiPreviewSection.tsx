@@ -3,7 +3,7 @@ import { Badge } from "../../../../components/ui/badge";
 import { Button } from "../../../../components/ui/button";
 import { Card, CardContent } from "../../../../components/ui/card";
 import { useScrollAnimation } from "../../../../hooks/useScrollAnimation";
-import { Lock, MapPin, ArrowRight } from "lucide-react";
+import { Lock, MapPin } from "lucide-react";
 
 const mockFormasi = [
   {
@@ -190,14 +190,16 @@ export const FormasiPreviewSection = (): JSX.Element => {
 
             <Button
               onClick={() => navigate("/login")}
-              className="group inline-flex items-center justify-center gap-4 pl-6 pr-1 py-1 h-auto bg-[#050505] hover:bg-[#050505]/90 rounded-[32px] overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-lg active:scale-95"
+              className="group inline-flex items-center justify-center gap-3 pl-5 pr-1 py-1 h-auto bg-[#050505] hover:bg-[#050505]/90 rounded-[32px] overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-lg active:scale-95"
             >
               <span className="[font-family:'PP_Neue_Montreal-Medium',Helvetica] font-medium text-white text-lg tracking-[0] leading-6 whitespace-nowrap">
                 Lihat Semua Formasi CPNS 2026
               </span>
-              <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center ml-1 flex-shrink-0 group-hover:scale-110 transition-transform">
-                <ArrowRight className="w-5 h-5 text-[#1f1f1f] group-hover:translate-x-0.5 transition-transform" />
-              </div>
+              <img
+                className="w-12 h-12 transition-transform duration-300 group-hover:-rotate-45"
+                alt="Lihat formasi"
+                src="/sign-up-icon-container.svg"
+              />
             </Button>
           </div>
         </div>
