@@ -11,6 +11,7 @@ import { AnimatedTextSwitcher } from "../../../../components/AnimatedTextSwitche
 const navItems = [
   { label: "Home", href: "#home" },
   { label: "Fitur Unggulan", href: "#fitur-unggulan" },
+  { label: "Data Formasi", href: "#formasi-preview" },
   { label: "Paket Tryout", href: "#paket-tryout" },
   { label: "Testimonial", href: "#testimonial" },
   { label: "FAQ", href: "#faq" },
