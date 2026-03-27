@@ -9,6 +9,7 @@ import { MainContentSection } from "./sections/MainContentSection";
 import { TestimonialSection } from "./sections/TestimonialSection";
 import { TryOutSection } from "./sections/TryOutSection";
 import { TrustSection } from "./sections/TrustSection";
+import { FormasiPreviewSection } from "./sections/FormasiPreviewSection/FormasiPreviewSection";
 
 export const DesignLandingPage = (): JSX.Element => {
   const { user, loading } = useAuth();
@@ -34,6 +35,7 @@ export const DesignLandingPage = (): JSX.Element => {
     <div className="bg-white w-full flex flex-col">
       <HeaderSection />
       <MainContentSection />
+      <FormasiPreviewSection />
       <TrustSection />
       <TryOutSection />
       <TestimonialSection />
