@@ -57,20 +57,18 @@ function MaintenanceGuard({ children }: { children: React.ReactNode }) {
   const { isMaintenance, maintenanceMessage, loading: mLoading } = useMaintenanceMode();
   const { isAdmin, loading: aLoading } = useAuth();
 
-  // Izinkan akses jika di localhost (untuk development/testing)
-  const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  // Izinkan akses jika di localhost atau ngrok (untuk development/testing)
+  const isLocal = window.location.hostname === 'localhost' || 
+                  window.location.hostname === '127.0.0.1' ||
+                  window.location.hostname.includes('ngrok-free.app');
   
-  // Izinkan akses ke halaman login agar admin bisa masuk
-  const isAuthPath = window.location.pathname.includes('login');
-
   if (mLoading || aLoading) return null; 
   
   // Tampilkan halaman maintenance HANYA jika:
   // 1. Sedang maintenance
-  // 2. BUKAN di lingkungan lokal
+  // 2. BUKAN di lingkungan lokal/ngrok
   // 3. User BUKAN admin
-  // 4. BUKAN halaman login
-  if (isMaintenance && !isLocal && !isAdmin && !isAuthPath) {
+  if (isMaintenance && !isLocal && !isAdmin) {
     return <MaintenancePage message={maintenanceMessage} />;
   }
   

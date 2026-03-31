@@ -74,11 +74,20 @@ export const HomePage = () => {
         setTryouts(userTryouts.slice(0, 5));
         const activeTryouts = availableTryouts.filter(tryout => tryout.isActive === true || tryout.isDraft === true);
         activeTryouts.sort((a, b) => {
+          // 1. Prioritaskan Paket Bundling
+          if (a.isBundle && !b.isBundle) return -1;
+          if (!a.isBundle && b.isBundle) return 1;
+
+          // 2. Prioritaskan yang sudah terbeli
           const aPurchased = userTryouts.some(t => t.tryoutId === a.id);
           const bPurchased = userTryouts.some(t => t.tryoutId === b.id);
           if (aPurchased && !bPurchased) return -1;
           if (!aPurchased && bPurchased) return 1;
-          return 0;
+
+          // 3. Berdasarkan tanggal pembuatan (terbaru)
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return dateB - dateA;
         });
         setAllTryouts(activeTryouts);
       } catch (error) {
