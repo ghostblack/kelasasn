@@ -40,8 +40,8 @@ function getConfig() {
   } else {
     // Gunakan kredensial sandbox default jika properties kosong
     return {
-      apiKey: scriptProperties.getProperty('TRIPAY_API_KEY_SANDBOX') || 'DEV-D7T1aMwz66CRCUp1AfMtX28aNnI3kr1CS2FGiWc0',
-      privateKey: scriptProperties.getProperty('TRIPAY_PRIVATE_KEY_SANDBOX') || 'KDo45-rfo1e-eVdb9-uM9LU-rGm4W',
+      apiKey: scriptProperties.getProperty('TRIPAY_API_KEY_SANDBOX') || 'DEV-pnxETy9k3YyvbbzJ6heBhEp6dLuZqQT0yHARLTAy',
+      privateKey: scriptProperties.getProperty('TRIPAY_PRIVATE_KEY_SANDBOX') || '09Kcz-WsrHJ-CcRWU-loP7N-Xght0',
       merchantCode: scriptProperties.getProperty('TRIPAY_MERCHANT_CODE_SANDBOX') || 'T46118',
       baseUrl: 'https://tripay.co.id/api-sandbox',
       environment: 'sandbox'
@@ -171,16 +171,9 @@ function getTransactionDetail(reference) {
  * [FIXED] Membuat output JSON dan menambahkan header CORS
  */
 function createJsonResponse(data) {
-  const output = ContentService
+  return ContentService
     .createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
-
-  // Tambahkan header CORS ke SEMUA respons
-  output.setHeader('Access-Control-Allow-Origin', '*');
-  output.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  output.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  return output;
 }
 
 // ============================================
@@ -387,8 +380,8 @@ function setupScriptProperties() {
   const scriptProperties = PropertiesService.getScriptProperties();
 
   // SANDBOX Configuration
-  scriptProperties.setProperty('TRIPAY_API_KEY_SANDBOX', 'DEV-D7T1aMwz66CRCUp1AfMtX28aNnI3kr1CS2FGiWc0');
-  scriptProperties.setProperty('TRIPAY_PRIVATE_KEY_SANDBOX', 'KDo45-rfo1e-eVdb9-uM9LU-rGm4W');
+  scriptProperties.setProperty('TRIPAY_API_KEY_SANDBOX', 'DEV-pnxETy9k3YyvbbzJ6heBhEp6dLuZqQT0yHARLTAy');
+  scriptProperties.setProperty('TRIPAY_PRIVATE_KEY_SANDBOX', '09Kcz-WsrHJ-CcRWU-loP7N-Xght0');
   scriptProperties.setProperty('TRIPAY_MERCHANT_CODE_SANDBOX', 'T46118');
 
   // PRODUCTION Configuration (kosong dulu, isi nanti saat migrasi)

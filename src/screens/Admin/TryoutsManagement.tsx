@@ -195,8 +195,13 @@ export const TryoutsManagement: React.FC = () => {
                           📦 Paket Bundling
                         </Badge>
                       )}
+                      {tryout.isDraft && (
+                        <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-[10px] font-bold uppercase tracking-widest leading-none hover:bg-blue-100">
+                          🚧 Draft (Lokal)
+                        </Badge>
+                      )}
                       <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none">{tryout.type}</span>
-                      {!tryout.isActive && <span className="text-[10px] font-bold text-red-500 uppercase tracking-widest leading-none">Offline</span>}
+                      {!tryout.isActive && !tryout.isDraft && <span className="text-[10px] font-bold text-red-500 uppercase tracking-widest leading-none">Offline</span>}
                     </div>
                   </div>
                 </div>

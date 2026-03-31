@@ -11,6 +11,7 @@ interface AuthContextType {
   sessionId: string | null;
   showSessionConflict: boolean;
   setShowSessionConflict: (show: boolean) => void;
+  isAdmin: boolean;
   conflictDeviceInfo?: {
     deviceType: string;
     browser: string;
@@ -24,6 +25,7 @@ const AuthContext = createContext<AuthContextType>({
   sessionId: null,
   showSessionConflict: false,
   setShowSessionConflict: () => {},
+  isAdmin: false,
 });
 
 export const useAuth = () => {
@@ -40,6 +42,7 @@ interface AuthProviderProps {
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [showSessionConflict, setShowSessionConflict] = useState(false);
@@ -78,6 +81,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 console.log('AuthContext: Admin user detected');
                 if (isMounted) {
                   setUser(currentUser);
+                  setIsAdmin(true);
                   setSessionId(null);
                   setLoading(false);
                 }
@@ -130,6 +134,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
               if (isMounted) {
                 setUser(currentUser);
+                setIsAdmin(false);
               }
               localStorage.setItem('current_user_id', currentUser.uid);
             } catch (error) {
@@ -148,6 +153,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             console.log('AuthContext: No user logged in');
             if (isMounted) {
               setUser(null);
+              setIsAdmin(false);
               setSessionId(null);
               setLoading(false);
             }
@@ -204,6 +210,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       await signOut(auth);
       setSessionId(null);
       setUser(null);
+      setIsAdmin(false);
     } catch (error) {
       console.error('Error during logout:', error);
       throw error;
@@ -219,6 +226,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         sessionId,
         showSessionConflict,
         setShowSessionConflict,
+        isAdmin,
         conflictDeviceInfo,
       }}
     >

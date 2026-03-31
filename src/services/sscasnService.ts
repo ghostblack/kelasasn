@@ -164,10 +164,35 @@ export const getFormasiById = async (id: string): Promise<SSCASNFormation> => {
   return result?.data;
 };
 
+export const getTukinKL = async (): Promise<any[]> => {
+  const cacheKey = 'sscasn_cache_/tukin-kl';
+  const memCached = BROWSER_CACHE.get('/tukin-kl');
+  if (memCached && Date.now() - memCached.timestamp < METADATA_TTL) return memCached.data;
+  try {
+    const lsCached = localStorage.getItem(cacheKey);
+    if (lsCached) {
+      const parsed = JSON.parse(lsCached);
+      if (Date.now() - parsed.timestamp < METADATA_TTL) {
+        BROWSER_CACHE.set('/tukin-kl', parsed);
+        return parsed.data;
+      }
+    }
+  } catch (e) {}
+  const res = await fetch(`${PROXY_BASE}/tukin-kl`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const json = await res.json();
+  const data = json.data ?? json;
+  const entry = { data, timestamp: Date.now() };
+  BROWSER_CACHE.set('/tukin-kl', entry);
+  try { localStorage.setItem(cacheKey, JSON.stringify(entry)); } catch (e) {}
+  return data;
+};
+
 export const sscasnService = {
   getFormasi,
   getFormasiById,
   getInstansi,
   getJabatan,
   getPendidikan,
+  getTukinKL,
 };

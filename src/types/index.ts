@@ -29,10 +29,16 @@ export interface TryoutPackage {
   passingGradeTIU: number;
   passingGradeTKP: number;
   isActive: boolean;
+  isDraft?: boolean;
   createdAt: Date;
   questionIds: string[];
   isBundle?: boolean;
   includedTryoutIds?: string[];
+  isEarlyBirdActive?: boolean;
+  earlyBirdPrice?: number;
+  earlyBirdQuota?: number;
+  currentSales?: number;
+  releaseDate?: any;
 }
 
 export interface UserTryout {
@@ -222,13 +228,19 @@ export interface PaymentTransaction {
   totalAmount: number;
   reference: string;
   merchantRef: string;
+  tripayReference?: string;
   paymentMethod: string;
   paymentMethodCode: string;
   status: 'UNPAID' | 'PAID' | 'FAILED' | 'EXPIRED' | 'PENDING_CONFIRMATION';
-  payUrl?: string;
-  checkoutUrl?: string;
-  qrUrl?: string;
+  payUrl?: string | null;
+  checkoutUrl?: string | null;
+  qrUrl?: string | null;
+  qrString?: string | null;
+  instructions?: Array<{ title: string; steps: string[] }>;
   proofImageUrl?: string;
+  customerName?: string;
+  customerEmail?: string;
+  customerPhone?: string;
   expiredTime: Date;
   createdAt: Date;
   updatedAt: Date;

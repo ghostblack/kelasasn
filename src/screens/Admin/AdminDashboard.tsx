@@ -43,7 +43,6 @@ export const AdminDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] font-sans antialiased text-gray-900">
-      {/* Top Header */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-100">
         <div className="flex items-center justify-between h-16 px-4 lg:px-8">
           <div className="flex items-center gap-8">

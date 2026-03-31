@@ -3,24 +3,21 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { getTryoutById, purchaseTryout, getUserTryouts, resetTryoutAttempt, getUserResultsByTryout } from '@/services/tryoutService';
 import { getActiveTryoutSession } from '@/services/tryoutSessionService';
-import { validateClaimCode, useClaimCode } from '@/services/claimCodeService';
+import { VIP_BUNDLING_ID, getVIPBundlingSettings, getVIPBundlingStats } from '@/services/vipBundlingService';
 import { TryoutPackage, UserTryout, TryoutSession } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { LoadingScreen } from '@/components/ui/spinner';
 import { useToast } from '@/hooks/use-toast';
-import { Clock, FileText, CircleCheck as CheckCircle, ShoppingCart, Play, CircleAlert as AlertCircle, Gift, Info, ArrowLeft, RotateCcw, Send, Instagram, ExternalLink } from 'lucide-react';
+import { Clock, FileText, CircleCheck as CheckCircle, ShoppingCart, Play, CircleAlert as AlertCircle, Gift, Info, ArrowLeft, RotateCcw, ExternalLink, Star, Key } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Separator } from '@/components/ui/separator';
 
 export const TryoutDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -36,9 +33,9 @@ export const TryoutDetailPage: React.FC = () => {
   const [attempts, setAttempts] = useState<number>(0);
   const [showConfirmationDialog, setShowConfirmationDialog] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
-  const [showClaimCodeDialog, setShowClaimCodeDialog] = useState(false);
-  const [claimCode, setClaimCode] = useState('');
-  const [claiming, setClaiming] = useState(false);
+  const [showFreeClaimDialog, setShowFreeClaimDialog] = useState(false);
+  const [freeClaimChecks, setFreeClaimChecks] = useState({ followIG: false, tagFriends: false, joinTelegram: false });
+  const [freeRedeemCode, setFreeRedeemCode] = useState('');
   const [includedTryouts, setIncludedTryouts] = useState<TryoutPackage[]>([]);
 
   useEffect(() => {
@@ -65,7 +62,45 @@ export const TryoutDetailPage: React.FC = () => {
 
     try {
       setLoading(true);
-      const tryoutData = await getTryoutById(id);
+      let tryoutData: TryoutPackage | null = null;
+
+      if (id === VIP_BUNDLING_ID) {
+        const [settings, stats] = await Promise.all([
+          getVIPBundlingSettings(),
+          getVIPBundlingStats()
+        ]);
+        
+        const isEarlyBird = stats.totalSales < settings.earlyBirdLimit;
+        
+        tryoutData = {
+          id: VIP_BUNDLING_ID,
+          name: 'VIP Bundling All Access CPNS (1 Tahun)',
+          price: settings.regularPrice, 
+          earlyBirdPrice: settings.earlyBirdPrice,
+          earlyBirdQuota: settings.earlyBirdLimit,
+          currentSales: stats.totalSales,
+          isEarlyBirdActive: isEarlyBird,
+          originalPrice: settings.regularPrice,
+          description: 'Akses penuh fitur Formasi CPNS, Instansi CPNS, dan Semua Paket Try Out selama 1 tahun.',
+          isActive: true,
+          category: 'premium',
+          type: 'BOTH',
+          features: ['Akses Formasi CPNS', 'Akses Instansi CPNS', 'Semua Paket Try Out'],
+          totalDuration: 100,
+          twkQuestions: 30,
+          tiuQuestions: 35,
+          tkpQuestions: 45,
+          totalQuestions: 110,
+          passingGradeTWK: 65,
+          passingGradeTIU: 80,
+          passingGradeTKP: 166,
+          questionIds: [],
+          includedTryoutIds: settings.includedTryoutIds || [],
+          createdAt: new Date(),
+        } as TryoutPackage;
+      } else {
+        tryoutData = await getTryoutById(id);
+      }
 
       if (!tryoutData) {
         setTryout(null);
@@ -95,10 +130,10 @@ export const TryoutDetailPage: React.FC = () => {
         const results = await getUserResultsByTryout(user.uid, id);
         setAttempts(results.length);
 
-        // Check for active session
         const session = await getActiveTryoutSession(user.uid, id);
         setActiveSession(session);
       }
+
     } catch (error) {
       console.error('Error loading tryout:', error);
       setTryout(null);
@@ -115,19 +150,45 @@ export const TryoutDetailPage: React.FC = () => {
   const handlePurchase = async () => {
     if (!tryout || !user) return;
 
+    if (tryout.price === 0) {
+      // Show social media requirement modal for free tryouts
+      setFreeClaimChecks({ followIG: false, tagFriends: false, joinTelegram: false });
+      setFreeRedeemCode('');
+      setShowFreeClaimDialog(true);
+      return;
+    }
+
+    // Redirect to QRIS payment for paid tryouts
+    navigate(`/dashboard/payment/${tryout.id}/qris`);
+  };
+
+  const handleConfirmFreeClaim = async () => {
+    if (!tryout || !user) return;
+    if (!freeClaimChecks.followIG || !freeClaimChecks.tagFriends || !freeClaimChecks.joinTelegram || !freeRedeemCode.trim()) return;
+
+    if (freeRedeemCode.trim() !== 'KELASASNGRATIS') {
+      toast({
+        title: 'Kode Tidak Valid',
+        description: 'Kode redeem yang Anda masukkan salah. Hubungi admin via DM IG.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
       setPurchasing(true);
-
-      if (tryout.price === 0) {
-        setShowClaimCodeDialog(true);
-      } else {
-        navigate(`/dashboard/payment/${tryout.id}/qris`);
-      }
+      await purchaseTryout(user.uid, tryout.id, tryout.name);
+      setShowFreeClaimDialog(false);
+      toast({
+        title: '🎉 Berhasil Daftar!',
+        description: 'Try out gratis berhasil ditambahkan ke akun kamu.',
+      });
+      await loadTryoutDetail();
     } catch (error) {
-      console.error('Error purchasing tryout:', error);
+      console.error('Error claiming free tryout:', error);
       toast({
         title: 'Error',
-        description: 'Gagal membeli try out',
+        description: 'Gagal mendaftar try out gratis',
         variant: 'destructive',
       });
     } finally {
@@ -135,67 +196,6 @@ export const TryoutDetailPage: React.FC = () => {
     }
   };
 
-  const handleClaimWithCode = async () => {
-    if (!tryout || !user || !claimCode.trim()) {
-      toast({
-        title: 'Input Diperlukan',
-        description: 'Silakan masukkan kode klaim terlebih dahulu',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    try {
-      setClaiming(true);
-      
-      // 1. Validate code
-      const validation = await validateClaimCode(claimCode.toUpperCase(), user.uid);
-      
-      if (!validation.valid) {
-        toast({
-          title: 'Gagal Klaim',
-          description: validation.message,
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      if (validation.tryoutId !== tryout.id) {
-        toast({
-          title: 'Kode Tidak Sesuai',
-          description: 'Kode ini bukan untuk paket try out ini.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      // 2. Use code
-      await useClaimCode(claimCode.toUpperCase(), user.uid);
-
-      // 3. Purchase (Grant Access)
-      await purchaseTryout(user.uid, tryout.id, tryout.name);
-
-      toast({
-        title: 'Klaim Berhasil!',
-        description: 'Kode klaim berhasil digunakan. Selamat belajar!',
-      });
-
-      setShowClaimCodeDialog(false);
-      setClaimCode('');
-      
-      await new Promise(resolve => setTimeout(resolve, 500));
-      await loadTryoutDetail();
-    } catch (error) {
-      console.error('Error claiming code:', error);
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Gagal menggunakan kode klaim',
-        variant: 'destructive',
-      });
-    } finally {
-      setClaiming(false);
-    }
-  };
 
   const handleStartTryout = () => {
     if (!userTryout) return;
@@ -271,8 +271,23 @@ export const TryoutDetailPage: React.FC = () => {
   // Check if there's an active session to determine if tryout is in progress
   const isInProgress = !!activeSession && activeSession.status === 'active';
   const hasQuestions = (tryout.questionIds && tryout.questionIds.length > 0) || 
+    (tryout.isBundle && tryout.includedTryoutIds && tryout.includedTryoutIds.length > 0) ||
     tryout.name.toLowerCase().includes('test') || 
     tryout.name.toLowerCase().includes('dummy');
+
+  const isEarlyBirdActive = tryout.isEarlyBirdActive && 
+    tryout.earlyBirdQuota && 
+    (tryout.currentSales || 0) < tryout.earlyBirdQuota;
+  
+  const displayPrice = isEarlyBirdActive ? tryout.earlyBirdPrice : tryout.price;
+
+  const isReleased = !tryout.releaseDate || new Date() >= new Date(tryout.releaseDate);
+  const releaseDateText = tryout.releaseDate ? new Date(tryout.releaseDate).toLocaleString('id-ID', { 
+    day: 'numeric', 
+    month: 'short', 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  }) : '';
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 pb-32 lg:pb-6">
@@ -313,8 +328,8 @@ export const TryoutDetailPage: React.FC = () => {
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex flex-col gap-1">
                     {tryout.isBundle && (
-                      <Badge className="bg-purple-100 text-purple-700 border-purple-200 text-xs w-fit font-bold uppercase hover:bg-purple-100 mb-2">
-                        📦 Paket Bundling
+                      <Badge className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-none text-[10px] px-2 py-0.5 font-black uppercase tracking-wider shadow-sm mb-2 w-fit">
+                        💎 VIP BUNDLING
                       </Badge>
                     )}
                     <h1 className="text-2xl font-bold text-gray-900">{tryout.name}</h1>
@@ -373,7 +388,11 @@ export const TryoutDetailPage: React.FC = () => {
                         <h4 className="text-sm font-bold text-gray-900">{inc.name}</h4>
                         <p className="text-xs text-gray-600">{inc.totalQuestions} Soal • {inc.totalDuration} Menit</p>
                       </div>
-                      <ExternalLink className="w-4 h-4 text-purple-300" />
+                      {isPurchased ? (
+                        <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-none shrink-0">Buka</Badge>
+                      ) : (
+                        <ExternalLink className="w-4 h-4 text-purple-300 shrink-0" />
+                      )}
                     </div>
                   ))
                 )}
@@ -433,12 +452,72 @@ export const TryoutDetailPage: React.FC = () => {
         {/* Right Side - Actions */}
         <div className="space-y-4">
           {/* Price Card (if applicable) */}
-          {tryout.price > 0 && (
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-              <p className="text-xs text-gray-600 font-medium mb-2">Harga</p>
-              <p className="text-3xl font-bold text-blue-600 mb-1">
-                Rp {tryout.price.toLocaleString('id-ID')}
+          {/* Price Card */}
+          {displayPrice && displayPrice > 0 && !isPurchased && (
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 relative overflow-hidden group">
+              {isEarlyBirdActive && (
+                <div className="absolute -right-12 top-6 bg-orange-500 text-white px-12 py-1 rotate-45 text-[10px] font-black uppercase tracking-widest shadow-sm z-10">
+                  Early Bird
+                </div>
+              )}
+              <p className="text-xs text-gray-600 font-medium mb-2">
+                {isEarlyBirdActive ? 'Harga Early Bird' : (tryout.originalPrice && tryout.originalPrice > tryout.price) ? 'Harga Promo' : 'Harga'}
               </p>
+              <div className="space-y-1">
+                {isEarlyBirdActive && tryout.price > 0 ? (
+                  <p className="text-sm text-gray-400 line-through leading-none font-medium">
+                    Rp {(tryout.originalPrice || tryout.price).toLocaleString('id-ID')}
+                  </p>
+                ) : tryout.originalPrice && tryout.originalPrice > tryout.price ? (
+                  <p className="text-sm text-gray-400 line-through leading-none font-medium">
+                    Rp {tryout.originalPrice.toLocaleString('id-ID')}
+                  </p>
+                ) : null}
+                <p className="text-3xl font-black text-blue-600 mb-1 tracking-tight">
+                  Rp {(displayPrice || 0).toLocaleString('id-ID')}
+                </p>
+                {isEarlyBirdActive && tryout.earlyBirdQuota && (
+                   <div className="w-full bg-orange-100 h-1.5 rounded-full mt-3 overflow-hidden">
+                      <div 
+                        className="bg-orange-500 h-full rounded-full transition-all duration-500" 
+                        style={{ width: `${Math.min(100, ((tryout.currentSales || 0) / tryout.earlyBirdQuota) * 100)}%` }}
+                      ></div>
+                   </div>
+                )}
+                {isEarlyBirdActive && tryout.earlyBirdQuota && (
+                  <p className="text-[10px] text-orange-600 font-bold mt-1 uppercase tracking-tighter">
+                    Sisa Kuota: {Math.max(0, tryout.earlyBirdQuota - (tryout.currentSales || 0))} paket lagi!
+                  </p>
+                )}
+              </div>
+              {!isReleased && (
+                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-3">
+                  <Clock className="w-5 h-5 text-blue-600 animate-pulse" />
+                  <div>
+                    <p className="text-[10px] font-bold text-blue-700 uppercase tracking-wider leading-none mb-1">Jadwal Rilis</p>
+                    <p className="text-xs font-bold text-gray-900">{releaseDateText}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* VIP Info Card - Desktop */}
+          {tryout.isBundle && !isPurchased && (
+            <div className="hidden lg:block bg-gradient-to-br from-purple-600 to-indigo-700 rounded-xl p-6 text-white shadow-lg overflow-hidden relative group">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl group-hover:scale-110 transition-transform duration-700" />
+              <div className="relative z-10 space-y-4">
+                <div className="flex items-center gap-2">
+                  <Star className="w-5 h-5 text-amber-300 fill-amber-300" />
+                  <span className="text-xs font-black uppercase tracking-widest text-purple-100">Premium Benefit</span>
+                </div>
+                <div>
+                  <h4 className="text-lg font-bold">Dapatkan Akses VIP</h4>
+                  <p className="text-xs text-purple-100/80 mt-1 leading-relaxed">
+                    Buka fitur Formasi & Instansi selama 1 tahun penuh dengan membeli paket bundling ini.
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 
@@ -464,10 +543,19 @@ export const TryoutDetailPage: React.FC = () => {
               <div className="space-y-3">
                 <Button
                   onClick={handlePurchase}
-                  disabled={purchasing}
-                  className="w-full h-11 text-sm font-semibold bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm"
+                  disabled={purchasing || !isReleased}
+                  className={`w-full h-11 text-sm font-semibold rounded-lg shadow-sm transition-all duration-200 ${
+                    !isReleased 
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200 hover:bg-gray-100' 
+                      : 'bg-blue-600 hover:bg-blue-700 text-white'
+                  }`}
                 >
-                  {tryout.price === 0 ? (
+                  {!isReleased ? (
+                    <>
+                      <Clock className="mr-2 h-4 w-4" />
+                      Rilis: {releaseDateText}
+                    </>
+                  ) : tryout.price === 0 ? (
                     <>
                       <Gift className="mr-2 h-4 w-4" />
                       Daftar Gratis
@@ -479,17 +567,6 @@ export const TryoutDetailPage: React.FC = () => {
                     </>
                   )}
                 </Button>
-                
-                {tryout.price > 0 && (
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowClaimCodeDialog(true)}
-                    className="w-full h-11 text-sm font-semibold border-2 border-blue-100 hover:border-blue-200 hover:bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center gap-2 transition-all"
-                  >
-                    <Gift className="h-4 w-4" />
-                    Punya Kode Klaim?
-                  </Button>
-                )}
               </div>
             ) : tryout.isBundle ? (
               <div className="space-y-3">
@@ -549,13 +626,21 @@ export const TryoutDetailPage: React.FC = () => {
                 )}
                 <Button
                   onClick={handleStartTryout}
+                  disabled={!isReleased}
                   className={`w-full h-11 text-sm font-semibold rounded-lg shadow-sm ${
-                    isInProgress
-                      ? 'bg-orange-600 hover:bg-orange-700'
-                      : 'bg-blue-600 hover:bg-blue-700'
+                    !isReleased
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200 hover:bg-gray-100'
+                      : isInProgress
+                        ? 'bg-orange-600 hover:bg-orange-700 text-white'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white'
                   }`}
                 >
-                  {isInProgress ? (
+                  {!isReleased ? (
+                    <>
+                      <Clock className="mr-2 h-4 w-4" />
+                      Rilis: {releaseDateText}
+                    </>
+                  ) : isInProgress ? (
                     <>
                       <RotateCcw className="mr-2 h-4 w-4" />
                       Lanjutkan Try Out
@@ -594,20 +679,36 @@ export const TryoutDetailPage: React.FC = () => {
             </div>
           ) : !isPurchased ? (
             <div className="space-y-3">
-              {tryout.price > 0 && (
+              {displayPrice && displayPrice > 0 && (
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-gray-600 font-medium">Harga:</span>
-                  <span className="text-xl font-bold text-blue-600">
-                    Rp {tryout.price.toLocaleString('id-ID')}
-                  </span>
+                  <span className="text-xs text-gray-600 font-medium">{isEarlyBirdActive ? 'Early Bird' : 'Harga'}:</span>
+                  <div className="text-right">
+                    {isEarlyBirdActive && (
+                      <span className="text-[10px] text-gray-400 line-through block leading-none mb-1">
+                        Rp {tryout.price.toLocaleString('id-ID')}
+                      </span>
+                    )}
+                    <span className="text-xl font-bold text-blue-600">
+                      Rp {(displayPrice || 0).toLocaleString('id-ID')}
+                    </span>
+                  </div>
                 </div>
               )}
               <Button
                 onClick={handlePurchase}
-                disabled={purchasing}
-                className="w-full h-12 text-sm font-semibold bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm"
+                disabled={purchasing || !isReleased}
+                className={`w-full h-12 text-sm font-semibold rounded-lg shadow-sm transition-all duration-200 ${
+                  !isReleased 
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200' 
+                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                }`}
               >
-                {tryout.price === 0 ? (
+                {!isReleased ? (
+                  <>
+                    <Clock className="mr-2 h-4 w-4" />
+                    Rilis {releaseDateText}
+                  </>
+                ) : tryout.price === 0 ? (
                   <>
                     <Gift className="mr-2 h-4 w-4" />
                     Daftar Gratis
@@ -619,17 +720,6 @@ export const TryoutDetailPage: React.FC = () => {
                   </>
                 )}
               </Button>
-              
-              {tryout.price > 0 && (
-                <Button
-                  variant="outline"
-                  onClick={() => setShowClaimCodeDialog(true)}
-                  className="w-full h-12 text-sm font-semibold border-2 border-blue-100 text-blue-600 rounded-lg"
-                >
-                  <Gift className="mr-2 h-4 w-4" />
-                  Gunakan Kode Klaim
-                </Button>
-              )}
             </div>
           ) : tryout.isBundle ? (
             <div className="space-y-3">
@@ -690,13 +780,21 @@ export const TryoutDetailPage: React.FC = () => {
               )}
               <Button
                 onClick={handleStartTryout}
+                disabled={!isReleased}
                 className={`w-full h-12 text-sm font-semibold rounded-lg shadow-sm ${
-                  isInProgress
-                    ? 'bg-orange-600 hover:bg-orange-700'
-                    : 'bg-blue-600 hover:bg-blue-700'
+                  !isReleased
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+                    : isInProgress
+                      ? 'bg-orange-600 hover:bg-orange-700 text-white'
+                      : 'bg-blue-600 hover:bg-blue-700 text-white'
                 }`}
               >
-                {isInProgress ? (
+                {!isReleased ? (
+                  <>
+                    <Clock className="mr-2 h-4 w-4" />
+                    Rilis {releaseDateText}
+                  </>
+                ) : isInProgress ? (
                   <>
                     <RotateCcw className="mr-2 h-4 w-4" />
                     Lanjutkan Try Out
@@ -712,119 +810,6 @@ export const TryoutDetailPage: React.FC = () => {
           )}
         </div>
       </div>
-
-      <Dialog open={showClaimCodeDialog} onOpenChange={setShowClaimCodeDialog}>
-        <DialogContent className="sm:max-w-md max-sm:fixed max-sm:bottom-0 max-sm:top-auto max-sm:left-0 max-sm:right-0 max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-b-none max-sm:rounded-t-3xl max-sm:max-h-[95vh] max-sm:overflow-y-auto max-sm:w-full">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-lg">
-              <Gift className="w-5 h-5 text-blue-600" />
-              Klaim Try Out Gratis
-            </DialogTitle>
-            <DialogDescription>
-              Ikuti langkah-langkah di bawah ini untuk mendapatkan akses gratis melalui kode klaim.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-6 pt-4">
-            {/* Step by Step Instructions */}
-            <div className="space-y-3">
-              <div className="flex items-start gap-4 p-4 bg-gray-50 border border-gray-100 rounded-2xl group hover:border-blue-100 transition-colors">
-                <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
-                  <Instagram className="w-5 h-5 text-white" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-bold text-gray-900 leading-none">1. Follow Instagram</h4>
-                    <a href="https://www.instagram.com/kelasasn.id" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-600">
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </a>
-                  </div>
-                  <p className="text-[11px] font-medium text-gray-500 mt-1.5 leading-relaxed">
-                    Follow akun <span className="text-gray-900 font-bold">@kelasasn.id</span> & <span className="text-gray-900 font-bold">Tag 2 teman</span> di komentar postingan terakhir untuk mendapatkan update materi dan informasi tryout terbaru.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4 p-4 bg-gray-50 border border-gray-100 rounded-2xl group hover:border-blue-100 transition-colors">
-                <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
-                  <Send className="w-5 h-5 text-white ml-[-1px]" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-bold text-gray-900 leading-none">2. Join Telegram</h4>
-                    <a href="https://t.me/KelasASN" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-600">
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </a>
-                  </div>
-                  <p className="text-[11px] font-medium text-gray-500 mt-1.5 leading-relaxed">
-                    Masuk ke grup diskusi <span className="text-gray-900 font-bold">@KelasASN</span> untuk belajar bersama kawan-kawan seperjuangan lainnya.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4 p-4 bg-blue-50/50 border border-blue-100 rounded-2xl">
-                <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
-                  <Info className="w-5 h-5 text-white" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="text-sm font-bold text-gray-900 leading-none">3. Kirim Bukti DM</h4>
-                  <p className="text-[11px] font-medium text-gray-500 mt-1.5 leading-relaxed">
-                    Screenshot bukti follow IG & Join Telegram, kirim melalui <span className="text-blue-600 font-bold underline">DM Instagram Admin</span> untuk mendapatkan <span className="text-blue-600 font-bold">Kode Klaim</span> unik.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <Separator className="bg-gray-100" />
-
-            {/* Code Input */}
-            <div className="space-y-3 pb-4">
-              <Label htmlFor="claim-code" className="text-[11px] font-bold text-gray-400 uppercase tracking-widest ml-1">Masukkan Kode Klaim</Label>
-              <div className="relative group">
-                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-600 transition-colors">
-                  <Gift className="h-4 w-4" />
-                </div>
-                <Input
-                  id="claim-code"
-                  placeholder="CONTOH: KASN2024"
-                  value={claimCode}
-                  onChange={(e) => setClaimCode(e.target.value)}
-                  className="h-12 bg-gray-50 border-gray-100 pl-10 text-sm font-bold tracking-widest focus:bg-white focus:ring-0 focus:border-blue-200 transition-all rounded-xl placeholder:tracking-normal placeholder:font-normal uppercase"
-                  disabled={claiming}
-                />
-              </div>
-              <p className="text-[10px] text-center text-gray-400 font-medium italic">
-                *Satu kode hanya berlaku untuk satu akun
-              </p>
-            </div>
-          </div>
-
-          <DialogFooter className="flex gap-2 sm:gap-2">
-            <Button
-              variant="ghost"
-              onClick={() => setShowClaimCodeDialog(false)}
-              className="flex-1 h-11 text-xs font-bold uppercase tracking-wider text-gray-400 hover:text-gray-600"
-              disabled={claiming}
-            >
-              Nanti Saja
-            </Button>
-            <Button
-              onClick={handleClaimWithCode}
-              disabled={claiming || !claimCode.trim()}
-              className="flex-[2] h-11 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-sm shadow-blue-100"
-            >
-              {claiming ? (
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                  <span>Memproses...</span>
-                </div>
-              ) : (
-                'Klaim Sekarang'
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={showConfirmationDialog} onOpenChange={setShowConfirmationDialog}>
         <DialogContent className="sm:max-w-md max-sm:fixed max-sm:bottom-0 max-sm:top-auto max-sm:left-0 max-sm:right-0 max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-b-none max-sm:rounded-t-3xl max-sm:max-h-[90vh] max-sm:overflow-y-auto max-sm:w-full max-sm:data-[state=open]:animate-slide-in-from-bottom max-sm:data-[state=closed]:animate-slide-out-to-bottom">
@@ -913,6 +898,160 @@ export const TryoutDetailPage: React.FC = () => {
               className="flex-1 bg-blue-600 hover:bg-blue-700"
             >
               Mulai Try Out
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Free Claim Social Media Requirement Dialog */}
+      <Dialog open={showFreeClaimDialog} onOpenChange={setShowFreeClaimDialog}>
+        <DialogContent className="sm:max-w-md max-sm:fixed max-sm:bottom-0 max-sm:top-auto max-sm:left-0 max-sm:right-0 max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-b-none max-sm:rounded-t-3xl max-sm:max-h-[90vh] max-sm:overflow-y-auto max-sm:w-full">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg">
+              <Gift className="w-5 h-5 text-green-600" />
+              Klaim Try Out Gratis
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-3">
+            <p className="text-sm text-gray-600 leading-relaxed">
+              Untuk mendapatkan akses gratis, kamu perlu menyelesaikan 3 langkah berikut terlebih dahulu:
+            </p>
+
+            {/* Step 1: Follow IG */}
+            <div className="bg-pink-50 border border-pink-100 rounded-xl p-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-gradient-to-br from-pink-500 to-purple-600 rounded-lg flex items-center justify-center shrink-0">
+                  <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-gray-900">Follow Instagram @kelasasn</p>
+                  <a
+                    href="https://instagram.com/kelasasn"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-pink-600 hover:text-pink-700 font-medium flex items-center gap-1 mt-1"
+                  >
+                    Buka Instagram <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              </div>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={freeClaimChecks.followIG}
+                  onChange={(e) => setFreeClaimChecks(prev => ({ ...prev, followIG: e.target.checked }))}
+                  className="w-4 h-4 rounded accent-pink-600"
+                />
+                <span className="text-sm text-gray-700">Saya sudah follow @kelasasn ✅</span>
+              </label>
+            </div>
+
+            {/* Step 2: Tag 2 Friends */}
+            <div className="bg-purple-50 border border-purple-100 rounded-xl p-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center shrink-0">
+                  <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-gray-900">Tag 2 Teman di Postingan Terakhir</p>
+                  <a
+                    href="https://instagram.com/kelasasn"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1 mt-1"
+                  >
+                    Buka Postingan Terakhir <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              </div>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={freeClaimChecks.tagFriends}
+                  onChange={(e) => setFreeClaimChecks(prev => ({ ...prev, tagFriends: e.target.checked }))}
+                  className="w-4 h-4 rounded accent-purple-600"
+                />
+                <span className="text-sm text-gray-700">Saya sudah tag 2 teman ✅</span>
+              </label>
+            </div>
+
+            {/* Step 3: Join Telegram */}
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-[#229ED9] rounded-lg flex items-center justify-center shrink-0">
+                  <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-gray-900">Join Grup Telegram KelasASN</p>
+                  <a
+                    href="https://t.me/kelasasn"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 mt-1"
+                  >
+                    Buka Telegram <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              </div>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={freeClaimChecks.joinTelegram}
+                  onChange={(e) => setFreeClaimChecks(prev => ({ ...prev, joinTelegram: e.target.checked }))}
+                  className="w-4 h-4 rounded accent-blue-600"
+                />
+                <span className="text-sm text-gray-700">Saya sudah join Telegram ✅</span>
+              </label>
+            </div>
+
+            {/* Step 4: Kirim Bukti & Redeem */}
+            <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-gray-900 rounded-lg flex items-center justify-center shrink-0 shadow-sm">
+                  <Key className="w-4 h-4 text-white" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-gray-900">Kirim Bukti & Redeem Kode</p>
+                  <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+                    Kirim bukti screenshot langkah 1-3 ke DM Instagram @kelasasn. Admin akan memverifikasi dan membalas dengan kode klaim.
+                  </p>
+                </div>
+              </div>
+              <div className="pt-2">
+                <Input
+                  placeholder="MASUKKAN KODE REDEEM DARI ADMIN"
+                  value={freeRedeemCode}
+                  onChange={(e) => setFreeRedeemCode(e.target.value.toUpperCase())}
+                  className="text-center font-black tracking-widest text-xs h-11 bg-white border-dashed border-2 border-gray-300 focus-visible:border-gray-900 focus-visible:ring-0"
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="flex gap-2 sm:gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowFreeClaimDialog(false)}
+              className="flex-1"
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handleConfirmFreeClaim}
+              disabled={purchasing || !freeClaimChecks.followIG || !freeClaimChecks.tagFriends || !freeClaimChecks.joinTelegram || !freeRedeemCode.trim()}
+              className="flex-1 bg-green-600 hover:bg-green-700"
+            >
+              {purchasing ? 'Memproses...' : 'Klaim Gratis 🎉'}
             </Button>
           </DialogFooter>
         </DialogContent>

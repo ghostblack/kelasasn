@@ -25,8 +25,8 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="w-full max-w-md space-y-4 p-8">
           <div className="text-center mb-4">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <p className="mt-2 text-sm text-gray-600">Memuat...</p>
+            <div className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-blue-600/10 border-t-blue-600"></div>
+            <p className="mt-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Checking Authorization...</p>
           </div>
           <Skeleton className="h-12 w-full" />
           <Skeleton className="h-12 w-full" />

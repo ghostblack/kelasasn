@@ -52,12 +52,20 @@ export const checkUserFormasiAccess = async (userId: string): Promise<boolean> =
       return false;
     }
 
-    const data = userAccessSnap.data() as UserFormasiAccess;
-    // data.expiresAt in Firestore is a Timestamp, but in our type it might be Date.
-    // Let's handle both cases just in case.
-    const expiresAt = data.expiresAt instanceof Timestamp 
-      ? data.expiresAt.toDate() 
-      : new Date(data.expiresAt);
+    const data = userAccessSnap.data();
+    
+    // Support either Timestamp or Date string
+    let expiresAt: Date;
+    if (data.expiresAt instanceof Timestamp) {
+      expiresAt = data.expiresAt.toDate();
+    } else if (typeof data.expiresAt === 'string') {
+      expiresAt = new Date(data.expiresAt);
+    } else if (data.expiresAt?.seconds) {
+      // Fallback for cases where it's a plain object that looks like a Timestamp
+      expiresAt = new Date(data.expiresAt.seconds * 1000);
+    } else {
+      expiresAt = new Date(data.expiresAt);
+    }
 
     if (!expiresAt || isNaN(expiresAt.getTime())) return false;
 
@@ -112,6 +120,24 @@ export const validateFormasiCode = async (
   return { valid: true, message: 'Kode valid', codeId: codeDoc.id, data: codeData };
 };
 
+/**
+ * Grant access to formasi/instansi for a user
+ * @param userId User UID
+ * @param durationInDays Number of days to grant access (default 7 for codes, 365 for VIP)
+ */
+export const grantFormasiAccess = async (userId: string, durationInDays: number = 7): Promise<void> => {
+  const userAccessRef = doc(db, COLLECTION_USERS, userId);
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + durationInDays * 24 * 60 * 60 * 1000);
+
+  await setDoc(userAccessRef, {
+    userId,
+    unlockedAt: serverTimestamp(),
+    expiresAt,
+    durationInDays, // Store duration for reference
+  }, { merge: true });
+};
+
 export const useFormasiCode = async (code: string, userId: string): Promise<void> => {
   const validation = await validateFormasiCode(code, userId);
   
@@ -127,15 +153,7 @@ export const useFormasiCode = async (code: string, userId: string): Promise<void
   });
 
   // 2. Grant 7-day access to user
-  const userAccessRef = doc(db, COLLECTION_USERS, userId);
-  const now = new Date();
-  const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // +7 days
-
-  await setDoc(userAccessRef, {
-    userId,
-    unlockedAt: serverTimestamp(),
-    expiresAt,
-  });
+  await grantFormasiAccess(userId, 7);
 };
 
 export const getAllFormasiCodes = async (): Promise<FormasiAccessCode[]> => {

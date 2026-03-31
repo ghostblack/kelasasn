@@ -10,3 +10,5 @@ export { JabatanPage } from './JabatanPage';
 export { PaymentHistoryPage } from './PaymentHistoryPage';
 export { PaymentQRISCodePage } from './PaymentQRISCodePage';
 export { PaymentQRISUnifiedPage } from './PaymentQRISUnifiedPage';
+export { CPNSInstansiPage } from './CPNSInstansiPage';
+export { CPNSInstansiDetailPage } from './CPNSInstansiDetailPage';

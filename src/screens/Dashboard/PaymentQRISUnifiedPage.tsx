@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { getTryoutById } from '@/services/tryoutService';
+import { getTryoutById, purchaseTryout } from '@/services/tryoutService';
 import { validateClaimCode, useClaimCode } from '@/services/claimCodeService';
 import {
   createQRISPaymentTransaction,
-  confirmPayment,
+  updatePaymentStatus,
   notifyAdminPayment,
 } from '@/services/paymentService';
 import { TryoutPackage } from '@/types';
@@ -14,13 +14,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Download, ArrowLeft, Loader2, CheckCircle2, Clock, ChevronDown, ChevronUp } from 'lucide-react';
-import {
-  collection,
-  addDoc,
-  serverTimestamp,
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { Download, ArrowLeft, Loader2, CheckCircle2, Clock, ChevronDown, ChevronUp, Send } from 'lucide-react';
+import { VIP_BUNDLING_ID, getVIPBundlingSettings, getVIPBundlingStats } from '@/services/vipBundlingService';
 
 const QRIS_IMAGE_URL = 'https://i.imgur.com/QWw8pWy.jpeg';
 
@@ -50,7 +45,44 @@ export const PaymentQRISUnifiedPage: React.FC = () => {
 
     try {
       setLoading(true);
-      const tryoutData = await getTryoutById(tryoutId);
+      let tryoutData: TryoutPackage | null = null;
+      
+      if (tryoutId === VIP_BUNDLING_ID) {
+        const [settings, stats] = await Promise.all([
+          getVIPBundlingSettings(),
+          getVIPBundlingStats()
+        ]);
+        
+        const isEarlyBird = stats.totalSales < settings.earlyBirdLimit;
+        
+        tryoutData = {
+          id: VIP_BUNDLING_ID,
+          name: 'VIP Bundling All Access CPNS (1 Tahun)',
+          price: settings.regularPrice, 
+          earlyBirdPrice: settings.earlyBirdPrice,
+          earlyBirdQuota: settings.earlyBirdLimit,
+          currentSales: stats.totalSales,
+          isEarlyBirdActive: isEarlyBird,
+          originalPrice: settings.regularPrice,
+          description: 'Akses penuh fitur Formasi CPNS, Instansi CPNS, dan Semua Paket Try Out selama 1 tahun.',
+          isActive: true,
+          category: 'premium',
+          type: 'BOTH',
+          features: ['Akses Formasi CPNS', 'Akses Instansi CPNS', 'Semua Paket Try Out'],
+          totalDuration: 100,
+          twkQuestions: 30,
+          tiuQuestions: 35,
+          tkpQuestions: 45,
+          totalQuestions: 110,
+          passingGradeTWK: 65,
+          passingGradeTIU: 80,
+          passingGradeTKP: 166,
+          questionIds: [],
+          createdAt: new Date(),
+        } as TryoutPackage;
+      } else {
+        tryoutData = await getTryoutById(tryoutId);
+      }
 
       if (!tryoutData) {
         throw new Error('Try out tidak ditemukan');
@@ -73,36 +105,57 @@ export const PaymentQRISUnifiedPage: React.FC = () => {
   const handleSudahBayar = async () => {
     if (!user || !tryout) return;
 
+    const isEarlyBirdActive = tryout.isEarlyBirdActive && 
+      tryout.earlyBirdQuota && 
+      (tryout.currentSales || 0) < tryout.earlyBirdQuota;
+    
+    const displayPrice = isEarlyBirdActive && tryout.earlyBirdPrice ? tryout.earlyBirdPrice : tryout.price;
+
     try {
       setSubmitting(true);
 
-      // 1. Create payment transaction
       const transaction = await createQRISPaymentTransaction(
         user.uid,
         tryout.id,
         tryout.name,
-        tryout.price,
-        user.displayName || user.email || '',
-        user.email || ''
+        displayPrice,
+        'QRIS', // paymentMethod
+        user.displayName || user.email || 'Customer', // customerName
+        user.email || '', // customerEmail
+        '08000000000' // customerPhone override for manual flow
       );
 
       // 2. Mark as pending confirmation
-      await confirmPayment(transaction.id);
+      await updatePaymentStatus(transaction.reference, 'PENDING_CONFIRMATION');
 
       // 3. Send Telegram notification to admin
       await notifyAdminPayment({
         customerName: user.displayName || user.email || 'Unknown',
         tryoutName: tryout.name,
-        amount: tryout.price,
+        amount: displayPrice,
         reference: transaction.reference,
       });
 
       // 4. Show waiting screen
       setShowWaiting(true);
 
+      // 5. Generate template and redirect to Telegram
+      const message = `Halo Admin Kelas ASN,
+Saya sudah melakukan pembayaran via QRIS untuk paket:
+- Nama: ${user?.displayName || user?.email || 'Customer'}
+- Paket: ${tryout.name}
+- Nominal: Rp ${displayPrice.toLocaleString('id-ID')}
+
+Berikut saya lampirkan bukti transfernya. Mohon diaktifkan. Terima kasih!`;
+      
+      const telegramUrl = `https://t.me/Kelas_admin?text=${encodeURIComponent(message)}`;
+      
+      // Try to open Telegram automatically
+      window.open(telegramUrl, '_blank');
+
       toast({
         title: 'Berhasil',
-        description: 'Admin telah diberitahu. Menunggu konfirmasi.',
+        description: 'Admin telah diberitahu. Silakan kirim bukti ke Telegram.',
       });
     } catch (error) {
       console.error('Error processing payment:', error);
@@ -142,18 +195,8 @@ export const PaymentQRISUnifiedPage: React.FC = () => {
 
       await useClaimCode(claimCode.trim(), user.uid);
 
-      const userTryoutsRef = collection(db, 'user_tryouts');
-      await addDoc(userTryoutsRef, {
-        userId: user.uid,
-        tryoutId: tryout.id,
-        tryoutName: tryout.name,
-        purchaseDate: serverTimestamp(),
-        status: 'not_started',
-        paymentStatus: 'success',
-        attempts: 0,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
+      // Use purchaseTryout instead of manual addDoc to handle bundles and VIP access
+      await purchaseTryout(user.uid, tryout.id, tryout.name);
 
       toast({
         title: 'Berhasil',
@@ -259,21 +302,52 @@ export const PaymentQRISUnifiedPage: React.FC = () => {
                 </div>
                 <h2 className="text-2xl font-bold text-blue-900 mb-2">Menunggu Konfirmasi Admin</h2>
                 <p className="text-blue-800 mb-4">
-                  Admin telah diberitahu melalui Telegram. Anda akan mendapat akses setelah admin mengonfirmasi pembayaran.
+                  Sistem telah mencatat transaksi Anda. <br/>
+                  <span className="font-bold text-blue-900">Harap kirimkan foto/screenshot bukti transfer ke Admin!</span>
                 </p>
-                <div className="bg-blue-100 rounded-lg p-4 text-sm text-blue-700 max-w-md mx-auto">
-                  <p className="font-semibold mb-1">💡 Tips:</p>
-                  <p>Biasanya konfirmasi dilakukan dalam beberapa menit. Silakan cek kembali halaman tryout secara berkala.</p>
+                <div className="bg-blue-100 rounded-lg p-4 text-sm text-blue-800 max-w-md mx-auto mb-6 text-left">
+                  <p className="font-semibold mb-2">Langkah Terakhir:</p>
+                  <ol className="list-decimal pl-5 space-y-1">
+                    <li>Klik tombol Telegram di bawah ini.</li>
+                    <li>Kirim format pesan yang sudah otomatis terisi.</li>
+                    <li><strong>Lampirkan foto bukti transfer Anda.</strong></li>
+                    <li>Admin akan segera memproses akses paket Anda.</li>
+                  </ol>
                 </div>
               </div>
-              <Button
-                onClick={() => navigate(`/dashboard/tryout/${tryout.id}`)}
-                variant="outline"
-                className="mt-6 border-blue-300 text-blue-700 hover:bg-blue-100"
+              
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                <Button
+                  onClick={() => {
+                    const isEarlyBirdActive = tryout.isEarlyBirdActive && 
+                      tryout.earlyBirdQuota && 
+                      (tryout.currentSales || 0) < tryout.earlyBirdQuota;
+                    const displayPrice = isEarlyBirdActive && tryout.earlyBirdPrice ? tryout.earlyBirdPrice : tryout.price;
+                    
+                    const message = `Halo Admin Kelas ASN,
+Saya sudah melakukan pembayaran via QRIS untuk paket:
+- Nama: ${user?.displayName || user?.email || 'Customer'}
+- Paket: ${tryout?.name}
+- Nominal: Rp ${displayPrice.toLocaleString('id-ID')}
+
+Berikut saya lampirkan bukti transfernya. Mohon diaktifkan. Terima kasih!`;
+                    window.open(`https://t.me/Kelas_admin?text=${encodeURIComponent(message)}`, '_blank');
+                  }}
+                  className="w-full sm:w-auto bg-[#2AABEE] hover:bg-[#229ED9] text-white"
+                >
+                  <Send className="w-4 h-4 mr-2" />
+                  Kirim Bukti via Telegram
+                </Button>
+                
+                <Button
+                  onClick={() => navigate(`/dashboard/tryout/${tryout?.id}`)}
+                  variant="outline"
+                  className="w-full sm:w-auto border-blue-300 text-blue-700 hover:bg-blue-100"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Kembali ke Halaman Try Out
               </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -297,9 +371,18 @@ export const PaymentQRISUnifiedPage: React.FC = () => {
           <Card className="shadow-none border-b">
             <CardHeader className="pb-4">
               <CardTitle className="text-2xl">{tryout.name}</CardTitle>
-              <p className="text-lg font-semibold text-blue-600 mt-2">
-                Rp {tryout.price.toLocaleString('id-ID')}
-              </p>
+              {(() => {
+                const isEarlyBirdActive = tryout.isEarlyBirdActive && 
+                  tryout.earlyBirdQuota && 
+                  (tryout.currentSales || 0) < tryout.earlyBirdQuota;
+                const displayPrice = isEarlyBirdActive && tryout.earlyBirdPrice ? tryout.earlyBirdPrice : tryout.price;
+                
+                return (
+                  <p className="text-lg font-semibold text-blue-600 mt-2">
+                    Rp {displayPrice.toLocaleString('id-ID')}
+                  </p>
+                );
+              })()}
             </CardHeader>
           </Card>
 
@@ -350,7 +433,15 @@ export const PaymentQRISUnifiedPage: React.FC = () => {
                   <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                     <p className="text-sm font-semibold text-amber-900 mb-1">⚠️ Penting</p>
                     <p className="text-xs text-amber-800">
-                      Pastikan Anda sudah menyelesaikan pembayaran sebelum klik tombol di bawah. Nominal yang harus dibayar: <strong>Rp {tryout.price.toLocaleString('id-ID')}</strong>
+                      {(() => {
+                        const isEarlyBirdActive = tryout.isEarlyBirdActive && 
+                          tryout.earlyBirdQuota && 
+                          (tryout.currentSales || 0) < tryout.earlyBirdQuota;
+                        const displayPrice = isEarlyBirdActive && tryout.earlyBirdPrice ? tryout.earlyBirdPrice : tryout.price;
+                        return (
+                          <>Pastikan Anda sudah menyelesaikan pembayaran sebelum klik tombol di bawah. Nominal yang harus dibayar: <strong>Rp {displayPrice.toLocaleString('id-ID')}</strong></>
+                        );
+                      })()}
                     </p>
                   </div>
 
@@ -468,7 +559,15 @@ export const PaymentQRISUnifiedPage: React.FC = () => {
                     </li>
                     <li className="flex gap-2">
                       <span className="font-bold text-gray-600 min-w-fit">2.</span>
-                      <span>Masukkan jumlah Rp {tryout.price.toLocaleString('id-ID')} dan selesaikan pembayaran</span>
+                      {(() => {
+                        const isEarlyBirdActive = tryout.isEarlyBirdActive && 
+                          tryout.earlyBirdQuota && 
+                          (tryout.currentSales || 0) < tryout.earlyBirdQuota;
+                        const displayPrice = isEarlyBirdActive && tryout.earlyBirdPrice ? tryout.earlyBirdPrice : tryout.price;
+                        return (
+                          <span>Masukkan jumlah Rp {displayPrice.toLocaleString('id-ID')} dan selesaikan pembayaran</span>
+                        );
+                      })()}
                     </li>
                     <li className="flex gap-2">
                       <span className="font-bold text-gray-600 min-w-fit">3.</span>

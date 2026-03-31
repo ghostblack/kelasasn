@@ -39,8 +39,14 @@ export const CreateTryoutPage: React.FC = () => {
     passingGradeTIU: 80,
     passingGradeTKP: 166,
     isActive: true,
+    isDraft: false,
     isBundle: false,
     includedTryoutIds: [] as string[],
+    isEarlyBirdActive: false,
+    earlyBirdPrice: 0,
+    earlyBirdQuota: 0,
+    currentSales: 0,
+    releaseDate: '',
   });
 
   const [featureInput, setFeatureInput] = useState('');
@@ -62,6 +68,13 @@ export const CreateTryoutPage: React.FC = () => {
       loadTryoutData(id);
     }
   }, [id, isEditMode]);
+
+  const formatDateForInput = (date: any) => {
+    if (!date) return '';
+    const d = new Date(date);
+    const z = (n: number) => (n < 10 ? '0' : '') + n;
+    return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`;
+  };
 
   const loadTryoutData = async (tryoutId: string) => {
     setLoading(true);
@@ -95,8 +108,14 @@ export const CreateTryoutPage: React.FC = () => {
         passingGradeTIU: tryout.passingGradeTIU || 80,
         passingGradeTKP: tryout.passingGradeTKP || 166,
         isActive: tryout.isActive,
+        isDraft: tryout.isDraft || false,
         isBundle: tryout.isBundle || false,
         includedTryoutIds: tryout.includedTryoutIds || [],
+        isEarlyBirdActive: tryout.isEarlyBirdActive || false,
+        earlyBirdPrice: tryout.earlyBirdPrice || 0,
+        earlyBirdQuota: tryout.earlyBirdQuota || 0,
+        currentSales: tryout.currentSales || 0,
+        releaseDate: formatDateForInput(tryout.releaseDate),
       });
 
     } catch (error) {
@@ -177,9 +196,14 @@ export const CreateTryoutPage: React.FC = () => {
           passingGradeTIU: tryoutInfo.passingGradeTIU,
           passingGradeTKP: tryoutInfo.passingGradeTKP,
           isActive: tryoutInfo.isActive,
+          isDraft: tryoutInfo.isDraft,
           isBundle: tryoutInfo.isBundle,
           includedTryoutIds: tryoutInfo.isBundle ? tryoutInfo.includedTryoutIds : [],
+          isEarlyBirdActive: tryoutInfo.isBundle ? tryoutInfo.isEarlyBirdActive : false,
+          earlyBirdPrice: tryoutInfo.isBundle ? tryoutInfo.earlyBirdPrice : 0,
+          earlyBirdQuota: tryoutInfo.isBundle ? tryoutInfo.earlyBirdQuota : 0,
           totalQuestions: tryoutInfo.isBundle ? 0 : totalQuestions,
+          releaseDate: tryoutInfo.releaseDate ? new Date(tryoutInfo.releaseDate) : null,
           updatedAt: serverTimestamp(),
           // JANGAN set questionIds - biarkan tetap existing
         };
@@ -200,7 +224,11 @@ export const CreateTryoutPage: React.FC = () => {
           ...tryoutInfo,
           isBundle: tryoutInfo.isBundle,
           includedTryoutIds: tryoutInfo.isBundle ? tryoutInfo.includedTryoutIds : [],
+          isEarlyBirdActive: tryoutInfo.isBundle ? tryoutInfo.isEarlyBirdActive : false,
+          earlyBirdPrice: tryoutInfo.isBundle ? tryoutInfo.earlyBirdPrice : 0,
+          earlyBirdQuota: tryoutInfo.isBundle ? tryoutInfo.earlyBirdQuota : 0,
           totalQuestions: tryoutInfo.isBundle ? 0 : totalQuestions,
+          releaseDate: tryoutInfo.releaseDate ? new Date(tryoutInfo.releaseDate) : null,
           questionIds: [],
           updatedAt: serverTimestamp(),
         };
@@ -309,6 +337,16 @@ export const CreateTryoutPage: React.FC = () => {
               />
             </div>
 
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-slate-700">Tanggal & Waktu Rilis (Kosongkan jika langsung rilis)</Label>
+              <Input
+                type="datetime-local"
+                value={tryoutInfo.releaseDate}
+                onChange={(e) => setTryoutInfo({ ...tryoutInfo, releaseDate: e.target.value })}
+                className="border-slate-200"
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Kategori</Label>
@@ -341,19 +379,26 @@ export const CreateTryoutPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 p-4 border border-blue-100 bg-blue-50/50 rounded-xl">
+            <div className="flex items-center gap-2 p-4 border border-blue-100 bg-blue-50/50 rounded-xl transition-all">
               <input
                 type="checkbox"
                 id="isBundle"
                 checked={tryoutInfo.isBundle}
-                onChange={(e) => setTryoutInfo({ ...tryoutInfo, isBundle: e.target.checked })}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setTryoutInfo({ 
+                    ...tryoutInfo, 
+                    isBundle: checked,
+                    category: checked ? 'premium' : tryoutInfo.category 
+                  });
+                }}
                 className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
               />
               <div>
                 <Label htmlFor="isBundle" className="cursor-pointer font-bold text-blue-900 block mt-0.5">
                   Jadikan sebagai Paket Bundling
                 </Label>
-                <p className="text-xs text-blue-700 mt-1 pb-0.5">Berisi kumpulan try out satuan. Tidak memiliki soal sendiri.</p>
+                <p className="text-xs text-blue-700 mt-1 pb-0.5 font-medium">Berisi kumpulan try out satuan. Otomatis masuk ke Paket VIP All-Access.</p>
               </div>
             </div>
 
@@ -393,56 +438,97 @@ export const CreateTryoutPage: React.FC = () => {
             )}
 
 
-            <div className="space-y-3 p-5 border border-slate-200 rounded-xl bg-slate-50">
+            <div className="space-y-4 p-5 border border-slate-200 rounded-xl bg-slate-50">
               <Label className="text-base font-bold text-slate-900">Pengaturan Harga</Label>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-sm">Harga Asli</Label>
+                  <Label className="text-sm">Harga Asli (Reguler)</Label>
                   <Input
                     type="number"
                     value={tryoutInfo.originalPrice}
                     onChange={(e) => {
                       const originalPrice = parseInt(e.target.value) || 0;
                       let calculatedDiscount = 0;
-
                       if (originalPrice > 0 && tryoutInfo.price > 0 && tryoutInfo.price < originalPrice) {
                         calculatedDiscount = Math.round(((originalPrice - tryoutInfo.price) / originalPrice) * 100);
                       }
-
-                      setTryoutInfo({
-                        ...tryoutInfo,
-                        originalPrice: originalPrice,
-                        discount: calculatedDiscount,
-                      });
+                      setTryoutInfo({ ...tryoutInfo, originalPrice, discount: calculatedDiscount });
                     }}
-                    placeholder="Harga sebelum diskon"
+                    placeholder="Harga reguler"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-sm">Harga Final</Label>
+                  <Label className="text-sm">Harga Jual (Final)</Label>
                   <Input
                     type="number"
                     value={tryoutInfo.price}
                     onChange={(e) => {
                       const finalPrice = parseInt(e.target.value) || 0;
                       let calculatedDiscount = 0;
-
                       if (tryoutInfo.originalPrice > 0 && finalPrice > 0 && finalPrice < tryoutInfo.originalPrice) {
                         calculatedDiscount = Math.round(((tryoutInfo.originalPrice - finalPrice) / tryoutInfo.originalPrice) * 100);
                       }
-
-                      setTryoutInfo({
-                        ...tryoutInfo,
-                        price: finalPrice,
-                        discount: calculatedDiscount,
-                      });
+                      setTryoutInfo({ ...tryoutInfo, price: finalPrice, discount: calculatedDiscount });
                     }}
                     placeholder="Harga akhir"
                   />
                 </div>
               </div>
+
+              {tryoutInfo.isBundle && (
+                <div className="mt-4 pt-4 border-t border-slate-200 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-sm font-bold text-indigo-900 block">Early Bird Pricing</Label>
+                      <p className="text-[10px] text-indigo-600">Aktifkan harga khusus untuk periode terbatas (Quota-based)</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="isEarlyBird"
+                        checked={tryoutInfo.isEarlyBirdActive}
+                        onChange={(e) => setTryoutInfo({ ...tryoutInfo, isEarlyBirdActive: e.target.checked })}
+                        className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <Label htmlFor="isEarlyBird" className="text-xs font-semibold cursor-pointer">Aktifkan Early Bird</Label>
+                    </div>
+                  </div>
+
+                  {tryoutInfo.isEarlyBirdActive && (
+                    <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-1 duration-300">
+                      <div className="space-y-2">
+                        <Label className="text-xs font-semibold text-indigo-900">Harga Early Bird</Label>
+                        <Input
+                          type="number"
+                          value={tryoutInfo.earlyBirdPrice}
+                          onChange={(e) => setTryoutInfo({ ...tryoutInfo, earlyBirdPrice: parseInt(e.target.value) || 0 })}
+                          className="bg-white border-indigo-200 h-9 text-sm"
+                          placeholder="Misal: 75000"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-semibold text-indigo-900">Kuota Batas (Sales)</Label>
+                        <Input
+                          type="number"
+                          value={tryoutInfo.earlyBirdQuota}
+                          onChange={(e) => setTryoutInfo({ ...tryoutInfo, earlyBirdQuota: parseInt(e.target.value) || 0 })}
+                          className="bg-white border-indigo-200 h-9 text-sm"
+                          placeholder="Misal: 100"
+                        />
+                      </div>
+                    </div>
+                  )}
+                  
+                  {tryoutInfo.currentSales > 0 && (
+                    <div className="text-[10px] font-medium text-slate-500 flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                      Total Penjualan Saat Ini: {tryoutInfo.currentSales}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {!tryoutInfo.isBundle && (
@@ -552,17 +638,32 @@ export const CreateTryoutPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="isActive"
-                checked={tryoutInfo.isActive}
-                onChange={(e) => setTryoutInfo({ ...tryoutInfo, isActive: e.target.checked })}
-                className="w-4 h-4"
-              />
-              <Label htmlFor="isActive" className="cursor-pointer">
-                Try Out Aktif
-              </Label>
+            <div className="flex flex-wrap items-center gap-6 pt-2">
+              <div className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+                <input
+                  type="checkbox"
+                  id="isActive"
+                  checked={tryoutInfo.isActive}
+                  onChange={(e) => setTryoutInfo({ ...tryoutInfo, isActive: e.target.checked })}
+                  className="w-4 h-4 rounded text-slate-900 focus:ring-slate-500"
+                />
+                <Label htmlFor="isActive" className="cursor-pointer font-medium text-slate-700">
+                  Try Out Aktif (Tampil di Production)
+                </Label>
+              </div>
+
+              <div className="flex items-center gap-2 px-3 py-2 border border-blue-200 bg-blue-50/30 rounded-lg hover:bg-blue-50 transition-colors">
+                <input
+                  type="checkbox"
+                  id="isDraft"
+                  checked={tryoutInfo.isDraft}
+                  onChange={(e) => setTryoutInfo({ ...tryoutInfo, isDraft: e.target.checked })}
+                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
+                />
+                <Label htmlFor="isDraft" className="cursor-pointer font-medium text-blue-800">
+                  Mode Draft (Hanya Tampil di Lokal)
+                </Label>
+              </div>
             </div>
           </CardContent>
         </Card>

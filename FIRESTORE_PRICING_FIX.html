@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fix Tryout Pricing - Kelas ASN</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full border border-slate-100">
+        <div class="flex items-center gap-3 mb-6">
+            <div class="bg-blue-600 p-2 rounded-xl">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+            </div>
+            <h1 class="text-xl font-black text-slate-900 uppercase tracking-tight">Fixer Harga Paket</h1>
+        </div>
+
+        <p class="text-sm text-slate-600 mb-6 leading-relaxed">
+            Alat ini akan mencari paket <span class="font-bold text-slate-900">"PART 1"</span> yang saat ini berstatus 
+            <span class="text-amber-600 font-bold">Early Bird (Rp 20.000)</span> dan mengubahnya menjadi 
+            <span class="text-blue-600 font-bold">Hemat 50% (Rp 15.000)</span> agar seragam dengan Part 2 & 3.
+        </p>
+
+        <div id="status" class="mb-6 p-4 rounded-2xl hidden"></div>
+
+        <button id="fixBtn" class="w-full bg-slate-900 hover:bg-black text-white font-black py-4 rounded-2xl transition-all shadow-lg shadow-slate-200 active:scale-95 disabled:opacity-50">
+            UPDATE HARGA SEKARANG
+        </button>
+
+        <p class="text-[10px] text-slate-400 text-center mt-6 uppercase font-bold tracking-widest">
+            Pastikan Anda membuka file ini dari localhost (untuk alasan keamanan Firestore)
+        </p>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, query, where, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // Firebase configuration (Placeholder - users will use their own if run locally)
+        // In local environment, we can try to fetch it or just use the one from the app
+        const firebaseConfig = {
+            apiKey: "AIzaSyB...", // Needs to be filled or provided
+            authDomain: "kelas-asn-auth.firebaseapp.com",
+            projectId: "kelas-asn-auth",
+            storageBucket: "kelas-asn-auth.appspot.com",
+            messagingSenderId: "389278716315",
+            appId: "1:389278716315:web:866299b867c807b539420b"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        const fixBtn = document.getElementById('fixBtn');
+        const statusDiv = document.getElementById('status');
+
+        function showStatus(msg, type) {
+            statusDiv.textContent = msg;
+            statusDiv.className = `mb-6 p-4 rounded-2xl text-xs font-bold uppercase tracking-tight ${type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`;
+            statusDiv.classList.remove('hidden');
+        }
+
+        fixBtn.addEventListener('click', async () => {
+            fixBtn.disabled = true;
+            fixBtn.textContent = 'PROSES SCANNING...';
+            
+            try {
+                const tryoutsRef = collection(db, 'tryout_packages');
+                const snapshot = await getDocs(tryoutsRef);
+                
+                let found = false;
+                let count = 0;
+
+                console.log('Scanning ' + snapshot.size + ' packages...');
+
+                for (const d of snapshot.docs) {
+                    const data = d.data();
+                    const name = (data.name || "").toUpperCase();
+                    
+                    console.log('Checking:', name, data);
+
+                    // Mencari yang mengandung "PART 1" (case-insensitive)
+                    if (name.includes('PART 1')) {
+                        console.log('MATCH FOUND! Updating document ' + d.id);
+                        await updateDoc(doc(db, 'tryout_packages', d.id), {
+                            price: 15000,
+                            originalPrice: 30000,
+                            isEarlyBirdActive: false,
+                            isBundle: false, // Memastikan ini bukan bundle
+                            earlyBirdPrice: 0,
+                            earlyBirdQuota: 0,
+                            updatedAt: new Date()
+                        });
+                        found = true;
+                        count++;
+                    }
+                }
+
+                if (found) {
+                    showStatus(`Berhasil memperbarui ${count} paket Part 1!`, 'success');
+                } else {
+                    showStatus('Tidak ditemukan paket dengan nama "PART 1". Silakan cek console log (F12) untuk melihat daftar nama paket Anda.', 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                showStatus('Gagal update: ' + err.message, 'error');
+            } finally {
+                fixBtn.disabled = false;
+                fixBtn.textContent = 'UPDATE HARGA SEKARANG';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 import { useState, useEffect, ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Chrome as Home, FileText, Trophy, User, LogOut, Menu, X, Receipt, Building2 } from 'lucide-react';
+import { Chrome as Home, FileText, Trophy, User, LogOut, Menu, X, Receipt, Building2, Landmark } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -12,6 +12,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/contexts/AuthContext';
 import { getUserPayments } from '@/services/paymentService';
+import { useToast } from '@/hooks/use-toast';
+import { useRef } from 'react';
+import { PaymentTransaction } from '@/types';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -23,6 +26,7 @@ const menuItems = [
   { icon: Receipt, label: 'Riwayat Pembayaran', path: '/dashboard/payment-history' },
   { icon: Trophy, label: 'Ranking', path: '/dashboard/ranking' },
   { icon: Building2, label: 'Formasi CPNS', path: '/dashboard/formasi' },
+  { icon: Landmark, label: 'Instansi CPNS', path: '/dashboard/instansi' },
 ];
 
 export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
@@ -32,6 +36,8 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { toast } = useToast();
+  const prevPaymentsRef = useRef<PaymentTransaction[] | null>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -49,10 +55,44 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       try {
         const payments = await getUserPayments(user.uid);
         const now = new Date();
-        const pending = payments.filter(
+        const pendingConf = payments.filter(
+          p => p.status === 'PENDING_CONFIRMATION'
+        );
+        
+        const unpaid = payments.filter(
           p => p.status === 'UNPAID' && now <= p.expiredTime
-        ).length;
-        setPendingPaymentCount(pending);
+        );
+        
+        setPendingPaymentCount(pendingConf.length + unpaid.length);
+
+        const prevPayments = prevPaymentsRef.current;
+        
+        if (!prevPayments) {
+          // Initial load
+          if (pendingConf.length > 0) {
+            toast({
+              title: 'Menunggu Konfirmasi Admin',
+              description: 'Ada pembayaran Anda yang sedang kami proses.',
+            });
+          }
+        } else {
+          // Subsequent loads, check for status changes
+          const newlyPaid = payments.filter(curr => {
+            if (curr.status !== 'PAID') return false;
+            const prev = prevPayments.find(p => p.id === curr.id);
+            return prev && prev.status === 'PENDING_CONFIRMATION';
+          });
+
+          newlyPaid.forEach(paidTx => {
+            toast({
+              title: 'Pembayaran Berhasil! 🎉',
+              description: `Paket ${paidTx.tryoutName} sudah aktif dan siap digunakan.`,
+              variant: 'default',
+            });
+          });
+        }
+
+        prevPaymentsRef.current = payments;
       } catch (error) {
         console.error('Error loading pending payments:', error);
       }

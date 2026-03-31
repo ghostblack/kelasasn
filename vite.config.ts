@@ -51,6 +51,14 @@ export default defineConfig({
           });
         },
       },
+      // Proxy khusus untuk tukin K/L — harus di atas rule sscasn umum
+      // Di production, ditangani Netlify Function sscasn-proxy.ts
+      '/api/sscasn/tukin-kl': {
+        target: 'https://aesen.vercel.app/api',
+        changeOrigin: true,
+        secure: true,
+        rewrite: () => '/tukin',
+      },
       // Proxy lokal untuk SSCASN — development only
       // Pakai api-sscasn.vercel.app karena path-nya sama (/formasi, /ref/instansi, dll)
       // Tidak ada CORS karena request ini dari Vite server, bukan browser

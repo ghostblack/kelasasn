@@ -12,6 +12,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { TryoutPackage, UserTryout, TryoutResult, UserStats } from '@/types';
+import { grantFormasiAccess } from './formasiAccessCodeService';
 
 export interface TryoutFeedback {
   id?: string;
@@ -33,13 +34,28 @@ export const getAllTryouts = async (): Promise<TryoutPackage[]> => {
 
     const tryouts = snapshot.docs.map(doc => {
       const data = doc.data();
-      console.log('Tryout document:', doc.id, data);
       return {
         id: doc.id,
         ...data,
         createdAt: data.createdAt?.toDate() || new Date(),
+        releaseDate: data.releaseDate?.toDate(),
       };
     }) as TryoutPackage[];
+
+    // --- LOGIC PENYARINGAN (SAFE FOR LOCAL TESTING) ---
+    // Di lokal, kita munculkan paket yang isActive: true ATAU isDraft: true
+    // Di production (kode lama), hanya isActive: true yang akan muncul.
+    const isLocal = typeof window !== 'undefined' && 
+      (window.location.hostname === 'localhost' || 
+       window.location.hostname === '127.0.0.1' || 
+       window.location.hostname.includes('ngrok-free.app'));
+    
+    // Jika kita di lokal/ngrok, biarkan data apa adanya (nanti di UI di-filter isActive || isDraft)
+    // Jika BUKAN di lokal (antisipasi jika ini ter-deploy), kita tetap amankan
+    if (!isLocal && !import.meta.env.DEV) {
+      return tryouts.filter(t => t.isActive === true && !t.isDraft);
+    }
+    // ---------------------------------------------------
 
     const sortedTryouts = tryouts.sort((a, b) =>
       b.createdAt.getTime() - a.createdAt.getTime()
@@ -57,10 +73,22 @@ export const getTryoutById = async (tryoutId: string): Promise<TryoutPackage | n
   const tryoutSnap = await getDoc(tryoutRef);
 
   if (tryoutSnap.exists()) {
+    const data = tryoutSnap.data();
+    const isLocal = typeof window !== 'undefined' && 
+      (window.location.hostname === 'localhost' || 
+       window.location.hostname === '127.0.0.1' || 
+       window.location.hostname.includes('ngrok-free.app'));
+
+    // Keamanan tambahan: Jika di prod, blokir jika bukan Active
+    if (!isLocal && !import.meta.env.DEV && !data.isActive) {
+      return null;
+    }
+
     return {
       id: tryoutSnap.id,
-      ...tryoutSnap.data(),
-      createdAt: tryoutSnap.data().createdAt?.toDate() || new Date(),
+      ...data,
+      createdAt: data.createdAt?.toDate() || new Date(),
+      releaseDate: data.releaseDate?.toDate(),
     } as TryoutPackage;
   }
 
@@ -92,7 +120,8 @@ export const getUserTryouts = async (userId: string): Promise<UserTryout[]> => {
 
   for (const tryout of tryouts) {
     const tryoutPackage = await getTryoutById(tryout.tryoutId);
-    if (tryoutPackage && tryoutPackage.isActive) {
+    // Terima paket jika: isActive = true, ATAU isDraft = true (untuk testing lokal)
+    if (tryoutPackage && (tryoutPackage.isActive || tryoutPackage.isDraft)) {
       validTryouts.push(tryout);
     }
   }
@@ -138,6 +167,12 @@ export const purchaseTryout = async (
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
+
+  // Grant VIP access if it's a bundle
+  if (isBundle) {
+    console.log(`[tryoutService] Bundle purchase detected (${tryoutId}). Granting VIP access.`);
+    await grantFormasiAccess(userId, 365);
+  }
 
   if (isBundle && tryoutData?.includedTryoutIds) {
     console.log('Tryout is a bundle, adding included tryouts...', tryoutData.includedTryoutIds);

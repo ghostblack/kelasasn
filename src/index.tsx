@@ -12,6 +12,8 @@ import { RankingPage } from "./screens/Dashboard/RankingPage";
 import { JabatanPage } from "./screens/Dashboard/JabatanPage";
 import { ProfilePage } from "./screens/Dashboard/ProfilePage";
 import { CPNSFormasiPage } from "./screens/Dashboard/CPNSFormasiPage";
+import { CPNSInstansiPage } from "./screens/Dashboard/CPNSInstansiPage";
+import { CPNSInstansiDetailPage } from "./screens/Dashboard";
 import { TryoutDetailPage } from "./screens/Dashboard/TryoutDetailPage";
 import { TryoutExamPage } from "./screens/Dashboard/TryoutExamPage";
 import { TryoutResultPage } from "./screens/Dashboard/TryoutResultPage";
@@ -52,10 +54,26 @@ import "../tailwind.css";
 
 // Guard component that shows maintenance page for non-admin routes
 function MaintenanceGuard({ children }: { children: React.ReactNode }) {
-  const { isMaintenance, maintenanceMessage, loading } = useMaintenanceMode();
+  const { isMaintenance, maintenanceMessage, loading: mLoading } = useMaintenanceMode();
+  const { isAdmin, loading: aLoading } = useAuth();
 
-  if (loading) return null; // Will show while MaintenanceContext loads; auth loading handles the full-page spinner
-  if (isMaintenance) return <MaintenancePage message={maintenanceMessage} />;
+  // Izinkan akses jika di localhost (untuk development/testing)
+  const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  
+  // Izinkan akses ke halaman login agar admin bisa masuk
+  const isAuthPath = window.location.pathname.includes('login');
+
+  if (mLoading || aLoading) return null; 
+  
+  // Tampilkan halaman maintenance HANYA jika:
+  // 1. Sedang maintenance
+  // 2. BUKAN di lingkungan lokal
+  // 3. User BUKAN admin
+  // 4. BUKAN halaman login
+  if (isMaintenance && !isLocal && !isAdmin && !isAuthPath) {
+    return <MaintenancePage message={maintenanceMessage} />;
+  }
+  
   return <>{children}</>;
 }
 
@@ -81,9 +99,11 @@ function AppWrapper() {
             path="/dashboard"
             element={
               <ProtectedRoute>
-                <DashboardLayout>
-                  <HomePage />
-                </DashboardLayout>
+                <MaintenanceGuard>
+                  <DashboardLayout>
+                    <HomePage />
+                  </DashboardLayout>
+                </MaintenanceGuard>
               </ProtectedRoute>
             }
           />
@@ -91,9 +111,11 @@ function AppWrapper() {
             path="/dashboard/tryouts"
             element={
               <ProtectedRoute>
-                <DashboardLayout>
-                  <TryoutsPage />
-                </DashboardLayout>
+                <MaintenanceGuard>
+                  <DashboardLayout>
+                    <TryoutsPage />
+                  </DashboardLayout>
+                </MaintenanceGuard>
               </ProtectedRoute>
             }
           />
@@ -101,9 +123,11 @@ function AppWrapper() {
             path="/dashboard/ranking"
             element={
               <ProtectedRoute>
-                <DashboardLayout>
-                  <RankingPage />
-                </DashboardLayout>
+                <MaintenanceGuard>
+                  <DashboardLayout>
+                    <RankingPage />
+                  </DashboardLayout>
+                </MaintenanceGuard>
               </ProtectedRoute>
             }
           />
@@ -111,9 +135,11 @@ function AppWrapper() {
             path="/dashboard/jabatan"
             element={
               <ProtectedRoute>
-                <DashboardLayout>
-                  <JabatanPage />
-                </DashboardLayout>
+                <MaintenanceGuard>
+                  <DashboardLayout>
+                    <JabatanPage />
+                  </DashboardLayout>
+                </MaintenanceGuard>
               </ProtectedRoute>
             }
           />
@@ -121,9 +147,35 @@ function AppWrapper() {
             path="/dashboard/formasi"
             element={
               <ProtectedRoute>
-                <DashboardLayout>
-                  <CPNSFormasiPage />
-                </DashboardLayout>
+                <MaintenanceGuard>
+                  <DashboardLayout>
+                    <CPNSFormasiPage />
+                  </DashboardLayout>
+                </MaintenanceGuard>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/instansi"
+            element={
+              <ProtectedRoute>
+                <MaintenanceGuard>
+                  <DashboardLayout>
+                    <CPNSInstansiPage />
+                  </DashboardLayout>
+                </MaintenanceGuard>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/instansi/:kode"
+            element={
+              <ProtectedRoute>
+                <MaintenanceGuard>
+                  <DashboardLayout>
+                    <CPNSInstansiDetailPage />
+                  </DashboardLayout>
+                </MaintenanceGuard>
               </ProtectedRoute>
             }
           />
@@ -131,9 +183,11 @@ function AppWrapper() {
             path="/dashboard/profile"
             element={
               <ProtectedRoute>
-                <DashboardLayout>
-                  <ProfilePage />
-                </DashboardLayout>
+                <MaintenanceGuard>
+                  <DashboardLayout>
+                    <ProfilePage />
+                  </DashboardLayout>
+                </MaintenanceGuard>
               </ProtectedRoute>
             }
           />
@@ -141,9 +195,11 @@ function AppWrapper() {
             path="/dashboard/tryout/:id"
             element={
               <ProtectedRoute>
-                <DashboardLayout>
-                  <TryoutDetailPage />
-                </DashboardLayout>
+                <MaintenanceGuard>
+                  <DashboardLayout>
+                    <TryoutDetailPage />
+                  </DashboardLayout>
+                </MaintenanceGuard>
               </ProtectedRoute>
             }
           />
@@ -151,7 +207,9 @@ function AppWrapper() {
             path="/dashboard/tryout/:id/exam"
             element={
               <ProtectedRoute>
-                <TryoutExamPage />
+                <MaintenanceGuard>
+                  <TryoutExamPage />
+                </MaintenanceGuard>
               </ProtectedRoute>
             }
           />
@@ -159,9 +217,11 @@ function AppWrapper() {
             path="/dashboard/tryout/:id/result"
             element={
               <ProtectedRoute>
-                <DashboardLayout>
-                  <TryoutResultPage />
-                </DashboardLayout>
+                <MaintenanceGuard>
+                  <DashboardLayout>
+                    <TryoutResultPage />
+                  </DashboardLayout>
+                </MaintenanceGuard>
               </ProtectedRoute>
             }
           />
@@ -169,7 +229,9 @@ function AppWrapper() {
             path="/dashboard/tryout/:id/review"
             element={
               <ProtectedRoute>
-                <TryoutReviewPage />
+                <MaintenanceGuard>
+                  <TryoutReviewPage />
+                </MaintenanceGuard>
               </ProtectedRoute>
             }
           />
@@ -177,9 +239,11 @@ function AppWrapper() {
             path="/dashboard/payment/:tryoutId"
             element={
               <ProtectedRoute>
-                <DashboardLayout>
-                  <PaymentPage />
-                </DashboardLayout>
+                <MaintenanceGuard>
+                  <DashboardLayout>
+                    <PaymentPage />
+                  </DashboardLayout>
+                </MaintenanceGuard>
               </ProtectedRoute>
             }
           />
@@ -187,9 +251,11 @@ function AppWrapper() {
             path="/dashboard/payment/:tryoutId/process/:paymentId"
             element={
               <ProtectedRoute>
-                <DashboardLayout>
-                  <PaymentProcessPage />
-                </DashboardLayout>
+                <MaintenanceGuard>
+                  <DashboardLayout>
+                    <PaymentProcessPage />
+                  </DashboardLayout>
+                </MaintenanceGuard>
               </ProtectedRoute>
             }
           />
@@ -197,9 +263,11 @@ function AppWrapper() {
             path="/dashboard/payment/:tryoutId/success"
             element={
               <ProtectedRoute>
-                <DashboardLayout>
-                  <PaymentSuccessPage />
-                </DashboardLayout>
+                <MaintenanceGuard>
+                  <DashboardLayout>
+                    <PaymentSuccessPage />
+                  </DashboardLayout>
+                </MaintenanceGuard>
               </ProtectedRoute>
             }
           />
@@ -207,9 +275,11 @@ function AppWrapper() {
             path="/dashboard/payment-history"
             element={
               <ProtectedRoute>
-                <DashboardLayout>
-                  <PaymentHistoryPage />
-                </DashboardLayout>
+                <MaintenanceGuard>
+                  <DashboardLayout>
+                    <PaymentHistoryPage />
+                  </DashboardLayout>
+                </MaintenanceGuard>
               </ProtectedRoute>
             }
           />
@@ -217,9 +287,11 @@ function AppWrapper() {
             path="/dashboard/payment-qris/:tryoutId"
             element={
               <ProtectedRoute>
-                <DashboardLayout>
-                  <PaymentQRISPage />
-                </DashboardLayout>
+                <MaintenanceGuard>
+                  <DashboardLayout>
+                    <PaymentQRISPage />
+                  </DashboardLayout>
+                </MaintenanceGuard>
               </ProtectedRoute>
             }
           />
@@ -227,9 +299,11 @@ function AppWrapper() {
             path="/dashboard/payment/:tryoutId/qris/:paymentId"
             element={
               <ProtectedRoute>
-                <DashboardLayout>
-                  <PaymentQRISProcessPage />
-                </DashboardLayout>
+                <MaintenanceGuard>
+                  <DashboardLayout>
+                    <PaymentQRISProcessPage />
+                  </DashboardLayout>
+                </MaintenanceGuard>
               </ProtectedRoute>
             }
           />
@@ -237,9 +311,11 @@ function AppWrapper() {
             path="/dashboard/payment/:tryoutId/qris-code"
             element={
               <ProtectedRoute>
-                <DashboardLayout>
-                  <PaymentQRISCodePage />
-                </DashboardLayout>
+                <MaintenanceGuard>
+                  <DashboardLayout>
+                    <PaymentQRISCodePage />
+                  </DashboardLayout>
+                </MaintenanceGuard>
               </ProtectedRoute>
             }
           />
@@ -247,9 +323,11 @@ function AppWrapper() {
             path="/dashboard/payment/:tryoutId/qris"
             element={
               <ProtectedRoute>
-                <DashboardLayout>
-                  <PaymentQRISUnifiedPage />
-                </DashboardLayout>
+                <MaintenanceGuard>
+                  <DashboardLayout>
+                    <PaymentQRISUnifiedPage />
+                  </DashboardLayout>
+                </MaintenanceGuard>
               </ProtectedRoute>
             }
           />

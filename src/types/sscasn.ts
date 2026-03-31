@@ -8,6 +8,8 @@ export interface SSCASNFormation {
   gaji_min: number;
   gaji_max: number;
   jumlah_ms: number; // Applicants who passed admin screening
+  formasi_nm?: string; // Jenis formasi (Umum, Cumlaude, Disabilitas, dll) - Hanya ada di detail API
+  DISABLE?: boolean | number; // Status disabilitas - Hanya ada di detail API
 }
 
 export interface SSCASNResponse<T> {

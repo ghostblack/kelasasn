@@ -1,15 +1,25 @@
 import { useState, useEffect, useRef } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Search, Filter, BarChart3, LayoutGrid, ChevronDown, X, Lock, KeyRound, Send, ExternalLink, MapPin } from 'lucide-react';
-import { sscasnService, FilterOptions } from '@/services/sscasnService';
-import { SSCASNFormation } from '@/types/sscasn';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { createPortal } from 'react-dom';
+import { 
+  Search, 
+  MapPin, 
+  Filter, 
+  X, 
+  ChevronDown, 
+  LayoutGrid, 
+  BarChart3
+} from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
-import { checkUserFormasiAccess, useFormasiCode } from '@/services/formasiAccessCodeService';
+import { checkUserFormasiAccess } from '@/services/formasiAccessCodeService';
+import { LockedFeatureOverlay } from '@/components/LockedFeatureOverlay';
+import { sscasnService, FilterOptions } from '@/services/sscasnService';
+import { SSCASNFormation } from '@/types/sscasn';
 
 const PROVINSI_LIST = [
   'ACEH', 'BALI', 'BANTEN', 'BENGKULU', 'DI YOGYAKARTA', 'DKI JAKARTA', 
@@ -36,9 +46,6 @@ const PROVINSI_SEARCH_MAP: Record<string, string> = {
 export function CPNSFormasiPage() {
   const { user } = useAuth();
   const [isUnlocked, setIsUnlocked] = useState<boolean | null>(null);
-  const [accessCode, setAccessCode] = useState('');
-  const [accessError, setAccessError] = useState('');
-  const [accessLoading, setAccessLoading] = useState(false);
 
   const [formasi, setFormasi] = useState<SSCASNFormation[]>([]);
   const [allSortedFormasi, setAllSortedFormasi] = useState<SSCASNFormation[]>([]);
@@ -90,16 +97,34 @@ export function CPNSFormasiPage() {
   }, []);
 
   const JENJANG_OPTIONS = [
-    { value: '10', label: 'SMA/Sederajat' },
-    { value: '15', label: 'Diploma I' },
-    { value: '20', label: 'Diploma II' },
+    { value: '15', label: 'SMA/Sederajat' },
+    { value: '20', label: 'Diploma I' },
+    { value: '25', label: 'Diploma II' },
     { value: '30', label: 'Diploma III/Sarjana Muda' },
     { value: '35', label: 'Diploma IV' },
     { value: '40', label: 'S-1/Sarjana' },
     { value: '45', label: 'S-2' },
-    { value: '50', label: 'S-3/Doktor' },
     { value: '80', label: 'Spesialis' },
+    { value: '50', label: 'S-3/Doktor' },
   ];
+
+  // Helper: tentukan apakah prodi cocok dengan jenjang yang dipilih
+  const isProdiMatchLevel = (prodiTkPend: string, levelCode: string | undefined): boolean => {
+    if (!levelCode || levelCode === 'all') return true;
+    const tk = String(prodiTkPend || '');
+    switch (levelCode) {
+      case '15': return ['15', '17', '18'].includes(tk); // SMA/SMK/Sederajat
+      case '20': return tk === '20'; // D-I
+      case '25': return tk === '25'; // D-II
+      case '30': return ['30', '31'].includes(tk); // D-III
+      case '35': return tk === '35'; // D-IV
+      case '40': return tk === '40'; // S-1
+      case '45': return tk === '45'; // S-2
+      case '80': return tk === '80'; // Spesialis
+      case '50': return tk === '50'; // S-3
+      default:   return tk === levelCode;
+    }
+  };
 
 
   // Initial Load Metadata only once
@@ -181,7 +206,7 @@ export function CPNSFormasiPage() {
     try {
       const pendidikan_kode = filters.pendidikan_kode && filters.pendidikan_kode !== 'all' 
         ? filters.pendidikan_kode 
-        : (filters.level && filters.level !== 'all' ? filters.level : undefined);
+        : undefined; // BKN API needs 7-digit prodi code, not 2-digit jenjang level
       
       const { level, pendidikan_kode: _pc, sort: rawSort, wilayah, ...cleanFilters } = filters;
       const s = rawSort as string | undefined;
@@ -335,21 +360,6 @@ export function CPNSFormasiPage() {
     initAccess();
   }, [user]);
 
-  const handleUnlock = async () => {
-    if (!user || !accessCode.trim()) return;
-    
-    setAccessLoading(true);
-    setAccessError('');
-    try {
-      await useFormasiCode(accessCode.trim(), user.uid);
-      setIsUnlocked(true);
-    } catch (err: any) {
-      setAccessError(err.message || 'Gagal memverifikasi kode akses');
-    } finally {
-      setAccessLoading(false);
-    }
-  };
-
   const handleRowClick = async (formasiId: string) => {
     setIsDetailLoading(true);
     try {
@@ -371,99 +381,28 @@ export function CPNSFormasiPage() {
   if (isUnlocked === null) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto"></div>
-        <p className="text-sm font-black text-gray-900 uppercase tracking-widest">Checking Authorization...</p>
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600/10 border-t-blue-600"></div>
+        <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] animate-pulse">Checking Authorization...</p>
       </div>
     );
   }
-
-  if (isUnlocked === false) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[70vh] px-4">
-        <div className="w-full max-w-md bg-white border border-gray-100 shadow-sm p-8 space-y-8 text-center rounded-2xl">
-          <div className="w-16 h-16 bg-blue-50 flex items-center justify-center mx-auto rounded-full ring-4 ring-blue-50/50">
-            <Lock className="w-8 h-8 text-blue-600" />
-          </div>
-          <div className="space-y-2">
-            <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight">Formasi Terkunci</h2>
-            <p className="text-sm text-gray-500 font-medium leading-relaxed">
-              Fitur pencarian formasi adalah fitur eksklusif. Masukkan kode akses Anda untuk membuka kunci selama 1 minggu.
-            </p>
-          </div>
-          
-          <div className="space-y-4 pt-4">
-            <div className="space-y-2 text-left">
-              <Label className="text-[10px] uppercase font-bold text-gray-400 tracking-widest">Kode Akses</Label>
-              <Input 
-                value={accessCode}
-                onChange={(e) => { setAccessCode(e.target.value.toUpperCase()); setAccessError(''); }}
-                placeholder="Masukkan 6 digit kode"
-                className="h-14 bg-gray-50 border-gray-100 rounded-xl text-center text-lg font-black tracking-widest uppercase placeholder:normal-case placeholder:tracking-normal placeholder:font-normal placeholder:text-gray-400 focus:bg-white"
-                maxLength={6}
-              />
-              {accessError && (
-                <p className="text-rose-500 text-xs font-bold text-center mt-2 animate-pulse">{accessError}</p>
-              )}
-            </div>
-            
-            <Button 
-              onClick={handleUnlock}
-              disabled={accessLoading || accessCode.length < 3}
-              className="w-full h-14 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest text-[10px] shadow-lg shadow-blue-100 transition-all active:scale-[0.98]"
-            >
-              {accessLoading ? (
-                <div className="flex items-center gap-2">
-                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                   Verifikasi...
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                   <KeyRound className="w-4 h-4" />
-                   Buka Akses
-                </div>
-              )}
-            </Button>
-
-            <div className="pt-2">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-gray-100"></span>
-                </div>
-                <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-widest text-gray-300">
-                  <span className="bg-white px-2">Belum punya kode?</span>
-                </div>
-              </div>
-              
-              <a 
-                href="https://t.me/KelasASN" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="mt-4 flex items-center justify-center gap-3 w-full h-12 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all group border border-blue-100/50 shadow-sm shadow-blue-50/50"
-              >
-                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
-                  <Send className="w-4 h-4 text-white ml-[-1px]" />
-                </div>
-                <div className="text-left">
-                  <p className="text-[10px] font-black uppercase tracking-widest leading-none">Dapatkan di Telegram</p>
-                  <p className="text-[9px] font-bold text-blue-400 mt-1 flex items-center gap-1">
-                    Grup Diskusi @KelasASN <ExternalLink className="w-2.5 h-2.5" />
-                  </p>
-                </div>
-              </a>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-in fade-in duration-700">
+    <div className="relative">
+      {/* Full-page blur overlay when locked */}
+      {!isUnlocked && (
+        <div className="fixed inset-x-0 top-16 bottom-0 z-30 backdrop-blur-md bg-white/60 pointer-events-none" />
+      )}
+      {/* Background Content */}
+        <div className={cn(
+          "transition-all duration-300 ease-out",
+          !isUnlocked ? "opacity-20 grayscale pointer-events-none select-none" : "opacity-100 grayscale-0"
+        )}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-in fade-in duration-700">
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-1">
           <h1 className="text-3xl font-black tracking-tight text-gray-900">Formasi CPNS 2024</h1>
-          <p className="text-sm text-gray-400 font-medium">Monitoring data SSCASN secara transparan & real-time</p>
+          <p className="text-sm text-gray-400 font-medium">Monitoring data SSCASN secara transparan & disesuaikan dengan update terbaru tahun ini</p>
         </div>
         <div className="flex items-center gap-2 bg-gray-50 p-1.5 rounded-2xl border border-gray-100">
           <button 
@@ -485,7 +424,7 @@ export function CPNSFormasiPage() {
 
       <div className="space-y-8">
         {/* Rigid Search Bar & Filter Trigger */}
-        <div className="flex flex-col md:flex-row gap-0">
+        <div className="flex flex-row gap-0">
           <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input 
@@ -499,24 +438,26 @@ export function CPNSFormasiPage() {
           
           <Button 
             variant="outline"
-            onClick={() => setIsFilterModalOpen(true)}
-            className="h-12 px-6 rounded-none border border-l-0 border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-900 flex items-center gap-3 transition-all font-mono text-[10px] font-bold uppercase tracking-widest"
+            disabled={!isUnlocked}
+            onClick={() => isUnlocked && setIsFilterModalOpen(true)}
+            className="h-12 px-4 sm:px-6 rounded-none border border-l-0 border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-900 flex items-center gap-2 sm:gap-3 transition-all font-mono text-[10px] font-bold uppercase tracking-widest disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
           >
             <Filter className="h-3 w-3 text-blue-600" />
-            FILTER
+            <span className="hidden sm:inline">FILTER</span>
           </Button>
-      {/* Boxy Right Sidebar Filter */}
-      {isFilterModalOpen && (
+        </div>
+        
+        {/* Filter Drawer - flush right */}
+      {isFilterModalOpen && typeof document !== 'undefined' && createPortal(
         <div 
-          className="fixed inset-0 z-50 flex justify-end"
+          className="fixed right-0 top-16 left-0 bottom-0 z-[60] flex"
           onClick={() => setIsFilterModalOpen(false)}
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] animate-in fade-in duration-300" />
+          {/* Spacer to push drawer to the right */}
+          <div className="flex-1" />
           <div 
-            className={cn(
-              "relative w-[90vw] sm:max-w-sm bg-white h-full shadow-2xl flex flex-col transform transition-all duration-300 ease-in-out font-mono border-l border-gray-100",
-              isFilterModalOpen ? "translate-x-0" : "translate-x-full"
-            )}
+            className="relative w-[85vw] sm:w-[400px] bg-white h-full shadow-2xl flex flex-col font-mono border-l border-gray-100 animate-in slide-in-from-right duration-300"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-white">
@@ -550,7 +491,7 @@ export function CPNSFormasiPage() {
                   <SelectTrigger className="bg-white border border-gray-200 text-gray-700 h-11 rounded-none focus:ring-1 focus:ring-blue-500 font-bold text-[10px] uppercase">
                     <SelectValue placeholder="SORT BY..." />
                   </SelectTrigger>
-                  <SelectContent className="rounded-none border-gray-200">
+                  <SelectContent className="rounded-none border-gray-200 z-[100]">
                     <SelectItem value="none" className="text-[10px] uppercase">Default</SelectItem>
                     <SelectItem value="terketat" className="text-[10px] uppercase text-rose-600 font-black">🔴 Persaingan Terketat</SelectItem>
                     <SelectItem value="tidak_ketat" className="text-[10px] uppercase text-emerald-600 font-black">🟢 Persaingan Tidak Ketat</SelectItem>
@@ -575,7 +516,7 @@ export function CPNSFormasiPage() {
                   <SelectTrigger className="bg-white border border-gray-200 text-gray-700 h-11 rounded-none focus:ring-1 focus:ring-blue-50 font-bold text-[10px] uppercase">
                     <SelectValue placeholder="SEMUA JENJANG" />
                   </SelectTrigger>
-                  <SelectContent className="rounded-none border-gray-200">
+                  <SelectContent className="rounded-none border-gray-200 z-[100]">
                     <SelectItem value="all" className="text-[10px] uppercase">SEMUA JENJANG</SelectItem>
                     {JENJANG_OPTIONS.map(opt => (
                       <SelectItem key={opt.value} value={opt.value} className="text-[10px] uppercase">{opt.label}</SelectItem>
@@ -589,7 +530,7 @@ export function CPNSFormasiPage() {
                 <Label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Program Studi</Label>
                 {metadataLoading ? (
                   <div className="flex items-center gap-3 h-11 border border-gray-200 bg-gray-50 px-3">
-                    <div className="h-3.5 w-3.5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin flex-shrink-0" />
+                    <div className="h-3.5 w-3.5 border-2 border-blue-600/10 border-t-blue-600 rounded-full animate-spin flex-shrink-0" />
                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Memuat data prodi...</span>
                   </div>
                 ) : prodiList.length === 0 ? (
@@ -600,7 +541,7 @@ export function CPNSFormasiPage() {
                     ↻ Retry muat data filter
                   </button>
                 ) : (
-                  <div ref={prodiComboRef} className="relative">
+                  <div ref={prodiComboRef} className={cn("relative", isProdiOpen ? "z-50" : "z-10")}>
                     {/* Trigger button */}
                     <button
                       type="button"
@@ -653,65 +594,31 @@ export function CPNSFormasiPage() {
                           >
                             Semua Prodi
                           </button>
-                          {prodiList
-                            .filter(prodi => {
-                              const levelCode = filters.level;
-                              const prodiTk = String(prodi.tk_pend || '');
-                              
-                              // Normalisasi prodi Name dan Query untuk pencarian yang lebih tahan banting
-                              // S-1 -> S1, D-III -> D3, D-IV -> D4, tanda baca dihapus
-                              const normalizeStr = (s: string) => {
-                                let norm = s.toUpperCase();
-                                // Synonyms / Common Typos normalization
-                                norm = norm.replace(/AKUTANSI/g, 'AKUNTANSI');
-                                norm = norm.replace(/AKUNTASI/g, 'AKUNTANSI');
-                                
-                                norm = norm.replace(/S-1/g, 'S1');
-                                norm = norm.replace(/S-2/g, 'S2');
-                                norm = norm.replace(/S-3/g, 'S3');
-                                norm = norm.replace(/D-I\b/g, 'D1');
-                                norm = norm.replace(/D-II\b/g, 'D2');
-                                norm = norm.replace(/D-III\b/g, 'D3');
-                                norm = norm.replace(/D-IV\b/g, 'D4');
-                                norm = norm.replace(/D-V\b/g, 'D5');
-                                norm = norm.replace(/[^A-Z0-9]/g, ' '); // Ganti tanda baca dengan spasi
-                                norm = norm.replace(/\s+/g, ' ').trim(); // Hapus spasi berlebih
-                                return norm;
-                              };
-                              
-                              const prodiNameNorm = normalizeStr(prodi.nama_pend || '');
-                              const qNorm = normalizeStr(searchProdi);
-
-                              let isLevelMatch = false;
-                              if (!levelCode || levelCode === 'all') {
-                                isLevelMatch = true;
-                              } else {
-                                if (levelCode === '10') {
-                                  isLevelMatch = ['10', '15', '17', '18'].includes(prodiTk);
-                                } else if (levelCode === '30') {
-                                  isLevelMatch = ['30', '31'].includes(prodiTk);
-                                } else if (levelCode === '40') {
-                                  isLevelMatch = ['40', '35', '36', '37', '38', '39'].includes(prodiTk);
-                                } else if (levelCode === '35') {
-                                  isLevelMatch = ['35', '40'].includes(prodiTk);
-                                } else if (levelCode === '45') {
-                                  isLevelMatch = ['45', '80'].includes(prodiTk);
-                                } else if (levelCode === '50') {
-                                  isLevelMatch = prodiTk === '50';
-                                } else {
-                                  isLevelMatch = prodiTk === levelCode;
-                                }
-                              }
-
-                              if (!isLevelMatch) return false;
+                          {(() => {
+                            // Unified filter function for both list and "no results" indicator
+                            const normalizeStr = (s: string) => {
+                              let norm = s.toUpperCase();
+                              norm = norm.replace(/AKUTANSI/g, 'AKUNTANSI');
+                              norm = norm.replace(/AKUNTASI/g, 'AKUNTANSI');
+                              norm = norm.replace(/S-1/g, 'S1').replace(/S-2/g, 'S2').replace(/S-3/g, 'S3');
+                              norm = norm.replace(/D-I\b/g, 'D1').replace(/D-II\b/g, 'D2').replace(/D-III\b/g, 'D3').replace(/D-IV\b/g, 'D4');
+                              norm = norm.replace(/[^A-Z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+                              return norm;
+                            };
+                            const qNorm = normalizeStr(searchProdi);
+                            const filtered = prodiList.filter(prodi => {
+                              if (!isProdiMatchLevel(prodi.tk_pend, filters.level)) return false;
                               if (!qNorm) return true;
-                              
-                              // Split query into words and check if all words exist in the prodi name
+                              const prodiNameNorm = normalizeStr(prodi.nama_pend || '');
                               const searchTerms = qNorm.split(' ').filter(t => t.trim() !== '');
                               return searchTerms.every(term => prodiNameNorm.includes(term));
-                            })
-                            .slice(0, 500)
-                            .map(prodi => (
+                            });
+
+                            if (filtered.length === 0) {
+                              return <p className="px-3 py-4 text-[10px] text-gray-300 font-bold uppercase text-center">Tidak ada hasil</p>;
+                            }
+
+                            return filtered.slice(0, 500).map(prodi => (
                               <button
                                 key={prodi.kode_pend}
                                 type="button"
@@ -727,24 +634,8 @@ export function CPNSFormasiPage() {
                               >
                                 {prodi.nama_pend}
                               </button>
-                            ))
-                          }
-                          {prodiList.filter(prodi => {
-                            const levelCode = filters.level;
-                            const prodiTk = String(prodi.tk_pend || '');
-                            const prodiName = (prodi.nama_pend || '').toUpperCase();
-                            const q = searchProdi.toUpperCase();
-                            let isLevelMatch = !levelCode || levelCode === 'all';
-                            if (levelCode === '10') isLevelMatch = prodiTk === '15';
-                            else if (levelCode === '30') isLevelMatch = prodiTk === '30';
-                            else if (levelCode === '40') isLevelMatch = prodiTk === '40';
-                            else if (levelCode === '45') isLevelMatch = prodiTk === '45';
-                            else if (levelCode === '50') isLevelMatch = prodiTk === '50';
-                            else if (levelCode && levelCode !== 'all') isLevelMatch = prodiTk === levelCode;
-                            return isLevelMatch && (!q || prodiName.includes(q));
-                          }).length === 0 && (
-                            <p className="px-3 py-4 text-[10px] text-gray-300 font-bold uppercase text-center">Tidak ada hasil</p>
-                          )}
+                            ));
+                          })()}
                         </div>
                       </div>
                     )}
@@ -755,7 +646,7 @@ export function CPNSFormasiPage() {
               {/* Wilayah (Provinsi) — Searchable Combobox */}
               <div className="space-y-3 pt-6 border-t border-gray-100">
                 <Label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Wilayah (Provinsi)</Label>
-                <div ref={wilayahComboRef} className="relative">
+                <div ref={wilayahComboRef} className={cn("relative", isWilayahOpen ? "z-40" : "z-10")}>
                   <button
                     type="button"
                     onClick={() => { setIsWilayahOpen(v => !v); setSearchWilayah(''); }}
@@ -835,7 +726,7 @@ export function CPNSFormasiPage() {
               {/* Instansi — Searchable Combobox */}
               <div className="space-y-3 pt-6 border-t border-gray-100">
                 <Label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Instansi</Label>
-                <div ref={instansiComboRef} className="relative">
+                <div ref={instansiComboRef} className={cn("relative", isInstansiOpen ? "z-30" : "z-10")}>
                   <button
                     type="button"
                     onClick={() => { setIsInstansiOpen(v => !v); setSearchInstansi(''); }}
@@ -887,7 +778,7 @@ export function CPNSFormasiPage() {
               {/* Jabatan — Searchable Combobox */}
               <div className="space-y-3 pt-6 border-t border-gray-100">
                 <Label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Jabatan</Label>
-                <div ref={jabatanComboRef} className="relative">
+                <div ref={jabatanComboRef} className={cn("relative", isJabatanOpen ? "z-20" : "z-10")}>
                   <button
                     type="button"
                     onClick={() => { setIsJabatanOpen(v => !v); setSearchJabatan(''); }}
@@ -953,7 +844,8 @@ export function CPNSFormasiPage() {
               </Button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
         </div>
 
@@ -1028,8 +920,16 @@ export function CPNSFormasiPage() {
                 </div>
               )}
 
+              {/* Wilayah */}
+              {filters.wilayah && (
+                <div className="flex items-center gap-2 px-3 py-1 bg-gray-50 border border-gray-200 text-gray-700 text-[9px] font-bold uppercase ring-1 ring-gray-100">
+                  <span className="max-w-[150px] truncate">Wilayah: {filters.wilayah}</span>
+                  <X className="h-3 w-3 cursor-pointer hover:text-gray-900" onClick={() => { setFilters(prev => ({ ...prev, wilayah: undefined })); handleSearch(); }} />
+                </div>
+              )}
+
               {/* Clear All button */}
-              {(searchTerm || filters.level || filters.pendidikan_kode || filters.instansi_kode || filters.jabatan_kode || filters.min_gaji || filters.max_gaji || (filters.sort && filters.sort !== 'none')) && (
+              {(searchTerm || filters.level || filters.pendidikan_kode || filters.instansi_kode || filters.jabatan_kode || filters.min_gaji || filters.max_gaji || filters.wilayah || (filters.sort && filters.sort !== 'none')) && (
                 <button 
                   onClick={resetFilters}
                   className="text-[9px] font-black text-rose-500 hover:text-rose-700 uppercase tracking-tighter ml-2 underline underline-offset-4"
@@ -1282,7 +1182,12 @@ export function CPNSFormasiPage() {
             )}
           </div>
         </main>
-      </div>
+      </div> {/* End max-w-7xl */}
+      </div> {/* End blur container */}
+
+      {/* Overlay for Locked State */}
+      {!isUnlocked && <LockedFeatureOverlay type="formasi" />}
+
       
       {/* Formasi Details Modal */}
       {selectedFormasi && (
@@ -1379,11 +1284,19 @@ export function CPNSFormasiPage() {
                         </p>
                       </div>
                       {/* Tampilkan data tambahan lain jika ada dari detail API BKN */}
-                      {(selectedFormasi as any).disable !== undefined && (
+                      {(selectedFormasi as any).formasi_nm && (
                          <div>
-                           <span className="text-[9px] text-gray-500 font-bold uppercase block mb-0.5">Status Disabilitas</span>
+                           <span className="text-[9px] text-gray-500 font-bold uppercase block mb-0.5">Jenis Formasi</span>
+                           <span className="inline-block px-2.5 py-1 bg-yellow-50 text-yellow-700 border border-yellow-200 text-[10px] font-black uppercase rounded-md tracking-wider">
+                             {(selectedFormasi as any).formasi_nm}
+                           </span>
+                         </div>
+                      )}
+                      {(selectedFormasi as any).DISABLE !== undefined && (
+                         <div>
+                           <span className="text-[9px] text-gray-500 font-bold uppercase block mb-0.5">Kebutuhan Khusus</span>
                            <p className="text-xs font-black text-gray-900 uppercase">
-                             {(selectedFormasi as any).disable === 1 ? 'Menerima Disabilitas' : 'Formasi Umum/Non-Disabilitas'}
+                             {(selectedFormasi as any).DISABLE === true ? 'Penyandang Disabilitas' : 'Non-Disabilitas'}
                            </p>
                          </div>
                       )}
@@ -1404,13 +1317,6 @@ export function CPNSFormasiPage() {
           </div>
         </div>
       )}
-
-      <div className="text-center pt-12 pb-6">
-        <div className="h-px bg-gradient-to-r from-transparent via-gray-100 to-transparent w-64 mx-auto mb-6" />
-        <p className="text-[10px] text-gray-200 font-black uppercase tracking-[0.5em] px-4 text-center">
-          Official SSCASN BKN 2024 Portal Interface
-        </p>
-      </div>
     </div>
   );
 }
