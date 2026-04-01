@@ -4,14 +4,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getTryoutById, purchaseTryout, getUserTryouts, resetTryoutAttempt, getUserResultsByTryout } from '@/services/tryoutService';
 import { getActiveTryoutSession } from '@/services/tryoutSessionService';
 import { VIP_BUNDLING_ID, getVIPBundlingSettings, getVIPBundlingStats } from '@/services/vipBundlingService';
-import { validateClaimCode, useClaimCode } from '@/services/claimCodeService';
 import { TryoutPackage, UserTryout, TryoutSession } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { LoadingScreen } from '@/components/ui/spinner';
 import { useToast } from '@/hooks/use-toast';
-import { Clock, FileText, CircleCheck as CheckCircle, ShoppingCart, Play, CircleAlert as AlertCircle, Gift, Info, ArrowLeft, RotateCcw, ExternalLink, Star, Key } from 'lucide-react';
+import { Clock, FileText, CircleCheck as CheckCircle, ShoppingCart, Play, CircleAlert as AlertCircle, Gift, Info, ArrowLeft, RotateCcw, ExternalLink, Star } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -34,9 +32,6 @@ export const TryoutDetailPage: React.FC = () => {
   const [attempts, setAttempts] = useState<number>(0);
   const [showConfirmationDialog, setShowConfirmationDialog] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
-  const [showFreeClaimDialog, setShowFreeClaimDialog] = useState(false);
-  const [freeClaimChecks, setFreeClaimChecks] = useState({ followIG: false, tagFriends: false, joinTelegram: false });
-  const [freeRedeemCode, setFreeRedeemCode] = useState('');
   const [includedTryouts, setIncludedTryouts] = useState<TryoutPackage[]>([]);
 
   useEffect(() => {
@@ -152,65 +147,30 @@ export const TryoutDetailPage: React.FC = () => {
     if (!tryout || !user) return;
 
     if (tryout.price === 0) {
-      // Show social media requirement modal for free tryouts
-      setFreeClaimChecks({ followIG: false, tagFriends: false, joinTelegram: false });
-      setFreeRedeemCode('');
-      setShowFreeClaimDialog(true);
+      try {
+        setPurchasing(true);
+        await purchaseTryout(user.uid, tryout.id, tryout.name);
+        toast({
+          title: '🎉 Berhasil Daftar!',
+          description: 'Try out gratis berhasil ditambahkan ke akun kamu.',
+        });
+        await loadTryoutDetail();
+      } catch (error: any) {
+        console.error('Error claiming free tryout:', error);
+        toast({
+          title: 'Error',
+          description: 'Gagal mendaftar try out gratis. Silakan coba lagi.',
+          variant: 'destructive',
+        });
+      } finally {
+        setPurchasing(false);
+      }
       return;
     }
 
     // Redirect to QRIS payment for paid tryouts
     navigate(`/dashboard/payment/${tryout.id}/qris`);
   };
-
-  const handleConfirmFreeClaim = async () => {
-    if (!tryout || !user) return;
-    if (!freeClaimChecks.followIG || !freeClaimChecks.tagFriends || !freeClaimChecks.joinTelegram || !freeRedeemCode.trim()) return;
-
-    try {
-      setPurchasing(true);
-      
-      const claimCode = freeRedeemCode.trim().toUpperCase();
-      const validation = await validateClaimCode(claimCode, user.uid);
-
-      if (!validation.valid) {
-        toast({
-          title: 'Kode Tidak Valid',
-          description: validation.message || 'Kode redeem yang Anda masukkan salah.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      if (validation.tryoutId && validation.tryoutId !== tryout.id) {
-        toast({
-          title: 'Kode Tidak Valid',
-          description: 'Kode ini tidak berlaku untuk try out ini.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      await useClaimCode(claimCode, user.uid);
-      await purchaseTryout(user.uid, tryout.id, tryout.name);
-      setShowFreeClaimDialog(false);
-      toast({
-        title: '🎉 Berhasil Daftar!',
-        description: 'Try out gratis berhasil ditambahkan ke akun kamu.',
-      });
-      await loadTryoutDetail();
-    } catch (error: any) {
-      console.error('Error claiming free tryout:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Gagal memvalidasi kode',
-        variant: 'destructive',
-      });
-    } finally {
-      setPurchasing(false);
-    }
-  };
-
 
   const handleStartTryout = () => {
     if (!userTryout) return;
@@ -468,7 +428,7 @@ export const TryoutDetailPage: React.FC = () => {
         <div className="space-y-4">
           {/* Price Card (if applicable) */}
           {/* Price Card */}
-          {displayPrice && displayPrice > 0 && !isPurchased && (
+          {!!displayPrice && displayPrice > 0 && !isPurchased && (
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 relative overflow-hidden group">
               {isEarlyBirdActive && (
                 <div className="absolute -right-12 top-6 bg-orange-500 text-white px-12 py-1 rotate-45 text-[10px] font-black uppercase tracking-widest shadow-sm z-10">
@@ -694,7 +654,7 @@ export const TryoutDetailPage: React.FC = () => {
             </div>
           ) : !isPurchased ? (
             <div className="space-y-3">
-              {displayPrice && displayPrice > 0 && (
+              {!!displayPrice && displayPrice > 0 && (
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs text-gray-600 font-medium">{isEarlyBirdActive ? 'Early Bird' : 'Harga'}:</span>
                   <div className="text-right">
@@ -913,160 +873,6 @@ export const TryoutDetailPage: React.FC = () => {
               className="flex-1 bg-blue-600 hover:bg-blue-700"
             >
               Mulai Try Out
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Free Claim Social Media Requirement Dialog */}
-      <Dialog open={showFreeClaimDialog} onOpenChange={setShowFreeClaimDialog}>
-        <DialogContent className="sm:max-w-md max-sm:fixed max-sm:bottom-0 max-sm:top-auto max-sm:left-0 max-sm:right-0 max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-b-none max-sm:rounded-t-3xl max-sm:max-h-[90vh] max-sm:overflow-y-auto max-sm:w-full">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-lg">
-              <Gift className="w-5 h-5 text-green-600" />
-              Klaim Try Out Gratis
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4 py-3">
-            <p className="text-sm text-gray-600 leading-relaxed">
-              Untuk mendapatkan akses gratis, kamu perlu menyelesaikan 3 langkah berikut terlebih dahulu:
-            </p>
-
-            {/* Step 1: Follow IG */}
-            <div className="bg-pink-50 border border-pink-100 rounded-xl p-4 space-y-3">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-gradient-to-br from-pink-500 to-purple-600 rounded-lg flex items-center justify-center shrink-0">
-                  <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
-                  </svg>
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-gray-900">Follow Instagram @kelasasn</p>
-                  <a
-                    href="https://instagram.com/kelasasn"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-pink-600 hover:text-pink-700 font-medium flex items-center gap-1 mt-1"
-                  >
-                    Buka Instagram <ExternalLink className="w-3 h-3" />
-                  </a>
-                </div>
-              </div>
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={freeClaimChecks.followIG}
-                  onChange={(e) => setFreeClaimChecks(prev => ({ ...prev, followIG: e.target.checked }))}
-                  className="w-4 h-4 rounded accent-pink-600"
-                />
-                <span className="text-sm text-gray-700">Saya sudah follow @kelasasn ✅</span>
-              </label>
-            </div>
-
-            {/* Step 2: Tag 2 Friends */}
-            <div className="bg-purple-50 border border-purple-100 rounded-xl p-4 space-y-3">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center shrink-0">
-                  <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="9" cy="7" r="4"></circle>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                  </svg>
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-gray-900">Tag 2 Teman di Postingan Terakhir</p>
-                  <a
-                    href="https://instagram.com/kelasasn"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1 mt-1"
-                  >
-                    Buka Postingan Terakhir <ExternalLink className="w-3 h-3" />
-                  </a>
-                </div>
-              </div>
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={freeClaimChecks.tagFriends}
-                  onChange={(e) => setFreeClaimChecks(prev => ({ ...prev, tagFriends: e.target.checked }))}
-                  className="w-4 h-4 rounded accent-purple-600"
-                />
-                <span className="text-sm text-gray-700">Saya sudah tag 2 teman ✅</span>
-              </label>
-            </div>
-
-            {/* Step 3: Join Telegram */}
-            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 space-y-3">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-[#229ED9] rounded-lg flex items-center justify-center shrink-0">
-                  <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
-                  </svg>
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-gray-900">Join Grup Telegram KelasASN</p>
-                  <a
-                    href="https://t.me/kelasasn"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 mt-1"
-                  >
-                    Buka Telegram <ExternalLink className="w-3 h-3" />
-                  </a>
-                </div>
-              </div>
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={freeClaimChecks.joinTelegram}
-                  onChange={(e) => setFreeClaimChecks(prev => ({ ...prev, joinTelegram: e.target.checked }))}
-                  className="w-4 h-4 rounded accent-blue-600"
-                />
-                <span className="text-sm text-gray-700">Saya sudah join Telegram ✅</span>
-              </label>
-            </div>
-
-            {/* Step 4: Kirim Bukti & Redeem */}
-            <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 space-y-3">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-gray-900 rounded-lg flex items-center justify-center shrink-0 shadow-sm">
-                  <Key className="w-4 h-4 text-white" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-gray-900">Kirim Bukti & Redeem Kode</p>
-                  <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-                    Kirim bukti screenshot langkah 1-3 ke DM Instagram @kelasasn. Admin akan memverifikasi dan membalas dengan kode klaim.
-                  </p>
-                </div>
-              </div>
-              <div className="pt-2">
-                <Input
-                  placeholder="MASUKKAN KODE REDEEM DARI ADMIN"
-                  value={freeRedeemCode}
-                  onChange={(e) => setFreeRedeemCode(e.target.value.toUpperCase())}
-                  className="text-center font-black tracking-widest text-xs h-11 bg-white border-dashed border-2 border-gray-300 focus-visible:border-gray-900 focus-visible:ring-0"
-                />
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter className="flex gap-2 sm:gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setShowFreeClaimDialog(false)}
-              className="flex-1"
-            >
-              Batal
-            </Button>
-            <Button
-              onClick={handleConfirmFreeClaim}
-              disabled={purchasing || !freeClaimChecks.followIG || !freeClaimChecks.tagFriends || !freeClaimChecks.joinTelegram || !freeRedeemCode.trim()}
-              className="flex-1 bg-green-600 hover:bg-green-700"
-            >
-              {purchasing ? 'Memproses...' : 'Klaim Gratis 🎉'}
             </Button>
           </DialogFooter>
         </DialogContent>
