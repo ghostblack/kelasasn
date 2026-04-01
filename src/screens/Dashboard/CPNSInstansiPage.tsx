@@ -292,7 +292,7 @@ export function CPNSInstansiPage() {
   const [error, setError] = useState<string | null>(null);
 
   // VIP Access States
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [isUnlocked, setIsUnlocked] = useState<boolean | null>(null);
 
   // Instansi tab state
@@ -316,6 +316,10 @@ export function CPNSInstansiPage() {
   // ─── Check VIP Access ──────────────────────────────────────────────────────
   useEffect(() => {
     const initAccess = async () => {
+      if (isAdmin) {
+        setIsUnlocked(true);
+        return;
+      }
       if (user) {
         const hasAccess = await checkUserFormasiAccess(user.uid);
         setIsUnlocked(hasAccess);
@@ -324,7 +328,7 @@ export function CPNSInstansiPage() {
       }
     };
     initAccess();
-  }, [user]);
+  }, [user, isAdmin]);
 
   // ─── Load master data ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -427,6 +431,8 @@ export function CPNSInstansiPage() {
   // ─── Stats fetch ─────────────────────────────────────────────────────────────
   const loadStats = useCallback(async (codes: string[]) => {
     // Filter only codes we haven't started loading
+    if (!isUnlocked && !isAdmin) return;
+
     const toFetch = codes.filter(k => {
       if (loadingCodesRef.current.has(k)) return false;
       const s = stats.get(k);

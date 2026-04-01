@@ -53,6 +53,7 @@ export const checkUserFormasiAccess = async (userId: string): Promise<boolean> =
     }
 
     const data = userAccessSnap.data();
+    if (!data.expiresAt) return false;
     
     // Support either Timestamp or Date string
     let expiresAt: Date;
@@ -69,12 +70,22 @@ export const checkUserFormasiAccess = async (userId: string): Promise<boolean> =
 
     if (!expiresAt || isNaN(expiresAt.getTime())) return false;
 
-    // Check if current time is past expiration
-    if (new Date() > expiresAt) {
+    // Strict Check: Only bundling purchases (365+ days) or specific long-term access allowed
+    // Legacy redeem codes (typically 7 days) are now deprecated for these features.
+    const duration = data.durationInDays || 0;
+    if (duration < 365) {
+      console.log(`[formasiAccess] Access denied for user ${userId}. Reason: Legacy/Short-term access (${duration} days). Bundling purchase required.`);
       return false;
     }
 
-    return true; // Valid access
+    // Check if current time is past expiration
+    const now = new Date();
+    if (now > expiresAt) {
+      console.log(`[formasiAccess] Access expired for user ${userId}. (Now: ${now.toISOString()}, Expires: ${expiresAt.toISOString()})`);
+      return false;
+    }
+
+    return true; // Valid 365-day bundling access
   } catch (error) {
     console.error('Error checking user formasi access:', error);
     return false;

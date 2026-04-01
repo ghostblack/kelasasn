@@ -44,7 +44,7 @@ const PROVINSI_SEARCH_MAP: Record<string, string> = {
 };
 
 export function CPNSFormasiPage() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [isUnlocked, setIsUnlocked] = useState<boolean | null>(null);
 
   const [formasi, setFormasi] = useState<SSCASNFormation[]>([]);
@@ -201,6 +201,11 @@ export function CPNSFormasiPage() {
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
+    if (!isUnlocked && !isAdmin) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
@@ -350,6 +355,10 @@ export function CPNSFormasiPage() {
 
   useEffect(() => {
     const initAccess = async () => {
+      if (isAdmin) {
+        setIsUnlocked(true);
+        return;
+      }
       if (user) {
         const hasAccess = await checkUserFormasiAccess(user.uid);
         setIsUnlocked(hasAccess);
@@ -358,7 +367,7 @@ export function CPNSFormasiPage() {
       }
     };
     initAccess();
-  }, [user]);
+  }, [user, isAdmin]);
 
   const handleRowClick = async (formasiId: string) => {
     setIsDetailLoading(true);

@@ -3,10 +3,18 @@ import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { seedAllData } from '@/utils/seedData';
 import { Database } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const SeedDataButton = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const { isAdmin } = useAuth();
+
+  // Only show in development AND if user is admin
+  // Or if you want it strictly for dev, just check import.meta.env.DEV
+  if (!import.meta.env.DEV || !isAdmin) {
+    return null;
+  }
 
   const handleSeedData = async () => {
     setLoading(true);
