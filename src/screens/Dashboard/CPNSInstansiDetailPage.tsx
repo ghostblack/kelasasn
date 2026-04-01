@@ -39,7 +39,7 @@ export function CPNSInstansiDetailPage() {
   const [sortBy, setSortBy] = useState<'ratio_asc' | 'ratio_desc' | 'gaji_desc'>('default' as any);
 
   // VIP Access States
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [isUnlocked, setIsUnlocked] = useState<boolean | null>(null);
 
   // Redirect if no instansi data (e.g. direct URL access)
@@ -58,6 +58,10 @@ export function CPNSInstansiDetailPage() {
   // ─── Check VIP Access ──────────────────────────────────────────────────────
   useEffect(() => {
     const initAccess = async () => {
+      if (isAdmin) {
+        setIsUnlocked(true);
+        return;
+      }
       if (user) {
         const hasAccess = await checkUserFormasiAccess(user.uid);
         setIsUnlocked(hasAccess);
@@ -66,7 +70,7 @@ export function CPNSInstansiDetailPage() {
       }
     };
     initAccess();
-  }, [user]);
+  }, [user, isAdmin]);
 
   // Fetch / Cache logic
   useEffect(() => {

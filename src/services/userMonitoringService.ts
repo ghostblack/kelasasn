@@ -1,4 +1,4 @@
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, getDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { UserProfile, TryoutSession, TryoutResult } from '@/types';
 
@@ -8,6 +8,8 @@ export interface UserMonitoringData {
   completedTryouts: number;
   inProgressTryouts: number;
   lastActivity?: Date;
+  isVIP: boolean;
+  vipExpiry?: Date;
   accessibleTryouts: string[];
   tryoutSessions: Array<{
     id: string;
@@ -120,11 +122,29 @@ export const getAllUsersWithActivity = async (): Promise<UserMonitoringData[]> =
     const usersWithActivity = await Promise.all(
       users.map(async (user) => {
         try {
-          const [sessions, results, accessibleIds] = await Promise.all([
+          const [sessions, results, accessibleIds, userAccessSnap] = await Promise.all([
             getUserTryoutSessions(user.uid),
             getUserTryoutResults(user.uid),
-            getUserAccessibleTryouts(user.uid)
+            getUserAccessibleTryouts(user.uid),
+            getDoc(doc(db, 'user_formasi_access', user.uid))
           ]);
+
+          // VIP Logic: has record and duration >= 365
+          let isVIP = false;
+          let vipExpiry: Date | undefined;
+
+          if (userAccessSnap.exists()) {
+            const accessData = userAccessSnap.data();
+            const duration = accessData.durationInDays || 0;
+            const expiresAt = accessData.expiresAt instanceof Timestamp 
+              ? accessData.expiresAt.toDate() 
+              : accessData.expiresAt ? new Date(accessData.expiresAt) : null;
+
+            if (duration >= 365 && expiresAt && expiresAt > new Date()) {
+              isVIP = true;
+              vipExpiry = expiresAt;
+            }
+          }
 
           const inProgressSessions = sessions.filter(s => s.status === 'active' || s.status === 'paused');
           
@@ -151,6 +171,8 @@ export const getAllUsersWithActivity = async (): Promise<UserMonitoringData[]> =
             completedTryouts: results.length,
             inProgressTryouts: inProgressSessions.length,
             lastActivity,
+            isVIP,
+            vipExpiry,
             accessibleTryouts,
             tryoutSessions,
           };
@@ -162,6 +184,7 @@ export const getAllUsersWithActivity = async (): Promise<UserMonitoringData[]> =
             completedTryouts: 0,
             inProgressTryouts: 0,
             lastActivity: undefined,
+            isVIP: false,
             accessibleTryouts: [],
             tryoutSessions: [],
           };

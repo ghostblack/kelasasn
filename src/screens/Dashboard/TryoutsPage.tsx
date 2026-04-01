@@ -19,7 +19,7 @@ import { TryoutPackage, UserTryout } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 
 export const TryoutsPage = () => {
-  const { user, loading: authLoading } = useAuth();
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [tryouts, setTryouts] = useState<TryoutPackage[]>([]);
@@ -81,7 +81,7 @@ export const TryoutsPage = () => {
       });
       setTryouts(activeTryouts);
       setUserTryouts(purchased);
-      setHasVIP(isVIP);
+      setHasVIP(isAdmin || isVIP);
     } catch (error) {
       console.error('Error loading tryouts data:', error);
       toast({

@@ -280,8 +280,15 @@ export const UsersMonitoring: React.FC = () => {
                       {(currentPage - 1) * itemsPerPage + index + 1}
                     </TableCell>
                     <TableCell className="border-r border-gray-100 py-1 px-4">
-                        <div className="flex flex-col">
-                          <span className="text-[10px] font-black text-gray-900 uppercase truncate max-w-[180px] leading-tight">{userData.user.displayName}</span>
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-black text-gray-900 uppercase truncate max-w-[150px] leading-tight">{userData.user.displayName}</span>
+                            {userData.isVIP && (
+                              <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-[8px] font-black uppercase tracking-tighter rounded-none py-0 h-4 px-1 shadow-none">
+                                VIP
+                              </Badge>
+                            )}
+                          </div>
                           <span className="text-[9px] font-medium text-gray-400 truncate max-w-[180px]">{userData.user.email}</span>
                         </div>
                     </TableCell>
@@ -404,6 +411,12 @@ export const UsersMonitoring: React.FC = () => {
                       <p className="text-gray-600">@{selectedUser.user.username}</p>
                     )}
                     <p className="text-sm text-gray-500">{selectedUser.user.email}</p>
+                    {selectedUser.isVIP && (
+                      <div className="mt-2 inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 px-2 py-1 rounded border border-amber-100">
+                        <span className="text-[9px] font-black uppercase tracking-widest">VIP Active Until:</span>
+                        <span className="text-[10px] font-bold">{formatDate(selectedUser.vipExpiry)}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
