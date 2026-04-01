@@ -356,11 +356,17 @@ export function CPNSFormasiPage() {
   useEffect(() => {
     const initAccess = async () => {
       if (isAdmin) {
+        console.log(`[CPNSFormasi] Access granted: User is ADMIN`);
         setIsUnlocked(true);
         return;
       }
       if (user) {
         const hasAccess = await checkUserFormasiAccess(user.uid);
+        if (hasAccess) {
+          console.log(`[CPNSFormasi] Access granted: Valid 365-day Bundle`);
+        } else {
+          console.log(`[CPNSFormasi] Access denied: Bundle purchase required`);
+        }
         setIsUnlocked(hasAccess);
       } else {
         setIsUnlocked(false);

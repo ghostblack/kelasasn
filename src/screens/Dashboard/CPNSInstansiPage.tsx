@@ -317,11 +317,17 @@ export function CPNSInstansiPage() {
   useEffect(() => {
     const initAccess = async () => {
       if (isAdmin) {
+        console.log(`[CPNSInstansi] Access granted: User is ADMIN`);
         setIsUnlocked(true);
         return;
       }
       if (user) {
         const hasAccess = await checkUserFormasiAccess(user.uid);
+        if (hasAccess) {
+          console.log(`[CPNSInstansi] Access granted: Valid 365-day Bundle`);
+        } else {
+          console.log(`[CPNSInstansi] Access denied: Bundle purchase required`);
+        }
         setIsUnlocked(hasAccess);
       } else {
         setIsUnlocked(false);
