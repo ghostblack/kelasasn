@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getTryoutById, purchaseTryout, getUserTryouts, resetTryoutAttempt, getUserResultsByTryout } from '@/services/tryoutService';
 import { getActiveTryoutSession } from '@/services/tryoutSessionService';
 import { VIP_BUNDLING_ID, getVIPBundlingSettings, getVIPBundlingStats } from '@/services/vipBundlingService';
+import { validateClaimCode, useClaimCode } from '@/services/claimCodeService';
 import { TryoutPackage, UserTryout, TryoutSession } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -166,17 +167,31 @@ export const TryoutDetailPage: React.FC = () => {
     if (!tryout || !user) return;
     if (!freeClaimChecks.followIG || !freeClaimChecks.tagFriends || !freeClaimChecks.joinTelegram || !freeRedeemCode.trim()) return;
 
-    if (freeRedeemCode.trim() !== 'KELASASNGRATIS') {
-      toast({
-        title: 'Kode Tidak Valid',
-        description: 'Kode redeem yang Anda masukkan salah. Hubungi admin via DM IG.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
     try {
       setPurchasing(true);
+      
+      const claimCode = freeRedeemCode.trim().toUpperCase();
+      const validation = await validateClaimCode(claimCode, user.uid);
+
+      if (!validation.valid) {
+        toast({
+          title: 'Kode Tidak Valid',
+          description: validation.message || 'Kode redeem yang Anda masukkan salah.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      if (validation.tryoutId && validation.tryoutId !== tryout.id) {
+        toast({
+          title: 'Kode Tidak Valid',
+          description: 'Kode ini tidak berlaku untuk try out ini.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      await useClaimCode(claimCode, user.uid);
       await purchaseTryout(user.uid, tryout.id, tryout.name);
       setShowFreeClaimDialog(false);
       toast({
@@ -184,11 +199,11 @@ export const TryoutDetailPage: React.FC = () => {
         description: 'Try out gratis berhasil ditambahkan ke akun kamu.',
       });
       await loadTryoutDetail();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error claiming free tryout:', error);
       toast({
         title: 'Error',
-        description: 'Gagal mendaftar try out gratis',
+        description: error.message || 'Gagal memvalidasi kode',
         variant: 'destructive',
       });
     } finally {
