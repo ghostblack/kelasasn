@@ -197,10 +197,12 @@ export function CPNSInstansiDetailPage() {
 
   if (!instansi) return null;
 
-  if (isUnlocked === null) return (
+  if (isUnlocked === null || loading) return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
       <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600/10 border-t-blue-600" />
-      <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] animate-pulse">Checking Authorization...</p>
+      <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] animate-pulse">
+        {isUnlocked === null ? 'Pengecekan Akses...' : 'Memuat Data Instansi...'}
+      </p>
     </div>
   );
 
@@ -341,12 +343,7 @@ export function CPNSInstansiDetailPage() {
         {/* RIGHT COLUMN: Stats & Table */}
         <div className="lg:col-span-2 flex flex-col gap-6">
           
-          {loading ? (
-            <div className="flex flex-col items-center justify-center p-24 bg-white rounded-3xl border border-gray-100 shadow-sm">
-              <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-600/10 border-t-blue-600 mb-6" />
-              <p className="text-[10px] font-black tracking-[0.2em] text-gray-400 uppercase animate-pulse">Menempa Data Formasi...</p>
-            </div>
-          ) : error ? (
+          {error ? (
             <div className="bg-red-50 text-red-600 p-8 rounded-3xl text-center text-sm font-bold border border-red-100">
               <AlertTriangle className="h-8 w-8 mx-auto mb-3 opacity-50" />
               {error}

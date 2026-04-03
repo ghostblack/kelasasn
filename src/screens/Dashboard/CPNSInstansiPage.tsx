@@ -484,10 +484,12 @@ export function CPNSInstansiPage() {
   const ratioColor = (r: number) =>
     r > 50 ? 'text-rose-600 bg-rose-50' : r > 20 ? 'text-amber-600 bg-amber-50' : r > 10 ? 'text-blue-600 bg-blue-50' : 'text-emerald-600 bg-emerald-50';
 
-  if (isUnlocked === null) return (
+  if (isUnlocked === null || loading) return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
       <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600/10 border-t-blue-600" />
-      <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] animate-pulse">Checking Authorization...</p>
+      <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] animate-pulse">
+        {isUnlocked === null ? 'Pengecekan Akses...' : 'Memuat Data Instansi...'}
+      </p>
     </div>
   );
 

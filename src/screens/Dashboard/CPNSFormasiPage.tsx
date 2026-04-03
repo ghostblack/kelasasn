@@ -1301,14 +1301,7 @@ export function CPNSFormasiPage() {
                            </span>
                          </div>
                       )}
-                      {(selectedFormasi as any).DISABLE !== undefined && (
-                         <div>
-                           <span className="text-[9px] text-gray-500 font-bold uppercase block mb-0.5">Kebutuhan Khusus</span>
-                           <p className="text-xs font-black text-gray-900 uppercase">
-                             {(selectedFormasi as any).DISABLE === true ? 'Penyandang Disabilitas' : 'Non-Disabilitas'}
-                           </p>
-                         </div>
-                      )}
+
                     </div>
                   </div>
                 </div>
