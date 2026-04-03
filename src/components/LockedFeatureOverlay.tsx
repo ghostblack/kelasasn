@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useNavigate } from 'react-router-dom';
 
 interface LockedFeatureOverlayProps {
-  type?: 'formasi' | 'instansi' | 'detail';
+  type?: 'formasi' | 'instansi' | 'detail' | 'ranking';
 }
 
 export const LockedFeatureOverlay: React.FC<LockedFeatureOverlayProps> = ({ type = 'detail' }) => {
@@ -16,6 +16,9 @@ export const LockedFeatureOverlay: React.FC<LockedFeatureOverlayProps> = ({ type
     const mockData = type === 'instansi' ? [
       { id: '1', title: 'Kementerian Keuangan', subtitle: 'K/L Pusat / Seluruh Indonesia', label: 'Tukin Nasional Tertinggi', val1: '⭐ 4.9', val2: 'Cat. 1', color: 'text-amber-600 bg-amber-50' },
       { id: '2', title: 'Komisi Pemilihan Umum', subtitle: 'Lembaga Non-Struktural', label: 'Kerja Santai (Non-Pemilu)', val1: '⭐ 4.5', val2: 'Pusat', color: 'text-blue-600 bg-blue-50' },
+    ] : type === 'ranking' ? [
+      { id: '1', title: 'Leaderboard Nasional', subtitle: 'Kompetisi Peserta se-Indonesia', label: 'Real-time', val1: '👑 Top 10', val2: 'Live', color: 'text-yellow-600 bg-yellow-50' },
+      { id: '2', title: 'Analisis Kompetitor', subtitle: 'Perbandingan Poin Langsung', label: 'Akurat', val1: '💯 Detail', val2: 'Pro', color: 'text-blue-600 bg-blue-50' },
     ] : [
       { id: '1', title: 'Analis Kebijakan Ahli Pertama', subtitle: 'Kementerian Sekretariat Negara', label: 'Peluang Emas', val1: '12', val2: '0', color: 'text-emerald-600 bg-emerald-50' },
       { id: '2', title: 'Auditor Ahli Pertama', subtitle: 'Kementerian Keuangan', label: 'Gaji 15JT+', val1: '45', val2: '22', color: 'text-amber-600 bg-amber-50' },
@@ -79,6 +82,8 @@ export const LockedFeatureOverlay: React.FC<LockedFeatureOverlayProps> = ({ type
            <h2 className="text-2xl md:text-3xl lg:text-4xl font-black text-gray-900 tracking-tight leading-tight uppercase max-w-3xl mx-auto px-4">
              {type === 'instansi' ? (
                <>Cek <span className="text-blue-600">Rating & Tukin</span> <br className="hidden md:block"/> Instansi Favorit Kamu</>
+             ) : type === 'ranking' ? (
+               <>Akses <span className="text-yellow-500">Peringkat Nasional</span> <br className="hidden md:block"/> Rasakan Persaingan Asli</>
              ) : (
                <>Lihat <span className="text-blue-600">Peluang Kelulusan</span> <br className="hidden md:block"/> di Formasi Pilihan</>
              )}
@@ -86,6 +91,8 @@ export const LockedFeatureOverlay: React.FC<LockedFeatureOverlayProps> = ({ type
            <p className="text-gray-500 font-medium text-sm md:text-base max-w-xl mx-auto leading-relaxed opacity-80 mt-2">
              {type === 'instansi' 
                ? 'Buka rincian tingkatan Tukin dan rating lingkungan kerja K/L & Lembaga untuk tentukan target pilihanmu.' 
+               : type === 'ranking'
+               ? 'Bandingkan nilai kamu dengan puluhan ribu peserta lain dari seluruh Indonesia dan evaluasi posisi peringkatmu sekarang juga.'
                : 'Dapatkan data eksklusif jumlah pelamar, rincian gaji, dan rasio persaingan realtime dari 14.000+ data SSCASN.'}
            </p>
         </div>

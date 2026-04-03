@@ -2,19 +2,20 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { getTryoutById, getUserResultsByTryout, submitTryoutFeedback } from '@/services/tryoutService';
+import { checkUserFormasiAccess } from '@/services/formasiAccessCodeService';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { TryoutResult, TryoutPackage } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { LoadingScreen } from '@/components/ui/spinner';
-import { BookOpen, TrendingUp, Award, ArrowLeft } from 'lucide-react';
+import { BookOpen, TrendingUp, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export const TryoutResultPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [result, setResult] = useState<TryoutResult | null>(null);
   const [allResults, setAllResults] = useState<TryoutResult[]>([]);
@@ -24,6 +25,7 @@ export const TryoutResultPage: React.FC = () => {
   const [feedbackMissing, setFeedbackMissing] = useState('');
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [hasVIPAccess, setHasVIPAccess] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -54,8 +56,12 @@ export const TryoutResultPage: React.FC = () => {
       setAllResults(results);
       setResult(results[0]);
 
-      const tryoutData = await getTryoutById(id);
+      const [tryoutData, isVIP] = await Promise.all([
+        getTryoutById(id),
+        checkUserFormasiAccess(user.uid)
+      ]);
       setTryout(tryoutData);
+      setHasVIPAccess(isAdmin || isVIP);
 
     } catch (error) {
       console.error('Error loading result:', error);
@@ -122,8 +128,7 @@ export const TryoutResultPage: React.FC = () => {
   const tkpMaxScore = result.maxTkpScore || (tryout.tkpQuestions || 45) * 5;
   const totalMaxScore = result.maxTotalScore || (twkMaxScore + tiuMaxScore + tkpMaxScore);
 
-  const twkTotal = tryout.twkQuestions || 30;
-  const tiuTotal = tryout.tiuQuestions || 35;
+
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -186,108 +191,98 @@ export const TryoutResultPage: React.FC = () => {
         </div>
       )}
 
-      <div className="border rounded-lg p-6 bg-white">
-        <div className="flex items-center justify-between mb-6">
+      <div className="bg-white border border-gray-300 p-8 shadow-sm font-sans mx-auto w-full">
+        <div className="text-center mb-6 border-b-2 border-black pb-4">
+          <h2 className="text-xl font-bold uppercase tracking-wider mb-2">HASIL SELEKSI KOMPETENSI DASAR (SKD)</h2>
+          <p className="text-gray-700">Program: {tryout.name}</p>
+        </div>
+
+        <div className="mb-6 bg-gray-50 p-4 border border-gray-300 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <p className="text-sm text-gray-500 mb-1">Skor Total</p>
-            <div className="flex items-baseline gap-2">
-              <span className="text-4xl text-gray-900">{result.totalScore}</span>
-              <span className="text-lg text-gray-400">/ {totalMaxScore}</span>
-            </div>
+            <span className="font-semibold text-gray-700 mr-2">Status Kelulusan:</span>
+            <span className={result.isPassed ? "font-bold text-green-700" : "font-bold text-red-700"}>
+              {result.isPassed ? "LULUS / MEMENUHI AMBANG BATAS" : "TIDAK MEMENUHI AMBANG BATAS"}
+            </span>
           </div>
-          <Badge className={`text-sm px-4 py-1 ${result.isPassed ? 'bg-green-600' : 'bg-red-600'}`}>
-            {result.isPassed ? 'Lulus' : 'Tidak Lulus'}
-          </Badge>
+          {!(tryout.category === 'free' && !hasVIPAccess) && (
+            <div className="text-left md:text-right">
+              <span className="font-semibold text-gray-700">Peringkat Nasional: </span>
+              <span className="font-bold">{result.rank}</span> <span className="text-gray-500 text-sm">dari {result.totalParticipants} peserta</span>
+            </div>
+          )}
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
-          <div className="border rounded-lg p-4 bg-gray-50">
-            <div className="flex items-center gap-2 mb-3">
-              <div className={`w-8 h-8 rounded flex items-center justify-center ${result.passedTWK ? 'bg-blue-600' : 'bg-gray-400'}`}>
-                <span className="text-xs text-white">TWK</span>
-              </div>
-              <span className={`text-xs px-2 py-0.5 rounded-full ${result.passedTWK ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                {result.passedTWK ? 'Lulus' : 'Tidak Lulus'}
-              </span>
-            </div>
-            <div className="flex items-baseline gap-1 mb-1">
-              <span className="text-2xl text-gray-900">{result.twkScore}</span>
-              <span className="text-sm text-gray-500">/ {twkMaxScore}</span>
-            </div>
-            <p className="text-xs text-gray-500">{result.twkCorrect}/{twkTotal} benar</p>
-          </div>
-
-          <div className="border rounded-lg p-4 bg-gray-50">
-            <div className="flex items-center gap-2 mb-3">
-              <div className={`w-8 h-8 rounded flex items-center justify-center ${result.passedTIU ? 'bg-green-600' : 'bg-gray-400'}`}>
-                <span className="text-xs text-white">TIU</span>
-              </div>
-              <span className={`text-xs px-2 py-0.5 rounded-full ${result.passedTIU ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                {result.passedTIU ? 'Lulus' : 'Tidak Lulus'}
-              </span>
-            </div>
-            <div className="flex items-baseline gap-1 mb-1">
-              <span className="text-2xl text-gray-900">{result.tiuScore}</span>
-              <span className="text-sm text-gray-500">/ {tiuMaxScore}</span>
-            </div>
-            <p className="text-xs text-gray-500">{result.tiuCorrect}/{tiuTotal} benar</p>
-          </div>
-
-          <div className="border rounded-lg p-4 bg-gray-50">
-            <div className="flex items-center gap-2 mb-3">
-              <div className={`w-8 h-8 rounded flex items-center justify-center ${result.passedTKP ? 'bg-orange-600' : 'bg-gray-400'}`}>
-                <span className="text-xs text-white">TKP</span>
-              </div>
-              <span className={`text-xs px-2 py-0.5 rounded-full ${result.passedTKP ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                {result.passedTKP ? 'Lulus' : 'Tidak Lulus'}
-              </span>
-            </div>
-            <div className="flex items-baseline gap-1 mb-1">
-              <span className="text-2xl text-gray-900">{result.tkpScore}</span>
-              <span className="text-sm text-gray-500">/ {tkpMaxScore}</span>
-            </div>
-            <p className="text-xs text-gray-500">Nilai: {result.tkpScore}/{tkpMaxScore}</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="border rounded-lg p-4 bg-white">
-          <div className="flex items-center gap-2 mb-3">
-            <Award className="w-5 h-5 text-amber-600" />
-            <h3 className="text-sm text-gray-900">Peringkat Anda</h3>
-          </div>
-          <p className="text-3xl text-amber-600">#{result.rank}</p>
-          <p className="text-xs text-gray-500 mt-1">dari {result.totalParticipants} peserta</p>
-        </div>
-
-        <div className="border rounded-lg p-4 bg-white">
-          <h3 className="text-sm text-gray-900 mb-3">Passing Grade</h3>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-600">TWK</span>
-              <span className="text-gray-900">{tryout.passingGradeTWK || 65}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">TIU</span>
-              <span className="text-gray-900">{tryout.passingGradeTIU || 80}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">TKP</span>
-              <span className="text-gray-900">{tryout.passingGradeTKP || 166}</span>
-            </div>
-          </div>
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse border border-gray-300 text-sm">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700">Sub Tes Ujian</th>
+                <th className="border border-gray-300 px-4 py-3 text-center font-semibold text-gray-700 w-32">Nilai Anda</th>
+                <th className="border border-gray-300 px-4 py-3 text-center font-semibold text-gray-700 w-40">Nilai Ambang Batas</th>
+                <th className="border border-gray-300 px-4 py-3 text-center font-semibold text-gray-700 w-32">Keterangan</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="border border-gray-300 px-4 py-3 text-gray-800">Tes Wawasan Kebangsaan (TWK)</td>
+                <td className="border border-gray-300 px-4 py-3 text-center text-gray-900">{result.twkScore}</td>
+                <td className="border border-gray-300 px-4 py-3 text-center text-gray-600">{tryout.passingGradeTWK || 65}</td>
+                <td className="border border-gray-300 px-4 py-3 text-center">
+                  <span className={result.passedTWK ? "text-green-700" : "text-red-600"}>
+                    {result.passedTWK ? "Memenuhi" : "Tidak Memenuhi"}
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td className="border border-gray-300 px-4 py-3 text-gray-800">Tes Intelegensia Umum (TIU)</td>
+                <td className="border border-gray-300 px-4 py-3 text-center text-gray-900">{result.tiuScore}</td>
+                <td className="border border-gray-300 px-4 py-3 text-center text-gray-600">{tryout.passingGradeTIU || 80}</td>
+                <td className="border border-gray-300 px-4 py-3 text-center">
+                  <span className={result.passedTIU ? "text-green-700" : "text-red-600"}>
+                    {result.passedTIU ? "Memenuhi" : "Tidak Memenuhi"}
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td className="border border-gray-300 px-4 py-3 text-gray-800">Tes Karakteristik Pribadi (TKP)</td>
+                <td className="border border-gray-300 px-4 py-3 text-center text-gray-900">{result.tkpScore}</td>
+                <td className="border border-gray-300 px-4 py-3 text-center text-gray-600">{tryout.passingGradeTKP || 166}</td>
+                <td className="border border-gray-300 px-4 py-3 text-center">
+                  <span className={result.passedTKP ? "text-green-700" : "text-red-600"}>
+                    {result.passedTKP ? "Memenuhi" : "Tidak Memenuhi"}
+                  </span>
+                </td>
+              </tr>
+              <tr className="bg-gray-50 border-t-2 border-gray-400">
+                <td className="border border-gray-300 px-4 py-3 font-bold text-gray-900">SKOR TOTAL</td>
+                <td className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-900">{result.totalScore}</td>
+                <td className="border border-gray-300 px-4 py-3 text-center text-gray-500" colSpan={2}>
+                  Ketentuan Maksimal Skor: {totalMaxScore}
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
       <div className="flex gap-3">
-        <Button
-          onClick={() => navigate(`/dashboard/tryout/${id}/review`)}
-          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-        >
-          <BookOpen className="mr-2 h-4 w-4" />
-          Lihat Pembahasan
-        </Button>
+        {tryout.category === 'free' && !hasVIPAccess ? (
+          <Button
+            onClick={() => navigate('/dashboard')}
+            className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold"
+          >
+            <BookOpen className="mr-2 h-4 w-4" />
+            Buka Pembahasan (Beli VIP / Premium)
+          </Button>
+        ) : (
+          <Button
+            onClick={() => navigate(`/dashboard/tryout/${id}/review`)}
+            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            <BookOpen className="mr-2 h-4 w-4" />
+            Lihat Pembahasan
+          </Button>
+        )}
         <Button
           onClick={() => navigate('/dashboard/tryouts')}
           variant="outline"
@@ -307,7 +302,7 @@ export const TryoutResultPage: React.FC = () => {
           {feedbackSubmitted ? (
             <div className="text-center py-8">
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-100 text-green-600 mb-4">
-                <Award className="w-6 h-6" />
+                <CheckCircle2 className="w-6 h-6" />
               </div>
               <h4 className="text-lg font-medium text-gray-900 mb-2">Terima Kasih Atas Feedback Anda!</h4>
               <p className="text-sm text-gray-500">Feedback Anda sangat berharga bagi kami untuk terus meningkatkan kualitas platform KelasASN.</p>

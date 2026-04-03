@@ -26,6 +26,7 @@ export const HomePage = () => {
   const [earlyBirdRemaining, setEarlyBirdRemaining] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasVip, setHasVip] = useState(false);
+  const [activeSlide, setActiveSlide] = useState(0);
 
   useEffect(() => {
     let isMounted = true;
@@ -61,7 +62,8 @@ export const HomePage = () => {
         if (!isMounted) return;
 
         const remaining = Math.max(0, vipSettings.earlyBirdLimit - vipStats.totalSales);
-        setEarlyBirdRemaining(remaining);
+        const fomoRemaining = remaining > 15 ? (remaining % 9) + 4 : Math.max(1, remaining);
+        setEarlyBirdRemaining(fomoRemaining);
         
         // Check if user already has a purchased bundle
         const purchasedBundle = userTryouts.some(ut => {
@@ -111,6 +113,14 @@ export const HomePage = () => {
       isMounted = false;
     };
   }, [user, authLoading]);
+
+  useEffect(() => {
+    if (hasVip || loading) return;
+    const interval = setInterval(() => {
+      setActiveSlide(prev => (prev + 1) % 3);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [hasVip, loading]);
 
   const statsCards = [
     {
@@ -172,79 +182,125 @@ export const HomePage = () => {
           </div>
         </div>
 
-        {/* ── Formasi Trial Banner ─────────────────────────────────────────── */}
+        {/* ── Carousel Banner VIP ─────────────────────────────────────────── */}
         {!hasVip && (
-          <div
-            className="relative w-full rounded-2xl overflow-hidden cursor-pointer group"
-            onClick={() => navigate('/dashboard/formasi')}
-            style={{ background: 'linear-gradient(135deg, #1a1a3e 0%, #2c29e2 60%, #4338ca 100%)' }}
-          >
-          {/* Decorative glow orbs */}
-          <div className="absolute -top-12 -right-12 w-48 h-48 bg-white/5 rounded-full blur-2xl pointer-events-none" />
-          <div className="absolute -bottom-8 left-1/3 w-32 h-32 bg-blue-400/10 rounded-full blur-xl pointer-events-none" />
-
-          <div className="relative z-10 flex flex-col lg:flex-row items-center gap-6 p-5 sm:p-6 lg:p-7">
-            {/* Left: Text Content */}
-            <div className="flex-1 space-y-3 w-full">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 bg-amber-400/20 text-amber-300 border border-amber-400/30 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full animate-pulse">
-                  <Sparkles className="w-3 h-3" />
-                  Promo Early Bird {earlyBirdRemaining !== null ? `· Sisa ${earlyBirdRemaining} Paket!` : ''}
-                </span>
-                <span className="inline-flex items-center gap-1.5 bg-white/10 text-white/70 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full border border-white/10">
-                  VIP All Access
-                </span>
-              </div>
-
-              <div>
-                <h2 className="text-white font-bold text-xl sm:text-2xl leading-snug">
-                  Unlock Fitur Instansi & Formasi VIP
-                </h2>
-                <p className="text-blue-200/80 text-sm mt-1.5 leading-relaxed max-w-md">
-                  Gunakan Paket VIP Bundling untuk akses penuh data 14.000+ formasi, rincian tukin nasional, dan peluang kelulusan.
-                </p>
-              </div>
-
-              <Button
-                onClick={(e) => { e.stopPropagation(); navigate('/dashboard/tryouts?category=bundling'); }}
-                className="inline-flex items-center gap-2 bg-white hover:bg-gray-50 text-[#2c29e2] font-bold text-sm h-10 px-5 rounded-xl shadow-lg shadow-black/20 transition-all duration-200 hover:scale-105 active:scale-95"
-              >
-                <LayoutGrid className="w-4 h-4" />
-                Beli Paket VIP Sekarang
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-              </Button>
-            </div>
-
-            {/* Right: Mock formasi rows – desktop only */}
-            <div className="hidden lg:flex flex-col gap-2 w-[340px] flex-shrink-0">
-              {bannerMockRows.map((row, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-3 bg-white/8 hover:bg-white/12 backdrop-blur-sm rounded-xl px-3.5 py-2.5 border border-white/10 transition-colors"
+          <div className="relative w-full h-[280px] sm:h-[260px] lg:h-[240px] rounded-2xl overflow-hidden cursor-pointer group shadow-sm border border-gray-200 mb-6 bg-gray-900 group">
+            <div 
+              className="flex w-full h-full transition-transform duration-700 ease-in-out"
+              style={{ transform: `translateX(-${activeSlide * 100}%)` }}
+            >
+                {/* SLIDE 1: FOMO Early Bird */}
+                <div 
+                  className="w-full flex-shrink-0 h-full relative" 
+                  style={{ background: 'linear-gradient(135deg, #7f1d1d 0%, #dc2626 60%, #ea580c 100%)' }}
+                  onClick={() => navigate('/dashboard/tryouts?category=bundling')}
                 >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white text-[11px] font-semibold truncate leading-tight">{row.jabatan}</p>
-                    <p className="text-blue-300/70 text-[10px] mt-0.5">{row.instansi}</p>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <div className="text-center">
-                      <p className="text-white/40 text-[8px] uppercase tracking-wider">Pelamar</p>
-                      <p className="text-white text-[11px] font-bold">{row.pelamar.toLocaleString('id-ID')}</p>
+                    <div className="absolute -top-12 -right-12 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+                    <div className="relative z-10 flex flex-col justify-center h-full p-5 sm:p-6 lg:p-7 shrink-0">
+                       <span className="inline-flex items-center gap-1.5 bg-yellow-400/20 text-yellow-300 border border-yellow-400/30 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full animate-pulse w-fit mb-2 shadow-sm">
+                          <Sparkles className="w-3 h-3" />
+                          Promo Early Bird · Sisa {earlyBirdRemaining} Kuota!
+                       </span>
+                       <h2 className="text-white font-bold text-xl sm:text-2xl leading-snug drop-shadow-md">
+                         Segera Beli VIP Bundling <br className="hidden sm:block"/> Sebelum Kehabisan!
+                       </h2>
+                       <p className="text-red-100/90 text-sm mt-1.5 leading-relaxed max-w-md">
+                         Akses penuh materi, try out & formasi. <span className="font-bold border-b border-dashed text-white px-0.5">Hanya Rp 20.000</span> (Normal Rp 60.000).
+                       </p>
+                       <Button
+                          onClick={(e) => { e.stopPropagation(); navigate('/dashboard/tryouts?category=bundling'); }}
+                          className="mt-3 sm:mt-4 w-fit bg-white hover:bg-gray-50 text-red-700 font-bold text-sm h-10 px-5 rounded-xl shadow-lg transition-all hover:scale-105"
+                       >
+                          Amankan Kuota Sekarang <ArrowRight className="w-4 h-4 ml-2" />
+                       </Button>
                     </div>
-                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
-                      row.safe
-                        ? 'bg-emerald-400/20 text-emerald-300 border border-emerald-400/30'
-                        : 'bg-rose-400/20 text-rose-300 border border-rose-400/30'
-                    }`}>
-                      1:{row.ratio}
-                    </span>
-                  </div>
                 </div>
-              ))}
-              <p className="text-white/30 text-[9px] text-center uppercase tracking-widest mt-1">
-                + 14.000 formasi lainnya tersedia
-              </p>
+
+                {/* SLIDE 2: Formasi */}
+                <div 
+                  className="w-full flex-shrink-0 h-full relative" 
+                  style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 60%, #4f46e5 100%)' }}
+                  onClick={() => navigate('/dashboard/formasi')}
+                >
+                    <div className="absolute -bottom-8 left-1/3 w-32 h-32 bg-blue-400/20 rounded-full blur-xl pointer-events-none" />
+                    <div className="relative z-10 flex flex-col lg:flex-row items-center justify-center lg:justify-between h-full gap-4 p-5 sm:p-6 lg:p-7">
+                       <div className="flex-1 w-full flex flex-col justify-center">
+                          <span className="inline-flex items-center gap-1.5 bg-blue-400/20 text-blue-200 border border-blue-400/30 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full w-fit mb-2">
+                             <LayoutGrid className="w-3 h-3" /> Eksklusif VIP
+                          </span>
+                          <h2 className="text-white font-bold text-xl sm:text-2xl leading-snug">
+                            Buka Peta Persaingan Formasi
+                          </h2>
+                          <p className="text-blue-200/80 text-sm mt-1.5 leading-relaxed max-w-md">
+                            Akses jumlah pelamar, rincian gaji, dan probabilitas kelulusan dari 14.000+ data formasi asli.
+                          </p>
+                          <Button
+                             onClick={(e) => { e.stopPropagation(); navigate('/dashboard/formasi'); }}
+                             className="mt-3 sm:mt-4 w-fit bg-white/20 hover:bg-white/30 text-white font-bold text-sm h-10 px-5 rounded-xl border border-white/30 backdrop-blur-md transition-all shadow-sm"
+                          >
+                             Cari Formasi <ArrowRight className="w-4 h-4 ml-2" />
+                          </Button>
+                       </div>
+                       
+                       <div className="hidden lg:flex flex-col gap-2 w-[340px] flex-shrink-0 self-center pointer-events-none pb-2">
+                         {bannerMockRows.map((row, i) => (
+                           <div key={i} className="flex items-center justify-between gap-3 bg-white/10 backdrop-blur-sm rounded-xl px-3.5 py-2.5 border border-white/10">
+                             <div className="flex-1 min-w-0">
+                               <p className="text-white text-[11px] font-semibold truncate leading-tight">{row.jabatan}</p>
+                               <p className="text-blue-200/70 text-[10px] mt-0.5 truncate">{row.instansi}</p>
+                             </div>
+                             <div className="flex items-center gap-3 flex-shrink-0 text-right">
+                               <div>
+                                 <p className="text-white/50 text-[8px] uppercase tracking-wider mb-0.5">Pelamar</p>
+                                 <p className="text-white text-[11px] font-bold">{row.pelamar.toLocaleString()}</p>
+                               </div>
+                               <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${row.safe ? 'bg-emerald-400/20 text-emerald-300' : 'bg-rose-400/20 text-rose-300'}`}>
+                                  1:{row.ratio}
+                               </span>
+                             </div>
+                           </div>
+                         ))}
+                       </div>
+                    </div>
+                </div>
+
+                {/* SLIDE 3: Instansi & Leaderboard */}
+                <div 
+                  className="w-full flex-shrink-0 h-full relative" 
+                  style={{ background: 'linear-gradient(135deg, #0f766e 0%, #0d9488 60%, #059669 100%)' }}
+                  onClick={() => navigate('/dashboard/instansi')}
+                >
+                    <div className="absolute top-1/4 right-1/4 w-32 h-32 bg-emerald-400/20 rounded-full blur-2xl pointer-events-none" />
+                    <div className="relative z-10 flex flex-col justify-center h-full p-5 sm:p-6 lg:p-7">
+                       <span className="inline-flex items-center gap-1.5 bg-emerald-400/20 text-emerald-200 border border-emerald-400/30 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full w-fit mb-2">
+                          <Trophy className="w-3 h-3" /> Peringkat & Rating Instansi
+                       </span>
+                       <h2 className="text-white font-bold text-xl sm:text-2xl leading-snug">
+                         Awas Ketemu Instansi "Red Flag"
+                       </h2>
+                       <p className="text-emerald-100/90 text-sm mt-1.5 leading-relaxed max-w-md">
+                         Telusuri data Tunjangan Kinerja tertinggi. Jadilah juara dan pamerkan pencapaian SKD-mu pada Leaderboard Nasional secara real-time.
+                       </p>
+                       <Button
+                          onClick={(e) => { e.stopPropagation(); navigate('/dashboard/instansi'); }}
+                          className="mt-3 sm:mt-4 w-fit bg-emerald-800 hover:bg-emerald-900 text-emerald-50 font-bold text-sm h-10 px-5 rounded-xl border border-emerald-700/50 transition-all shadow-md"
+                       >
+                          Cek Tukin Instansi <ArrowRight className="w-4 h-4 ml-2" />
+                       </Button>
+                    </div>
+                </div>
             </div>
+
+            {/* Dots Pagination */}
+            <div className="absolute bottom-4 left-0 right-0 flex items-center justify-center gap-2.5 z-20">
+              {[0, 1, 2].map((idx) => (
+                <button
+                  key={idx}
+                  onClick={(e) => { e.stopPropagation(); setActiveSlide(idx); }}
+                  className={`border-none h-2 rounded-full transition-all duration-300 shadow-sm ${activeSlide === idx ? 'w-8 bg-white' : 'w-2 bg-white/40 hover:bg-white/70'}`}
+                  aria-label={`Go to slide ${idx + 1}`}
+                />
+              ))}
             </div>
           </div>
         )}
@@ -423,7 +479,7 @@ export const HomePage = () => {
                             <div className="w-full">
                                <div className="flex items-center gap-2">
                                   <span className="text-xs text-gray-400 line-through">
-                                    Rp {tryout.price.toLocaleString('id-ID')}
+                                    Rp {(tryout.originalPrice || tryout.price).toLocaleString('id-ID')}
                                   </span>
                                   <Badge className="bg-amber-500 text-white border-none text-[9px] px-1.5 py-0 font-bold uppercase tracking-tight">
                                      Early Bird

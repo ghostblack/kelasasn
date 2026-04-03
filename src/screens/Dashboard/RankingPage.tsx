@@ -14,16 +14,36 @@ import { Trophy, Medal, Award, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getRankingByTryout } from '@/services/rankingService';
 import type { RankingEntry } from '@/services/rankingService';
-import { getAllTryouts, getUserTryouts } from '@/services/tryoutService';
+import { getAllTryouts } from '@/services/tryoutService';
+import { checkUserFormasiAccess } from '@/services/formasiAccessCodeService';
+import { LockedFeatureOverlay } from '@/components/LockedFeatureOverlay';
+import { cn } from '@/lib/utils';
 import { TryoutPackage } from '@/types';
 
 export const RankingPage = () => {
   const { user, isAdmin } = useAuth();
+  const [isUnlocked, setIsUnlocked] = useState<boolean | null>(null);
   const [rankings, setRankings] = useState<RankingEntry[]>([]);
   const [tryouts, setTryouts] = useState<TryoutPackage[]>([]);
   const [selectedTryout, setSelectedTryout] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const initAccess = async () => {
+      if (isAdmin) {
+        setIsUnlocked(true);
+        return;
+      }
+      if (user) {
+        const hasAccess = await checkUserFormasiAccess(user.uid);
+        setIsUnlocked(hasAccess);
+      } else {
+        setIsUnlocked(false);
+      }
+    };
+    initAccess();
+  }, [user, isAdmin]);
 
   useEffect(() => {
     loadTryouts();
@@ -86,14 +106,30 @@ export const RankingPage = () => {
     return name.substring(0, 3) + '***';
   };
 
+  if (isUnlocked === null) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600/10 border-t-blue-600" />
+        <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] animate-pulse">Checking Authorization...</p>
+      </div>
+    );
+  }
+
   if (loading) {
     return <LoadingScreen message="Memuat data ranking..." type="spinner" fullScreen overlay />;
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900">
+    <div className="relative">
+      {!isUnlocked && (
+        <div className="fixed inset-x-0 top-16 bottom-0 z-30 backdrop-blur-md bg-white/60 pointer-events-none" />
+      )}
+      <div className={cn(
+        "space-y-6 transition-all duration-300 ease-out",
+        !isUnlocked ? "opacity-20 grayscale pointer-events-none select-none" : "opacity-100 grayscale-0"
+      )}>
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">
           Ranking
         </h1>
         <p className="text-sm text-gray-500 mt-1">
@@ -305,6 +341,8 @@ export const RankingPage = () => {
           </div>
         </div>
       )}
+      </div>
+      {!isUnlocked && <LockedFeatureOverlay type="ranking" />}
     </div>
   );
 };
