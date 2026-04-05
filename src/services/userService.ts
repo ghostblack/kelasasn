@@ -38,16 +38,21 @@ export const createUserProfile = async (
 
 export const createMinimalUserProfile = async (
   userId: string,
-  email: string
+  email: string,
+  displayName?: string
 ): Promise<void> => {
   const userRef = doc(db, 'users', userId);
+  const suggestedName = displayName || email.split('@')[0] || 'User';
+  const suggestedUsername = suggestedName.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase();
 
   await setDoc(userRef, {
     uid: userId,
     email,
+    displayName: suggestedName,
+    username: suggestedUsername,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-  });
+  }, { merge: true });
 };
 
 export const getUserProfile = async (userId: string): Promise<UserProfile | null> => {

@@ -29,10 +29,10 @@ export const LoginPage = () => {
       let userData = await userService.getUserData(user.uid);
 
       if (!userData || !userData.username || !userData.displayName) {
-        navigate('/setup-profile', { replace: true });
-      } else {
-        navigate('/dashboard', { replace: true });
+        // Auto-create from email instead of redirecting
+        await userService.createMinimalUserProfile(user.uid, user.email || '', user.displayName || undefined);
       }
+      navigate('/dashboard', { replace: true });
     } catch (error) {
       console.error('Error checking user profile:', error);
     }
@@ -69,10 +69,10 @@ export const LoginPage = () => {
       userData = await userService.getUserData(user.uid);
 
       if (!userData || !userData.username || !userData.displayName) {
-        navigate('/setup-profile', { replace: true });
-      } else {
-        navigate('/dashboard', { replace: true });
+        // Auto-create from email instead of redirecting
+        await userService.createMinimalUserProfile(user.uid, user.email || '', user.displayName || undefined);
       }
+      navigate('/dashboard', { replace: true });
     } catch (err: any) {
       console.error('Google Sign-In error:', err);
       let errorMessage = 'Terjadi kesalahan saat login dengan Google';

@@ -4,8 +4,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { DesignLandingPage } from "./screens/DesignLandingPage";
 import { LoginPage } from "./screens/LoginPage";
 import { RegisterPage } from "./screens/RegisterPage";
-import { SetupUsernamePage } from "./screens/SetupUsernamePage";
-import { SetupProfilePage } from "./screens/SetupProfilePage";
 import { HomePage } from "./screens/Dashboard";
 import { TryoutsPage } from "./screens/Dashboard/TryoutsPage";
 import { RankingPage } from "./screens/Dashboard/RankingPage";
@@ -90,8 +88,7 @@ function AppWrapper() {
           <Route path="/" element={<MaintenanceGuard><DesignLandingPage /></MaintenanceGuard>} />
           <Route path="/login" element={<MaintenanceGuard><LoginPage /></MaintenanceGuard>} />
           <Route path="/register" element={<MaintenanceGuard><RegisterPage /></MaintenanceGuard>} />
-          <Route path="/setup-username" element={<MaintenanceGuard><SetupUsernamePage /></MaintenanceGuard>} />
-          <Route path="/setup-profile" element={<MaintenanceGuard><SetupProfilePage /></MaintenanceGuard>} />
+          <Route path="/register" element={<MaintenanceGuard><RegisterPage /></MaintenanceGuard>} />
 
           <Route
             path="/dashboard"
