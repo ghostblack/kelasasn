@@ -50,8 +50,12 @@ export const RankingPage = () => {
   }, []);
 
   useEffect(() => {
-    loadRankings();
-  }, [selectedTryout]);
+    if (isUnlocked === true) {
+      loadRankings();
+    } else if (isUnlocked === false) {
+      setLoading(false);
+    }
+  }, [selectedTryout, isUnlocked]);
 
   const loadTryouts = async () => {
     try {

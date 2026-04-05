@@ -103,99 +103,54 @@ export const getUserAccessibleTryouts = async (userId: string): Promise<string[]
 
 export const getAllUsersWithActivity = async (): Promise<UserMonitoringData[]> => {
   try {
-    console.log('Starting to fetch all users with activity...');
+    console.log('Starting to fetch all users (Optimized)...');
     const users = await getAllUsers();
     console.log('Users fetched:', users.length);
 
     if (users.length === 0) {
-      console.log('No users found in database');
       return [];
     }
 
-    const tryoutsRef = collection(db, 'tryout_packages');
-    const tryoutsSnapshot = await getDocs(tryoutsRef);
-    const tryoutsMap = new Map();
-    tryoutsSnapshot.docs.forEach(doc => {
-      tryoutsMap.set(doc.id, doc.data().name);
+    // Fetch all formasi access once
+    const formasiAccessRef = collection(db, 'user_formasi_access');
+    const formasiSnap = await getDocs(formasiAccessRef);
+    const vipMap = new Map<string, Date>();
+    
+    formasiSnap.docs.forEach(doc => {
+      const data = doc.data();
+      const duration = data.durationInDays || 0;
+      const expiresAt = data.expiresAt instanceof Timestamp 
+        ? data.expiresAt.toDate() 
+        : data.expiresAt ? new Date(data.expiresAt) : null;
+
+      if (duration >= 365 && expiresAt && expiresAt > new Date()) {
+        vipMap.set(doc.id, expiresAt);
+      }
     });
 
-    const usersWithActivity = await Promise.all(
-      users.map(async (user) => {
-        try {
-          const [sessions, results, accessibleIds, userAccessSnap] = await Promise.all([
-            getUserTryoutSessions(user.uid),
-            getUserTryoutResults(user.uid),
-            getUserAccessibleTryouts(user.uid),
-            getDoc(doc(db, 'user_formasi_access', user.uid))
-          ]);
+    const usersWithActivity = users.map(user => {
+      const vipExpiry = vipMap.get(user.uid);
+      const isVIP = !!vipExpiry;
 
-          // VIP Logic: has record and duration >= 365
-          let isVIP = false;
-          let vipExpiry: Date | undefined;
+      return {
+        user,
+        // The following fields are set to empty/zero to save reads.
+        // They will be populated on-demand when an admin clicks "View Details".
+        totalTryouts: 0,
+        completedTryouts: 0,
+        inProgressTryouts: 0,
+        lastActivity: user.createdAt,
+        isVIP,
+        vipExpiry,
+        accessibleTryouts: [],
+        tryoutSessions: [],
+      };
+    });
 
-          if (userAccessSnap.exists()) {
-            const accessData = userAccessSnap.data();
-            const duration = accessData.durationInDays || 0;
-            const expiresAt = accessData.expiresAt instanceof Timestamp 
-              ? accessData.expiresAt.toDate() 
-              : accessData.expiresAt ? new Date(accessData.expiresAt) : null;
-
-            if (duration >= 365 && expiresAt && expiresAt > new Date()) {
-              isVIP = true;
-              vipExpiry = expiresAt;
-            }
-          }
-
-          const inProgressSessions = sessions.filter(s => s.status === 'active' || s.status === 'paused');
-          
-          const accessibleTryouts = accessibleIds.map(id => tryoutsMap.get(id) || 'Unknown Tryout');
-
-          const lastActivity = sessions.length > 0
-            ? sessions[0].startTime
-            : results.length > 0
-            ? results[0].completedAt
-            : undefined;
-
-          const tryoutSessions = results.map(result => ({
-            id: result.id,
-            tryoutId: result.tryoutId,
-            tryoutName: result.tryoutName || tryoutsMap.get(result.tryoutId) || 'Unknown Tryout',
-            status: 'completed',
-            startTime: result.completedAt,
-            completedAt: result.completedAt,
-          }));
-
-          return {
-            user,
-            totalTryouts: results.length,
-            completedTryouts: results.length,
-            inProgressTryouts: inProgressSessions.length,
-            lastActivity,
-            isVIP,
-            vipExpiry,
-            accessibleTryouts,
-            tryoutSessions,
-          };
-        } catch (error) {
-          console.error(`Error fetching activity for user ${user.uid}:`, error);
-          return {
-            user,
-            totalTryouts: 0,
-            completedTryouts: 0,
-            inProgressTryouts: 0,
-            lastActivity: undefined,
-            isVIP: false,
-            accessibleTryouts: [],
-            tryoutSessions: [],
-          };
-        }
-      })
-    );
-
-    console.log('Users with activity processed:', usersWithActivity.length);
+    console.log('Users mapped successfully:', usersWithActivity.length);
     return usersWithActivity;
   } catch (error) {
-    console.error('Error in getAllUsersWithActivity:', error);
+    console.error('Error in getAllUsersWithActivity (Optimized):', error);
     throw error;
   }
 };
@@ -204,5 +159,6 @@ export const userMonitoringService = {
   getAllUsers,
   getUserTryoutSessions,
   getUserTryoutResults,
+  getUserAccessibleTryouts,
   getAllUsersWithActivity,
 };

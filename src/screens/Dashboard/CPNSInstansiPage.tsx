@@ -194,6 +194,20 @@ const ALIASES: Record<string, string> = {
   'pemkab': 'pemerintah kabupaten',
   'pemkot': 'pemerintah kota',
   'kemen': 'kementerian',
+  // Daerah aliases
+  'dki': 'daerah khusus ibukota jakarta',
+  'diy': 'daerah istimewa yogyakarta',
+  'jabar': 'jawa barat',
+  'jateng': 'jawa tengah',
+  'jatim': 'jawa timur',
+  'sulsel': 'sulawesi selatan',
+  'sumut': 'sumatera utara',
+  'sumbar': 'sumatera barat',
+  'kalbar': 'kalimantan barat',
+  'kaltim': 'kalimantan timur',
+  'kepri': 'kepulauan riau',
+  'ntb': 'nusa tenggara barat',
+  'ntt': 'nusa tenggara timur',
 };
 
 const normalizeStr = (s: string) => {
@@ -357,10 +371,16 @@ export function CPNSInstansiPage() {
   const classify = (nama: string): 'pusat' | 'daerah' => {
     const n = nama.toUpperCase();
     return (
-      n.includes('PEMERINTAH PROVINSI') || n.includes('PEMERINTAH KABUPATEN') ||
-      n.includes('PEMERINTAH KOTA') || n.includes('PEMDA') || n.includes('PEMKAB') ||
-      n.includes('PEMKOT') || n.includes('PEMPROV') || n.includes('KAB.') || 
-      n.includes('PROV.') || n.startsWith('KOTA ')
+      n.includes('PEMERINTAH PROVINSI') ||
+      n.includes('PEMERINTAH KABUPATEN') ||
+      n.includes('PEMERINTAH KOTA') ||
+      n.includes('PEMERINTAH DAERAH') ||
+      n.includes('PEMERINTAH ACEH') ||
+      n.startsWith('PEMERINTAH PROV') ||
+      n.includes('PEMDA') || n.includes('PEMKAB') ||
+      n.includes('PEMKOT') || n.includes('PEMPROV') ||
+      n.includes('KAB.') || n.includes('PROV.') ||
+      n.startsWith('KOTA ')
     ) ? 'daerah' : 'pusat';
   };
 

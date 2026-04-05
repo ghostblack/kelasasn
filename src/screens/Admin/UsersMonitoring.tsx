@@ -13,6 +13,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Search, Users, CheckCircle2, Clock, User, Eye, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { userMonitoringService, UserMonitoringData } from '@/services/userMonitoringService';
+import { getAllTryouts } from '@/services/tryoutService';
 import { userService } from '@/services/userService';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -26,6 +27,7 @@ export const UsersMonitoring: React.FC = () => {
   const [filteredUsers, setFilteredUsers] = useState<UserMonitoringData[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
+    const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserMonitoringData | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
@@ -150,9 +152,49 @@ export const UsersMonitoring: React.FC = () => {
     }).format(date);
   };
 
-  const handleViewDetails = (userData: UserMonitoringData) => {
+  const handleViewDetails = async (userData: UserMonitoringData) => {
     setSelectedUser(userData);
     setShowDetailModal(true);
+    setIsLoadingDetails(true);
+
+    try {
+      const [sessions, results, accessibleIds, tryoutsData] = await Promise.all([
+        userMonitoringService.getUserTryoutSessions(userData.user.uid),
+        userMonitoringService.getUserTryoutResults(userData.user.uid),
+        userMonitoringService.getUserAccessibleTryouts(userData.user.uid),
+        getAllTryouts()
+      ]);
+
+      const tryoutsMap = new Map();
+      tryoutsData.forEach(t => tryoutsMap.set(t.id, t.name));
+
+      const inProgressSessions = sessions.filter(s => s.status === 'active' || s.status === 'paused');
+      const accessibleTryouts = accessibleIds.map(id => tryoutsMap.get(id) || 'Unknown Tryout');
+
+      const tryoutSessionsList = results.map(result => ({
+        id: result.id || '',
+        tryoutId: result.tryoutId,
+        tryoutName: result.tryoutName || tryoutsMap.get(result.tryoutId) || 'Unknown Tryout',
+        status: 'completed',
+        startTime: result.completedAt instanceof Date ? result.completedAt : new Date(),
+        completedAt: result.completedAt instanceof Date ? result.completedAt : new Date(),
+      }));
+
+      setSelectedUser((prev) => prev ? {
+        ...prev,
+        totalTryouts: results.length,
+        completedTryouts: results.length,
+        inProgressTryouts: inProgressSessions.length,
+        accessibleTryouts,
+        tryoutSessions: tryoutSessionsList
+      } : null);
+
+    } catch (e) {
+      console.error(e);
+      toast({ title: 'Gagal Memuat Detail', description: 'Gagal mengambil data lengkap riwayat sesi untuk user ini.', variant: 'destructive' });
+    } finally {
+      setIsLoadingDetails(false);
+    }
   };
 
   if (loading) {
@@ -189,7 +231,7 @@ export const UsersMonitoring: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="bg-white border border-gray-100 rounded-none p-6 shadow-sm">
           <div className="flex items-center gap-4">
             <div className="bg-gray-50 border border-gray-100 p-3">
@@ -204,27 +246,13 @@ export const UsersMonitoring: React.FC = () => {
 
         <Card className="bg-white border border-gray-100 rounded-none p-6 shadow-sm">
           <div className="flex items-center gap-4">
-            <div className="bg-gray-50 border border-gray-100 p-3">
-              <CheckCircle2 className="w-5 h-5 text-green-600" />
+            <div className="bg-amber-50 border border-amber-100 p-3">
+              <CheckCircle2 className="w-5 h-5 text-amber-600" />
             </div>
             <div>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Completed</p>
+              <p className="text-[10px] font-bold text-amber-700 uppercase tracking-widest">VIP Users</p>
               <p className="text-2xl font-bold text-gray-900">
-                {users.reduce((sum, u) => sum + u.completedTryouts, 0)}
-              </p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="bg-white border border-gray-100 rounded-none p-6 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="bg-gray-50 border border-gray-100 p-3">
-              <Clock className="w-5 h-5 text-orange-600" />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">In Progress</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {users.reduce((sum, u) => sum + u.inProgressTryouts, 0)}
+                {users.filter(u => u.isVIP).length}
               </p>
             </div>
           </div>
@@ -259,9 +287,6 @@ export const UsersMonitoring: React.FC = () => {
               <TableRow className="hover:bg-transparent border-gray-100">
                 <TableHead className="w-12 text-center text-[10px] font-bold uppercase text-gray-500 border-r border-gray-100 h-10">No</TableHead>
                 <TableHead className="text-[10px] font-bold uppercase text-gray-900 border-r border-gray-100 h-10 px-4">Pengguna</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase text-gray-500 border-r border-gray-100 h-10 px-4">Akses Tryout</TableHead>
-                <TableHead className="text-center text-[10px] font-bold uppercase text-gray-900 border-r border-gray-100 h-10 px-2">Done</TableHead>
-                <TableHead className="text-center text-[10px] font-bold uppercase text-orange-600 border-r border-gray-100 h-10 px-2">Active</TableHead>
                 <TableHead className="text-[10px] font-bold uppercase text-gray-400 border-r border-gray-100 h-10 px-4">Last Activity</TableHead>
                 <TableHead className="text-right text-[10px] font-bold uppercase text-gray-900 h-10 pr-6">Aksi</TableHead>
               </TableRow>
@@ -269,7 +294,7 @@ export const UsersMonitoring: React.FC = () => {
             <TableBody>
               {currentUsers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12 text-gray-400 text-sm">
+                  <TableCell colSpan={4} className="text-center py-12 text-gray-400 text-sm">
                     {searchQuery ? 'No matching records found' : 'No user data available'}
                   </TableCell>
                 </TableRow>
@@ -292,25 +317,7 @@ export const UsersMonitoring: React.FC = () => {
                           <span className="text-[9px] font-medium text-gray-400 truncate max-w-[180px]">{userData.user.email}</span>
                         </div>
                     </TableCell>
-                    <TableCell className="border-r border-gray-100 py-1 px-4 min-w-[200px]">
-                      <div className="flex flex-wrap gap-1">
-                        {userData.accessibleTryouts.length > 0 ? (
-                          userData.accessibleTryouts.map((name, i) => (
-                            <Badge key={i} className="bg-blue-50 text-blue-600 border-blue-100 text-[8px] font-black uppercase tracking-tighter rounded-none py-0 h-4">
-                              {name}
-                            </Badge>
-                          ))
-                        ) : (
-                          <span className="text-[9px] text-gray-300 font-bold uppercase italic">No Access</span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center text-[10px] text-gray-900 border-r border-gray-100 py-1 font-black">
-                      {userData.completedTryouts}
-                    </TableCell>
-                    <TableCell className="text-center text-[10px] text-orange-600 border-r border-gray-100 py-1 font-black">
-                      {userData.inProgressTryouts}
-                    </TableCell>
+
                     <TableCell className="border-r border-gray-100 py-1 px-4">
                        <span className="text-[10px] text-gray-400 font-bold uppercase truncate block w-full tracking-tighter">
                           {formatDate(userData.lastActivity)}
@@ -344,49 +351,73 @@ export const UsersMonitoring: React.FC = () => {
           </Table>
         </div>
 
-        {/* Formasi-style Pagination */}
+        {/* Table Pagination */}
         {totalPages > 1 && (
-          <div className="p-6 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-center gap-4 font-mono">
-            <div className="flex items-center shadow-sm">
+          <div className="p-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-gray-50/50 rounded-b-xl">
+            <div className="text-xs text-gray-500 font-medium">
+              Menampilkan <span className="font-bold text-gray-900">{(currentPage - 1) * itemsPerPage + 1}</span> hingga <span className="font-bold text-gray-900">{Math.min(currentPage * itemsPerPage, filteredUsers.length)}</span> dari <span className="font-bold text-gray-900">{filteredUsers.length}</span> pengguna
+            </div>
+            
+            <div className="flex items-center gap-1.5">
               <Button
                 variant="outline"
                 disabled={currentPage === 1}
                 onClick={() => setCurrentPage(prev => prev - 1)}
-                className="w-10 h-10 p-0 rounded-none border-gray-200 bg-white text-gray-900 hover:bg-gray-50 disabled:opacity-20"
+                className="h-8 px-2 sm:px-3 rounded-lg border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900 shadow-sm disabled:opacity-50 transition-colors"
+                size="sm"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="w-4 h-4 sm:mr-1" />
+                <span className="hidden sm:inline-block text-xs font-semibold">Sebelumnya</span>
               </Button>
               
-              {[...Array(totalPages)].map((_, i) => (
-                <Button
-                  key={i + 1}
-                  variant="outline"
-                  onClick={() => setCurrentPage(i + 1)}
-                  className={cn(
-                    "w-10 h-10 p-0 rounded-none border-l-0 border-gray-200 font-black text-xs transition-all",
-                    currentPage === i + 1 ? "bg-blue-600 text-white border-blue-600 shadow-inner" : "bg-white text-gray-400 hover:bg-gray-50"
-                  )}
-                >
-                  {i + 1}
-                </Button>
-              ))}
+              <div className="flex items-center gap-1 hidden sm:flex">
+                {[...Array(totalPages)].map((_, i) => {
+                   const pageNum = i + 1;
+                   if (
+                      pageNum === 1 || 
+                      pageNum === totalPages || 
+                      (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
+                   ) {
+                     return (
+                      <Button
+                        key={pageNum}
+                        variant={currentPage === pageNum ? "default" : "outline"}
+                        onClick={() => setCurrentPage(pageNum)}
+                        className={cn(
+                          "w-8 h-8 p-0 rounded-lg text-xs font-bold transition-all shadow-sm",
+                          currentPage === pageNum 
+                            ? "bg-blue-600 text-white border-blue-600 hover:bg-blue-700" 
+                            : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50 hover:text-gray-900 hover:border-gray-300"
+                        )}
+                      >
+                        {pageNum}
+                      </Button>
+                     );
+                   } else if (
+                      pageNum === currentPage - 2 || 
+                      pageNum === currentPage + 2
+                   ) {
+                     return <span key={pageNum} className="px-1 text-gray-400 text-xs font-bold tracking-widest">...</span>;
+                   }
+                   return null;
+                })}
+              </div>
+              
+              {/* Mobile current page indicator replacing the numbers */}
+              <div className="flex sm:hidden items-center justify-center px-3 h-8 bg-white border border-gray-200 rounded-lg shadow-sm text-xs font-bold text-gray-900">
+                {currentPage} / {totalPages}
+              </div>
 
               <Button
                 variant="outline"
                 disabled={currentPage === totalPages}
                 onClick={() => setCurrentPage(prev => prev + 1)}
-                className="w-10 h-10 p-0 rounded-none border-l-0 border-gray-200 bg-white text-gray-900 hover:bg-gray-50 disabled:opacity-20"
+                className="h-8 px-2 sm:px-3 rounded-lg border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900 shadow-sm disabled:opacity-50 transition-colors"
+                size="sm"
               >
+                <span className="hidden sm:inline-block text-xs font-semibold mr-1">Selanjutnya</span>
                 <ChevronRight className="w-4 h-4" />
               </Button>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">PAGE:</span>
-              <div className="w-12 h-10 bg-white border border-gray-200 flex items-center justify-center text-xs font-black text-gray-900">
-                {currentPage}
-              </div>
-              <span className="text-[10px] text-gray-300 font-bold uppercase">OF {totalPages}</span>
             </div>
           </div>
         )}
@@ -398,7 +429,12 @@ export const UsersMonitoring: React.FC = () => {
             <DialogTitle>Detail Aktivitas Pengguna</DialogTitle>
           </DialogHeader>
 
-          {selectedUser && (
+          {isLoadingDetails ? (
+            <div className="flex flex-col items-center justify-center py-12">
+               <Loader2 className="w-10 h-10 animate-spin text-blue-600 mb-4" />
+               <p className="text-gray-500 font-medium">Memuat riwayat sesi pengguna...</p>
+            </div>
+          ) : selectedUser && (
             <div className="space-y-6">
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="flex items-center gap-4 mb-4">

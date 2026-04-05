@@ -75,8 +75,10 @@ async function fetchAllPages<T>(basePath: string, perPage = 100): Promise<T[]> {
 
   // 3. Fetch (Heavy)
   const first = await fetchWithCache<any>(`${basePath}?limit=${perPage}&page=1`, true);
-  const totalItems: number = first?.pagination?.total_items ?? 0;
-  const totalPages = Math.ceil(totalItems / perPage);
+  // API BKN uses 'total_data' not 'total_items'
+  const totalItems: number = first?.pagination?.total_data ?? first?.pagination?.total_items ?? 0;
+  // Also accept total_page if direct count is available
+  const totalPages = first?.pagination?.total_page ?? Math.ceil(totalItems / perPage);
 
   let allData: T[] = [...(first?.data ?? [])];
 
@@ -138,9 +140,10 @@ export const getFormasi = async (
 };
 
 export const getInstansi = async (): Promise<any[]> => {
-  // Coba limit 1000 — cek apakah semuanya masuk 1 page
+  // Coba limit 100 per halaman dan ambil semua data
   const first = await fetchWithCache<any>('/instansi?limit=100&page=1');
-  const total = first?.pagination?.total_items ?? 0;
+  // API BKN uses 'total_data' and 'total_page', not 'total_items'
+  const total = first?.pagination?.total_data ?? first?.pagination?.total_items ?? 0;
   const per   = first?.pagination?.per_page ?? 100;
   if (total <= per) return first?.data ?? [];
   return fetchAllPages<any>('/instansi');

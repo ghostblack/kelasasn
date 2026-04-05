@@ -241,31 +241,48 @@ export const completeTryoutSession = async (
     }
 
     try {
-      const resultsRef = collection(db, 'tryout_results');
-      const allResults = await getDocs(query(resultsRef, where('tryoutId', '==', tryoutId)));
-
-      const userBestScores = new Map<string, number>();
-      allResults.docs.forEach(doc => {
-        const data = doc.data();
-        const userId = data.userId;
-        const score = data.totalScore || 0;
-        const currentBest = userBestScores.get(userId) || 0;
-        if (score > currentBest) {
-          userBestScores.set(userId, score);
+      let isVIP = false;
+      const userAccessSnap = await getDoc(doc(db, 'user_formasi_access', userId));
+      if (userAccessSnap.exists()) {
+        const accessData = userAccessSnap.data();
+        const duration = accessData.durationInDays || 0;
+        const expiresAt = accessData.expiresAt?.toDate ? accessData.expiresAt.toDate() : (accessData.expiresAt ? new Date(accessData.expiresAt) : null);
+        if (duration >= 365 && expiresAt && expiresAt > new Date()) {
+          isVIP = true;
         }
-      });
-
-      const existingBest = userBestScores.get(userId) || 0;
-      if (totalScore > existingBest) {
-        userBestScores.set(userId, totalScore);
       }
 
-      const allScores = Array.from(userBestScores.values()).sort((a, b) => b - a);
-      rank = allScores.findIndex(score => score <= totalScore) + 1;
-      if (rank === 0) rank = allScores.length + 1;
-      totalParticipants = userBestScores.size;
+      if (isVIP) {
+        const resultsRef = collection(db, 'tryout_results');
+        const allResults = await getDocs(query(resultsRef, where('tryoutId', '==', tryoutId)));
 
-      console.log('Calculated rank:', rank, 'out of', totalParticipants, 'participants');
+        const userBestScores = new Map<string, number>();
+        allResults.docs.forEach(doc => {
+          const data = doc.data();
+          const uid = data.userId;
+          const score = data.totalScore || 0;
+          const currentBest = userBestScores.get(uid) || 0;
+          if (score > currentBest) {
+            userBestScores.set(uid, score);
+          }
+        });
+
+        const existingBest = userBestScores.get(userId) || 0;
+        if (totalScore > existingBest) {
+          userBestScores.set(userId, totalScore);
+        }
+
+        const allScores = Array.from(userBestScores.values()).sort((a, b) => b - a);
+        rank = allScores.findIndex(score => score <= totalScore) + 1;
+        if (rank === 0) rank = allScores.length + 1;
+        totalParticipants = userBestScores.size;
+
+        console.log('Calculated rank:', rank, 'out of', totalParticipants, 'participants');
+      } else {
+        console.log('User is not VIP, bypassing rank calculation to save reads.');
+        rank = 0;
+        totalParticipants = 0;
+      }
     } catch (rankError) {
       console.error('Error calculating rank, using defaults:', rankError);
       rank = 1;
