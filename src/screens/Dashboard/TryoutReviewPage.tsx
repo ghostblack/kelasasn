@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { getTryoutById, getUserResultsByTryout } from '@/services/tryoutService';
+import { checkUserFormasiAccess } from '@/services/formasiAccessCodeService';
 import { getQuestionsByIds } from '@/services/questionService';
 import { TryoutResult, TryoutPackage, Question } from '@/types';
 import { MathText } from '@/components/MathText';
@@ -13,7 +14,7 @@ type ExamSection = 'TWK' | 'TIU' | 'TKP';
 export const TryoutReviewPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [result, setResult] = useState<TryoutResult | null>(null);
   const [tryout, setTryout] = useState<TryoutPackage | null>(null);
@@ -52,6 +53,15 @@ export const TryoutReviewPage: React.FC = () => {
       setTryout(tryoutData);
 
       if (tryoutData) {
+        // PERLINDUNGAN URL BYPASS
+        if (tryoutData.category === 'free') {
+          const isVIP = await checkUserFormasiAccess(user.uid);
+          if (!isAdmin && !isVIP) {
+            navigate(`/dashboard/tryout/${id}/result`);
+            return;
+          }
+        }
+
         const shuffledQuestionIds = results[0].shuffledQuestionIds || tryoutData.questionIds;
         const questionsData = await getQuestionsByIds(shuffledQuestionIds);
         setQuestions(questionsData);
