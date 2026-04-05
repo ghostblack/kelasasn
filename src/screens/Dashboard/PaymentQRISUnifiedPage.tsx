@@ -5,9 +5,10 @@ import { getTryoutById, purchaseTryout } from '@/services/tryoutService';
 import { validateClaimCode, useClaimCode } from '@/services/claimCodeService';
 import {
   createQRISPaymentTransaction,
-  updatePaymentStatus,
   notifyAdminPayment,
 } from '@/services/paymentService';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { TryoutPackage } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -125,8 +126,9 @@ export const PaymentQRISUnifiedPage: React.FC = () => {
         '08000000000' // customerPhone override for manual flow
       );
 
-      // 2. Mark as pending confirmation
-      await updatePaymentStatus(transaction.reference, 'PENDING_CONFIRMATION');
+      // 2. Mark as pending confirmation using the known document ID
+      const docRef = doc(db, 'payment_transactions', transaction.id);
+      await updateDoc(docRef, { status: 'PENDING_CONFIRMATION', updatedAt: serverTimestamp() });
 
       // 3. Send Telegram notification to admin
       await notifyAdminPayment({
@@ -159,9 +161,10 @@ Berikut saya lampirkan bukti transfernya. Mohon diaktifkan. Terima kasih!`;
       });
     } catch (error) {
       console.error('Error processing payment:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       toast({
         title: 'Error',
-        description: 'Gagal memproses pembayaran. Silakan coba lagi.',
+        description: `Gagal memproses: ${errorMessage}`,
         variant: 'destructive',
       });
     } finally {

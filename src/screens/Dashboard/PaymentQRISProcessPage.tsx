@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { getPaymentTransaction, updatePaymentStatus } from '@/services/paymentService';
+import { getPaymentTransaction } from '@/services/paymentService';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { PaymentTransaction } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,7 +18,6 @@ const TELEGRAM_CONTACT = 'https://t.me/Kelas_ASN';
 export const PaymentQRISProcessPage: React.FC = () => {
   const { tryoutId, paymentId } = useParams<{ tryoutId: string; paymentId: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { toast } = useToast();
 
   const [payment, setPayment] = useState<PaymentTransaction | null>(null);
@@ -111,10 +111,11 @@ export const PaymentQRISProcessPage: React.FC = () => {
     if (!payment) return;
 
     try {
-      await updatePaymentStatus(payment.reference, 'PAID');
+      const docRef = doc(db, 'payment_transactions', payment.id);
+      await updateDoc(docRef, { status: 'PENDING_CONFIRMATION', updatedAt: serverTimestamp() });
       toast({
         title: 'Berhasil',
-        description: 'Pembayaran berhasil dikonfirmasi',
+        description: 'Bukti pembayaran telah dikirim ke Admin untuk diverifikasi',
       });
       setTimeout(() => {
         navigate(`/dashboard/payment/${tryoutId}/success`);

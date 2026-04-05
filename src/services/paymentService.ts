@@ -230,6 +230,52 @@ export const createPaymentTransaction = async (
     updatedAt: new Date(),
   } as PaymentTransaction;
 };
+// ─── Manual Payment (Bypass TriPay) ───────────────────────────────────────────
+export const createManualPaymentTransaction = async (
+  userId: string,
+  tryoutId: string,
+  tryoutName: string,
+  amount: number,
+  paymentMethod: string,
+  customerName: string,
+  customerEmail: string,
+  customerPhone: string
+): Promise<PaymentTransaction> => {
+  const merchantRef = generateReference();
+  const expiredTime = new Date();
+  expiredTime.setHours(expiredTime.getHours() + 24); // Expires in 24 hours
+
+  const transactionData = {
+    userId,
+    tryoutId,
+    tryoutName,
+    amount,
+    fee: 0,
+    totalAmount: amount,
+    reference: merchantRef,
+    merchantRef,
+    paymentMethod,
+    paymentMethodCode: paymentMethod,
+    status: 'UNPAID',
+    expiredTime,
+    customerName,
+    customerEmail,
+    customerPhone,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+
+  const docRef = await addDoc(collection(db, 'payment_transactions'), transactionData);
+
+  return {
+    id: docRef.id,
+    ...transactionData,
+    expiredTime,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  } as PaymentTransaction;
+};
+
 
 // ─── Firestore Read Functions ─────────────────────────────────────────────────
 
@@ -539,7 +585,7 @@ export const notifyAdminPayment = async (data: {
 };
 
 /** @deprecated Tidak dipakai lagi — gunakan createPaymentTransaction */
-export const createQRISPaymentTransaction = createPaymentTransaction;
+export const createQRISPaymentTransaction = createManualPaymentTransaction;
 /** @deprecated Tidak dipakai lagi */
 export const confirmPayment = async (_transactionId: string): Promise<void> => {};
 

@@ -5,18 +5,17 @@ export const config: Config = {
 };
 
 export default async function handler(req: Request) {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 204,
-      headers: corsHeaders(),
+      headers: corsHeaders(req),
     });
   }
 
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,
-      headers: corsHeaders("application/json"),
+      headers: corsHeaders(req, "application/json"),
     });
   }
 
@@ -27,7 +26,7 @@ export default async function handler(req: Request) {
     console.error("[telegram-notify] Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID");
     return new Response(
       JSON.stringify({ error: "Telegram bot not configured" }),
-      { status: 500, headers: corsHeaders("application/json") }
+      { status: 500, headers: corsHeaders(req, "application/json") }
     );
   }
 
@@ -63,19 +62,19 @@ export default async function handler(req: Request) {
       console.error("[telegram-notify] Telegram API error:", errData);
       return new Response(
         JSON.stringify({ error: "Failed to send Telegram notification", details: errData }),
-        { status: 502, headers: corsHeaders("application/json") }
+        { status: 502, headers: corsHeaders(req, "application/json") }
       );
     }
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
-      headers: corsHeaders("application/json"),
+      headers: corsHeaders(req, "application/json"),
     });
   } catch (err: any) {
     console.error("[telegram-notify] Error:", err.message);
     return new Response(
       JSON.stringify({ error: "Internal server error", detail: err.message }),
-      { status: 500, headers: corsHeaders("application/json") }
+      { status: 500, headers: corsHeaders(req, "application/json") }
     );
   }
 }
@@ -89,12 +88,30 @@ function escapeHtml(text: string): string {
     .replace(/'/g, "&#039;");
 }
 
-function corsHeaders(contentType?: string): Record<string, string> {
+function corsHeaders(req?: Request, contentType?: string): Record<string, string> {
   const headers: Record<string, string> = {
-    "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
   };
+  
+  if (req) {
+    const origin = req.headers.get("origin") || req.headers.get("Origin");
+    const allowedOrigins = [
+      "https://kelasasn.id",
+      "https://www.kelasasn.id",
+      "https://kelasasn.netlify.app",
+      "http://localhost:5173"
+    ];
+    
+    if (origin && allowedOrigins.includes(origin)) {
+      headers["Access-Control-Allow-Origin"] = origin;
+    } else {
+      headers["Access-Control-Allow-Origin"] = "https://kelasasn.id";
+    }
+  } else {
+    headers["Access-Control-Allow-Origin"] = "https://kelasasn.id";
+  }
+
   if (contentType) {
     headers["Content-Type"] = contentType;
   }
