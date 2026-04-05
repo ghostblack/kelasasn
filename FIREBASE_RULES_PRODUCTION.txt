@@ -2,7 +2,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -13,18 +12,20 @@ service cloud.firestore {
              get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // Admins collection - Only authenticated users can read, only admins can write
+    // Admins collection
     match /admins/{adminId} {
       allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
 
     // Users collection
+    // - get: Boleh melihat profil siapapun (perlu untuk fitur Ranking/Peringkat)
+    // - list: Dibatasi maksimal 1 dokumen sekaligus (untuk cek ketersediaan username, tidak bisa disedot massal)
     match /users/{userId} {
-      allow read: if isAuthenticated();
+      allow get: if isAuthenticated();
+      allow list: if isAuthenticated() && request.query.limit <= 1;
       allow create: if isAuthenticated();
-      allow update, delete: if isAuthenticated() &&
-                               (request.auth.uid == userId || isAdmin());
+      allow update, delete: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
     }
 
     // Questions collection - Users can read, only admins can write
@@ -33,82 +34,82 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
-    // Tryout packages - Users can read, only admins can write
+    // Tryout packages - Users can read all, only admins can write
     match /tryout_packages/{tryoutId} {
       allow read: if isAuthenticated();
       allow create, update, delete: if isAdmin();
     }
 
-    // Tryouts collection - Users can read, only admins can write
+    // Tryouts collection - Users can read all, only admins can write
     match /tryouts/{tryoutId} {
       allow read: if isAuthenticated();
       allow create, update, delete: if isAdmin();
     }
 
-    // User tryouts - Users can read their own, admins can do everything
+    // User tryouts - Users can read/write their own, admins can do everything
     match /user_tryouts/{userTryoutId} {
-      allow read: if isAuthenticated() &&
-                    (resource.data.userId == request.auth.uid || isAdmin());
-      allow create: if isAuthenticated() &&
-                      request.resource.data.userId == request.auth.uid;
-      allow update: if isAuthenticated() &&
-                      (resource.data.userId == request.auth.uid || isAdmin());
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
       allow delete: if isAdmin();
     }
 
     // Tryout sessions - Users can manage their own sessions
     match /tryout_sessions/{sessionId} {
-      allow read: if isAuthenticated() &&
-                    (resource.data.userId == request.auth.uid || isAdmin());
-      allow create: if isAuthenticated() &&
-                      request.resource.data.userId == request.auth.uid;
-      allow update: if isAuthenticated() &&
-                      (resource.data.userId == request.auth.uid || isAdmin());
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
       allow delete: if isAdmin();
     }
 
-    // Tryout results - All authenticated users can read all results (for ranking), users can create their own, admins can do everything
+    // Tryout results - All authenticated users can read (for ranking feature)
     match /tryout_results/{resultId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() &&
-                      request.resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
       allow update, delete: if isAdmin();
     }
 
-    // Rankings - Everyone can read, only admins can write
+    // Rankings
     match /rankings/{rankingId} {
       allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
 
-    // Jabatan (positions) - Everyone can read, only admins can write
+    // Jabatan (positions)
     match /jabatan/{jabatanId} {
       allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
 
-    // Payment transactions - Users can read and list their own, admins can do everything
+    // Payment transactions
+    // - get: User hanya bisa melihat transaksinya sendiri
+    // - list: HANYA Admin (mencegah penyedotan data transaksi semua pengguna)
+    // - create: User hanya bisa membuat transaksi atas namanya sendiri
+    // - update: User bisa mengubah transaksinya sendiri (Admin bisa semua)
     match /payment_transactions/{transactionId} {
-      allow get: if isAuthenticated() &&
-                    (resource.data.userId == request.auth.uid || isAdmin());
-      allow list: if isAuthenticated();
-      allow create: if isAuthenticated() &&
-                      request.resource.data.userId == request.auth.uid;
-      allow update: if isAuthenticated() &&
-                      (resource.data.userId == request.auth.uid || isAdmin());
+      allow get: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
       allow delete: if isAdmin();
     }
 
-    // Claim codes - Users can read and update (for claiming), admins can manage
+    // Claim codes
     match /claim_codes/{claimCodeId} {
       allow read: if isAuthenticated();
       allow create, delete: if isAdmin();
-      // Allow users to update claim codes when claiming (increment usage, add to usedBy)
-      allow update: if isAuthenticated() &&
-                      (isAdmin() ||
-                       (resource.data.isActive == true &&
-                        resource.data.currentUses < resource.data.maxUses &&
-                        !(request.auth.uid in resource.data.usedBy)));
+      allow update: if isAuthenticated() && (
+        isAdmin() ||
+        (resource.data.isActive == true &&
+         resource.data.currentUses < resource.data.maxUses &&
+         !(request.auth.uid in resource.data.usedBy))
+      );
+    }
+
+    // VIP Bundling settings (read-only for users)
+    match /vip_bundling/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
     }
 
     // Block everything else
