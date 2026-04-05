@@ -18,50 +18,25 @@ export const getRankingByTryout = async (
   limitCount: number = 100
 ): Promise<RankingEntry[]> => {
   try {
-    console.log('=== getRankingByTryout called ===');
-    console.log('tryoutId:', tryoutId);
-    console.log('limitCount:', limitCount);
+    // Hidden logs for security
 
     const resultsRef = collection(db, 'tryout_results');
     let q;
 
     if (tryoutId && tryoutId !== 'all') {
-      console.log('Querying with tryoutId filter:', tryoutId);
       q = query(
         resultsRef,
         where('tryoutId', '==', tryoutId)
       );
     } else {
-      console.log('Querying all tryout results');
       q = query(resultsRef);
     }
 
     const snapshot = await getDocs(q);
-    console.log('✓ Found tryout_results documents:', snapshot.size);
 
     if (snapshot.empty) {
-      console.warn('⚠ No tryout results found in Firebase');
-      console.warn('Collection: tryout_results is empty or no matching documents');
-      console.warn('Possible reasons:');
-      console.warn('1. No user has completed any try out yet');
-      console.warn('2. Try out submission is not saving to tryout_results collection');
-      console.warn('3. Firestore rules are blocking read access');
       return [];
     }
-
-    console.log('✓ Documents found, processing...');
-
-    console.log('Raw documents sample:', snapshot.docs.slice(0, 3).map(d => {
-      const data = d.data();
-      return {
-        id: d.id,
-        userId: data.userId,
-        tryoutId: data.tryoutId,
-        totalScore: data.totalScore,
-        completedAt: data.completedAt,
-        tryoutName: data.tryoutName
-      };
-    }));
 
     const resultsWithUserData = await Promise.all(
       snapshot.docs.map(async (resultDoc) => {
@@ -78,8 +53,6 @@ export const getRankingByTryout = async (
             const userData = userDoc.data();
             userEmail = userData.email || userEmail;
             userName = userData.displayName || userData.name || userEmail.split('@')[0];
-          } else {
-            console.warn(`User document not found for userId: ${data.userId}`);
           }
         } catch (err) {
           console.error('Error fetching user data for userId:', data.userId, err);
@@ -91,8 +64,6 @@ export const getRankingByTryout = async (
             const tryoutDoc = await getDoc(tryoutDocRef);
             if (tryoutDoc.exists()) {
               tryoutName = tryoutDoc.data().name || tryoutName;
-            } else {
-              console.warn(`Tryout document not found for tryoutId: ${data.tryoutId}`);
             }
           } catch (err) {
             console.error('Error fetching tryout data for tryoutId:', data.tryoutId, err);
@@ -113,25 +84,14 @@ export const getRankingByTryout = async (
       })
     );
 
-    // Deduplicate and filter realistic legacy scores (total max score is typically 550)
-    // Anything > 550 is impossible under normal SKD rules
     const validResults = resultsWithUserData.filter(r => {
       const score = Number(r.totalScore || 0);
       return score <= 550 && score >= 0;
     });
 
-    console.log('✓ Filtered valid results (0 <= score <= 550):', validResults.length);
-    if (validResults.length < resultsWithUserData.length) {
-      console.warn(`! Filtered out ${resultsWithUserData.length - validResults.length} invalid/legacy results`);
-    }
-
-    console.log('✓ Processed', validResults.length, 'results with user data');
-
-    console.log('\n=== Processing best scores per user ===');
     const userBestScores = new Map<string, typeof validResults[0]>();
 
     validResults.forEach(result => {
-      // Key is either (userId + tryoutId) for specific tryout ranking, or just userId for global ranking
       const key = tryoutId && tryoutId !== 'all' ? `${result.userId}-${result.tryoutId}` : result.userId;
       const existing = userBestScores.get(key);
 
@@ -146,19 +106,12 @@ export const getRankingByTryout = async (
     });
 
     const bestResults = Array.from(userBestScores.values());
-    console.log('✓ Best results per user:', bestResults.length);
 
-    // Sort by score (descending), then by completion time (ascending)
     bestResults.sort((a, b) => {
       if (b.totalScore !== a.totalScore) {
         return b.totalScore - a.totalScore;
       }
       return a.completedAt.getTime() - b.completedAt.getTime();
-    });
-
-    console.log('\n=== Sorted results (top 5) ===');
-    bestResults.slice(0, 5).forEach((r, i) => {
-      console.log(`${i + 1}. User: ${r.userEmail}, Score: ${r.totalScore}, Tryout: ${r.tryoutName}`);
     });
 
     const rankedResults = bestResults
@@ -168,8 +121,6 @@ export const getRankingByTryout = async (
         rank: index + 1,
       }));
 
-    console.log('\n✓ Final ranked results:', rankedResults.length);
-    console.log('=== getRankingByTryout completed ===\n');
     return rankedResults;
   } catch (error) {
     console.error('Error in getRankingByTryout:', error);

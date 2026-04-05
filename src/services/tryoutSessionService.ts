@@ -212,16 +212,8 @@ export const completeTryoutSession = async (
   }
 ): Promise<string> => {
   try {
-    console.log('=== completeTryoutSession called ===');
-    console.log('userId:', userId);
-    console.log('tryoutId:', tryoutId);
-    console.log('tryoutName:', tryoutName);
-    console.log('scores:', scores);
-
     const totalScore = Number(scores.twkScore || 0) + Number(scores.tiuScore || 0) + Number(scores.tkpScore || 0);
     const maxTotalScore = Number(scores.maxTwkScore || 0) + Number(scores.maxTiuScore || 0) + Number(scores.maxTkpScore || 0);
-    console.log('totalScore:', totalScore);
-    console.log('maxTotalScore:', maxTotalScore);
 
     let attemptNumber = 1;
     let rank = 0;
@@ -236,7 +228,6 @@ export const completeTryoutSession = async (
       if (userTryoutSnap.exists()) {
         const currentAttempts = userTryoutSnap.data().attempts || 0;
         attemptNumber = currentAttempts + 1;
-        console.log('attemptNumber:', attemptNumber);
       }
     }
 
@@ -276,10 +267,7 @@ export const completeTryoutSession = async (
         rank = allScores.findIndex(score => score <= totalScore) + 1;
         if (rank === 0) rank = allScores.length + 1;
         totalParticipants = userBestScores.size;
-
-        console.log('Calculated rank:', rank, 'out of', totalParticipants, 'participants');
       } else {
-        console.log('User is not VIP, bypassing rank calculation to save reads.');
         rank = 0;
         totalParticipants = 0;
       }
@@ -302,7 +290,6 @@ export const completeTryoutSession = async (
     }
 
     const resultsRef = collection(db, 'tryout_results');
-    console.log('Saving to tryout_results collection...');
 
     const resultData = {
       userId,
@@ -334,13 +321,7 @@ export const completeTryoutSession = async (
       completedAt: serverTimestamp(),
     };
 
-    console.log('Result data to save:', {
-      ...resultData,
-      answersCount: Object.keys(answers).length
-    });
-
     const docRef = await addDoc(resultsRef, resultData);
-    console.log('✓ Tryout result saved with ID:', docRef.id);
 
     const sessionRef = doc(db, 'tryout_sessions', sessionId);
     await updateDoc(sessionRef, {

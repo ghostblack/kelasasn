@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp, collection, query, where, getDocs, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp, collection, query, where, getDocs, deleteDoc, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { UserProfile } from '@/types';
 
@@ -80,7 +80,7 @@ export const getUserData = async (userId: string): Promise<UserProfile | null> =
 
 export const checkUsernameAvailability = async (username: string): Promise<boolean> => {
   const usersRef = collection(db, 'users');
-  const q = query(usersRef, where('username', '==', username));
+  const q = query(usersRef, where('username', '==', username), limit(1));
   const querySnapshot = await getDocs(q);
 
   return querySnapshot.empty;

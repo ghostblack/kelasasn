@@ -378,7 +378,7 @@ export const updatePaymentStatus = async (
         updatedAt: serverTimestamp()
       });
     } else if (isTestEmail) {
-      console.log(`[paymentService] Test email detected (${payment.customerEmail}). Skipping sales increment.`);
+      // Skip sales increment for test emails
     }
 
     // 1. Handle VIP Bundling Special Case (Legacy / All-Access)
@@ -482,7 +482,7 @@ export const updatePaymentStatus = async (
 
       // Grant VIP access if it's a bundle
       if (isBundle) {
-        console.log(`[paymentService] Bundle purchase detected (${payment.tryoutId}). Granting VIP access.`);
+        // Granting bundle access...
         await grantFormasiAccess(payment.userId, 365);
       }
     }

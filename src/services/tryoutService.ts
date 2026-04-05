@@ -30,7 +30,7 @@ export const getAllTryouts = async (): Promise<TryoutPackage[]> => {
     const tryoutsRef = collection(db, 'tryout_packages');
     const snapshot = await getDocs(tryoutsRef);
 
-    console.log('Firebase query result:', snapshot.size, 'documents');
+/* Internal Query */
 
     const tryouts = snapshot.docs.map(doc => {
       const data = doc.data();
@@ -103,11 +103,8 @@ export const getUserTryouts = async (userId: string): Promise<UserTryout[]> => {
   );
   const snapshot = await getDocs(q);
 
-  console.log(`Found ${snapshot.size} tryouts for user ${userId}`);
-
   const tryouts = snapshot.docs.map(doc => {
     const data = doc.data();
-    console.log('User tryout document:', doc.id, data);
     return {
       id: doc.id,
       ...data,
@@ -126,7 +123,6 @@ export const getUserTryouts = async (userId: string): Promise<UserTryout[]> => {
     }
   }
 
-  console.log(`Returning ${validTryouts.length} valid tryouts`);
   return validTryouts.sort((a, b) => b.purchaseDate.getTime() - a.purchaseDate.getTime());
 };
 
@@ -137,7 +133,7 @@ export const purchaseTryout = async (
 ): Promise<string> => {
   const userTryoutsRef = collection(db, 'user_tryouts');
 
-  console.log('Checking if tryout already purchased...', { userId, tryoutId });
+  // Checking purchase status...
 
   const tryoutData = await getTryoutById(tryoutId);
   const isBundle = tryoutData?.isBundle || false;
@@ -150,11 +146,10 @@ export const purchaseTryout = async (
   const existingSnapshot = await getDocs(q);
 
   if (!existingSnapshot.empty) {
-    console.log('Tryout already purchased, returning existing record:', existingSnapshot.docs[0].id);
     return existingSnapshot.docs[0].id;
   }
 
-  console.log('Creating new user_tryout document...');
+  // Creating user_tryout...
   const docRef = await addDoc(userTryoutsRef, {
     userId,
     tryoutId,
@@ -170,12 +165,10 @@ export const purchaseTryout = async (
 
   // Grant VIP access if it's a bundle
   if (isBundle) {
-    console.log(`[tryoutService] Bundle purchase detected (${tryoutId}). Granting VIP access.`);
     await grantFormasiAccess(userId, 365);
   }
 
   if (isBundle && tryoutData?.includedTryoutIds) {
-    console.log('Tryout is a bundle, adding included tryouts...', tryoutData.includedTryoutIds);
     for (const incId of tryoutData.includedTryoutIds) {
       const incData = await getTryoutById(incId);
       if (incData) {
