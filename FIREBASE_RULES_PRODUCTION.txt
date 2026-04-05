@@ -2,8 +2,13 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ===== Helper Functions =====
     function isAuthenticated() {
       return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
     }
 
     function isAdmin() {
@@ -12,107 +17,139 @@ service cloud.firestore {
              get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // Admins collection
+    // ===== Admins Collection =====
     match /admins/{adminId} {
       allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
 
-    // Users collection
-    // - get: Boleh melihat profil siapapun (perlu untuk fitur Ranking/Peringkat)
-    // - list: Dibatasi maksimal 1 dokumen sekaligus (untuk cek ketersediaan username, tidak bisa disedot massal)
+    // ===== Users Collection =====
     match /users/{userId} {
-      allow get: if isAuthenticated();
-      allow list: if isAuthenticated() && request.query.limit <= 1;
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       allow create: if isAuthenticated();
       allow update, delete: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
     }
 
-    // Questions collection - Users can read, only admins can write
+    // ===== User Sessions Collection =====
+    match /userSessions/{sessionId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    // ===== Questions Collection =====
     match /questions/{questionId} {
       allow read: if isAuthenticated();
       allow create, update, delete: if isAdmin();
     }
 
-    // Tryout packages - Users can read all, only admins can write
+    // ===== Tryout Packages Collection =====
     match /tryout_packages/{tryoutId} {
       allow read: if isAuthenticated();
       allow create, update, delete: if isAdmin();
     }
 
-    // Tryouts collection - Users can read all, only admins can write
+    // ===== Tryouts Collection (Legacy) =====
     match /tryouts/{tryoutId} {
       allow read: if isAuthenticated();
       allow create, update, delete: if isAdmin();
     }
 
-    // User tryouts - Users can read/write their own, admins can do everything
+    // ===== User Tryouts Collection =====
     match /user_tryouts/{userTryoutId} {
-      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow read: if isAuthenticated() &&
+                    (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() &&
+                      (request.resource.data.userId == request.auth.uid || isAdmin());
+      allow update: if isAuthenticated() &&
+                      (resource.data.userId == request.auth.uid || isAdmin());
       allow delete: if isAdmin();
     }
 
-    // Tryout sessions - Users can manage their own sessions
+    // ===== Tryout Sessions Collection =====
     match /tryout_sessions/{sessionId} {
-      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow read: if isAuthenticated() &&
+                    (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() &&
+                      request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() &&
+                      (resource.data.userId == request.auth.uid || isAdmin());
       allow delete: if isAdmin();
     }
 
-    // Tryout results - All authenticated users can read (for ranking feature)
+    // ===== Tryout Results Collection =====
     match /tryout_results/{resultId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() &&
+                      request.resource.data.userId == request.auth.uid;
       allow update, delete: if isAdmin();
     }
 
-    // Rankings
+    // ===== Rankings Collection =====
     match /rankings/{rankingId} {
       allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
 
-    // Jabatan (positions)
+    // ===== Jabatan (Positions) Collection =====
     match /jabatan/{jabatanId} {
       allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
 
-    // Payment transactions
-    // - get: User hanya bisa melihat transaksinya sendiri
-    // - list: HANYA Admin (mencegah penyedotan data transaksi semua pengguna)
-    // - create: User hanya bisa membuat transaksi atas namanya sendiri
-    // - update: User bisa mengubah transaksinya sendiri (Admin bisa semua)
+    // ===== Payment Transactions Collection =====
     match /payment_transactions/{transactionId} {
-      allow get: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
       allow list: if isAdmin();
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow update: if isAuthenticated() && (
+        isAdmin() ||
+        (resource.data.userId == request.auth.uid && request.resource.data.status != 'PAID')
+      );
       allow delete: if isAdmin();
     }
 
-    // Claim codes
+    // ===== Claim Codes Collection =====
     match /claim_codes/{claimCodeId} {
       allow read: if isAuthenticated();
       allow create, delete: if isAdmin();
-      allow update: if isAuthenticated() && (
-        isAdmin() ||
-        (resource.data.isActive == true &&
-         resource.data.currentUses < resource.data.maxUses &&
-         !(request.auth.uid in resource.data.usedBy))
-      );
+      allow update: if isAuthenticated() &&
+                      (isAdmin() ||
+                       (resource.data.isActive == true &&
+                        resource.data.currentUses < resource.data.maxUses &&
+                        !(request.auth.uid in resource.data.usedBy)));
     }
 
-    // VIP Bundling settings (read-only for users)
-    match /vip_bundling/{docId} {
-      allow read: if isAuthenticated();
+    // ===== Settings Collection =====
+    match /settings/{settingId} {
+      allow read: if true;
       allow write: if isAdmin();
     }
 
-    // Block everything else
+    // ===== Formasi Access Codes Collection =====
+    match /formasi_access_codes/{codeId} {
+      allow read: if isAuthenticated();
+      allow create, delete: if isAdmin();
+      allow update: if isAuthenticated() &&
+                      (isAdmin() ||
+                       (resource.data.isActive == true &&
+                        resource.data.currentUses < resource.data.maxUses &&
+                        !(request.auth.uid in resource.data.usedBy)));
+    }
+
+    // ===== User Formasi Access Collection =====
+    match /user_formasi_access/{userId} {
+      allow read, write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+    }
+
+    // ===== Tryout Feedbacks Collection =====
+    match /tryout_feedbacks/{feedbackId} {
+      allow create: if isAuthenticated();
+      allow read, update, delete: if isAdmin();
+    }
+
+    // ===== Default Deny All =====
     match /{document=**} {
       allow read, write: if false;
     }

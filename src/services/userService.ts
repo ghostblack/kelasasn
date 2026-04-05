@@ -68,10 +68,11 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
 
 export const updateUserProfile = async (userId: string, data: Partial<UserProfile>): Promise<void> => {
   const userRef = doc(db, 'users', userId);
-  await updateDoc(userRef, {
+  await setDoc(userRef, {
     ...data,
+    uid: userId,
     updatedAt: serverTimestamp(),
-  });
+  }, { merge: true });
 };
 
 export const getUserData = async (userId: string): Promise<UserProfile | null> => {

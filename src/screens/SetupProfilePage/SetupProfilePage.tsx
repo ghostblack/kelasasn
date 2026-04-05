@@ -78,14 +78,6 @@ export const SetupProfilePage = () => {
     }
 
     try {
-      const isAvailable = await userService.checkUsernameAvailability(trimmedUsername);
-
-      if (!isAvailable) {
-        setError('Username sudah digunakan. Silakan pilih yang lain.');
-        setLoading(false);
-        return;
-      }
-
       await userService.updateUserProfile(user.uid, {
         displayName: trimmedDisplayName,
         username: trimmedUsername,
@@ -94,7 +86,7 @@ export const SetupProfilePage = () => {
       navigate('/dashboard', { replace: true });
     } catch (err: any) {
       console.error('Setup profile error:', err);
-      setError('Terjadi kesalahan saat menyimpan profil. Silakan coba lagi.');
+      setError(`Gagal menyimpan profil: ${err?.message || 'Silakan coba lagi.'}`);
     } finally {
       setLoading(false);
     }
