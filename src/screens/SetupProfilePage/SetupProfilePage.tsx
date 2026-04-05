@@ -26,6 +26,31 @@ export const SetupProfilePage = () => {
     }
   }, [user]);
 
+  // Auto-submit if name and username are present (as per user request: "langsung ambil dari email aja")
+  useEffect(() => {
+    if (displayName && username && !loading && !error) {
+      const timer = setTimeout(() => {
+        handleAutoSave();
+      }, 1000); // Give 1 second for user to see the page or edit if they want
+      return () => clearTimeout(timer);
+    }
+  }, [displayName, username]);
+
+  const handleAutoSave = async () => {
+    setLoading(true);
+    try {
+      await userService.updateUserProfile(user!.uid, {
+        displayName: displayName,
+        username: username,
+      });
+      navigate('/dashboard', { replace: true });
+    } catch (err: any) {
+      console.error('Auto-save profile error:', err);
+      // If auto-save fails, we just stay on the page and let the user try manually
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
