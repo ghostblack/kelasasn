@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Clock, CheckCircle, AlertCircle, Download, ExternalLink } from 'lucide-react';
 
-const QRIS_IMAGE_URL = 'https://i.imgur.com/QWw8pWy.jpeg';
+const QRIS_IMAGE_URL = 'https://ik.imagekit.io/gambarid/Kelas%20ASN/WhatsApp%20Image%202026-04-05%20at%2009.57.38.jpeg';
 const TELEGRAM_CONTACT = 'https://t.me/Kelas_ASN';
 
 export const PaymentQRISProcessPage: React.FC = () => {

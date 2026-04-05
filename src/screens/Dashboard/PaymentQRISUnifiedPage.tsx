@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Download, ArrowLeft, Loader2, CheckCircle2, Clock, ChevronDown, ChevronUp, Send } from 'lucide-react';
 import { VIP_BUNDLING_ID, getVIPBundlingSettings, getVIPBundlingStats } from '@/services/vipBundlingService';
 
-const QRIS_IMAGE_URL = 'https://i.imgur.com/QWw8pWy.jpeg';
+const QRIS_IMAGE_URL = 'https://ik.imagekit.io/gambarid/Kelas%20ASN/WhatsApp%20Image%202026-04-05%20at%2009.57.38.jpeg';
 
 export const PaymentQRISUnifiedPage: React.FC = () => {
   const { tryoutId } = useParams<{ tryoutId: string }>();
