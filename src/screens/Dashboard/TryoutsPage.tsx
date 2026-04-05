@@ -320,7 +320,7 @@ export const TryoutsPage = () => {
                               Rp {(tryout.originalPrice || tryout.price).toLocaleString('id-ID')}
                             </span>
                             <Badge className="bg-amber-500 text-white border-none text-[9px] px-1.5 py-0 font-bold uppercase tracking-tight">
-                               Early Bird
+                               Diskon 50%
                             </Badge>
                           </div>
                           <div className="text-xl font-black text-blue-600 tracking-tight">

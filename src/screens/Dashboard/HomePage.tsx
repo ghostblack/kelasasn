@@ -6,7 +6,7 @@ import { LoadingScreen } from '@/components/ui/spinner';
 import { FileText, TrendingUp, ChartBar as BarChart3, Trophy, Clock, CircleCheck as CheckCircle, ArrowRight, BookOpen, LayoutGrid, Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getUserStats, getUserTryouts, getAllTryouts } from '@/services/tryoutService';
-import { getVIPBundlingSettings, getVIPBundlingStats } from '@/services/vipBundlingService';
+
 import { UserStats, UserTryout, TryoutPackage } from '@/types';
 import { SeedDataButton } from '@/components/SeedDataButton';
 
@@ -23,7 +23,6 @@ export const HomePage = () => {
   const [stats, setStats] = useState<UserStats | null>(null);
   const [tryouts, setTryouts] = useState<UserTryout[]>([]);
   const [allTryouts, setAllTryouts] = useState<TryoutPackage[]>([]);
-  const [earlyBirdRemaining, setEarlyBirdRemaining] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasVip, setHasVip] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
@@ -51,19 +50,13 @@ export const HomePage = () => {
       }, 10000);
 
       try {
-        const [userStats, userTryouts, availableTryouts, vipSettings, vipStats] = await Promise.all([
+        const [userStats, userTryouts, availableTryouts] = await Promise.all([
           getUserStats(user.uid),
           getUserTryouts(user.uid),
-          getAllTryouts(),
-          getVIPBundlingSettings(),
-          getVIPBundlingStats()
+          getAllTryouts()
         ]);
 
         if (!isMounted) return;
-
-        const remaining = Math.max(0, vipSettings.earlyBirdLimit - vipStats.totalSales);
-        const fomoRemaining = remaining > 15 ? (remaining % 9) + 4 : Math.max(1, remaining);
-        setEarlyBirdRemaining(fomoRemaining);
         
         // Check if user already has a purchased bundle
         const purchasedBundle = userTryouts.some(ut => {
@@ -189,7 +182,7 @@ export const HomePage = () => {
               className="flex w-full h-full transition-transform duration-700 ease-in-out"
               style={{ transform: `translateX(-${activeSlide * 100}%)` }}
             >
-                {/* SLIDE 1: FOMO Early Bird */}
+                {/* SLIDE 1: FOMO Diskon 50% */}
                 <div 
                   className="w-full flex-shrink-0 h-full relative" 
                   style={{ background: 'linear-gradient(135deg, #7f1d1d 0%, #dc2626 60%, #ea580c 100%)' }}
@@ -199,13 +192,13 @@ export const HomePage = () => {
                     <div className="relative z-10 flex flex-col justify-center h-full p-5 sm:p-6 lg:p-7 shrink-0">
                        <span className="inline-flex items-center gap-1.5 bg-yellow-400/20 text-yellow-300 border border-yellow-400/30 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full animate-pulse w-fit mb-2 shadow-sm">
                           <Sparkles className="w-3 h-3" />
-                          Promo Early Bird · Sisa {earlyBirdRemaining} Kuota!
+                          Early Bird Habis · Diskon 50%
                        </span>
                        <h2 className="text-white font-bold text-xl sm:text-2xl leading-snug drop-shadow-md">
-                         Segera Beli VIP Bundling <br className="hidden sm:block"/> Sebelum Kehabisan!
+                         Segera Beli VIP Bundling <br className="hidden sm:block"/> Khusus 50 Pembeli Pertama!
                        </h2>
                        <p className="text-red-100/90 text-sm mt-1.5 leading-relaxed max-w-md">
-                         Akses penuh materi, try out & formasi. <span className="font-bold border-b border-dashed text-white px-0.5">Hanya Rp 20.000</span> (Normal Rp 60.000).
+                         Akses penuh materi, try out & formasi. <span className="font-bold border-b border-dashed text-white px-0.5">Hanya Rp 30.000</span> (Normal Rp 60.000).
                        </p>
                        <Button
                           onClick={(e) => { e.stopPropagation(); navigate('/dashboard/tryouts?category=bundling'); }}

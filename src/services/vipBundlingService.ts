@@ -37,12 +37,11 @@ export const getVIPBundlingSettings = async (): Promise<VIPBundlingSettings> => 
       return settingsSnap.data() as VIPBundlingSettings;
     }
     
-    // Default settings if not exists
     const defaults: VIPBundlingSettings = {
-      earlyBirdPrice: 20000,
-      regularPrice: 50000,
+      earlyBirdPrice: 30000,
+      regularPrice: 60000,
       discountPrice: 30000,
-      earlyBirdLimit: 100,
+      earlyBirdLimit: 50,
       isActive: true
     };
     
@@ -52,10 +51,10 @@ export const getVIPBundlingSettings = async (): Promise<VIPBundlingSettings> => 
   } catch (error) {
     console.error('Error fetching VIP Bundling settings:', error);
     return {
-      earlyBirdPrice: 20000,
-      regularPrice: 50000,
+      earlyBirdPrice: 30000,
+      regularPrice: 60000,
       discountPrice: 30000,
-      earlyBirdLimit: 100,
+      earlyBirdLimit: 50,
       isActive: true,
       includedTryoutIds: []
     };

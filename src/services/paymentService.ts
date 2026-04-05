@@ -367,6 +367,41 @@ export const updatePaymentStatus = async (
             updatedAt: serverTimestamp(),
           });
         }
+        
+        // Grant children 
+        if (t.includedTryoutIds && Array.isArray(t.includedTryoutIds)) {
+          for (const incId of t.includedTryoutIds) {
+            const existingChild = await getDocs(
+              query(
+                userTryoutsRef,
+                where('userId', '==', payment.userId),
+                where('tryoutId', '==', incId),
+                where('paymentStatus', '==', 'success')
+              )
+            );
+
+            if (existingChild.empty) {
+              const incRef = doc(db, 'tryout_packages', incId);
+              const incSnap = await getDoc(incRef);
+              if (incSnap.exists()) {
+                const incData = incSnap.data();
+                await addDoc(userTryoutsRef, {
+                  userId: payment.userId,
+                  tryoutId: incId,
+                  tryoutName: incData.name,
+                  purchaseDate: serverTimestamp(),
+                  status: 'not_started',
+                  paymentStatus: 'success',
+                  transactionId: `${payment.reference}-VIP-BNDL`,
+                  bundleId: t.id,
+                  attempts: 0,
+                  createdAt: serverTimestamp(),
+                  updatedAt: serverTimestamp(),
+                });
+              }
+            }
+          }
+        }
       }
       return;
     }
@@ -530,3 +565,88 @@ export async function validateCouponCode(code: string, _tryoutId: string): Promi
     message: 'Sistem kupon belum aktif'
   };
 }
+
+export const syncStuckBundlePurchases = async (): Promise<number> => {
+  let fixedCount = 0;
+  
+  const q = query(collection(db, 'payment_transactions'), where('status', '==', 'PAID'));
+  const snap = await getDocs(q);
+  const userTryoutsRef = collection(db, 'user_tryouts');
+  
+  for (const docSnap of snap.docs) {
+    const payment = docSnap.data();
+    
+    // 1. VIP BUNDLING SPECIAL CASE
+    if (payment.tryoutId === VIP_BUNDLING_ID) {
+      const allTryouts = await getAllTryouts();
+      const bundleTryouts = allTryouts.filter(t => t.isBundle === true && t.isActive !== false);
+      
+      for (const t of bundleTryouts) {
+         if (t.includedTryoutIds && Array.isArray(t.includedTryoutIds)) {
+            for (const incId of t.includedTryoutIds) {
+              const existingChild = await getDocs(
+                query(userTryoutsRef, where('userId', '==', payment.userId), where('tryoutId', '==', incId), where('paymentStatus', '==', 'success'))
+              );
+              if (existingChild.empty) {
+                const incRef = doc(db, 'tryout_packages', incId);
+                const incSnap = await getDoc(incRef);
+                if (incSnap.exists()) {
+                  const incData = incSnap.data();
+                  await addDoc(userTryoutsRef, {
+                    userId: payment.userId,
+                    tryoutId: incId,
+                    tryoutName: incData.name,
+                    purchaseDate: serverTimestamp(),
+                    status: 'not_started',
+                    paymentStatus: 'success',
+                    transactionId: `${payment.reference}-VIP-BNDL`,
+                    bundleId: t.id,
+                    attempts: 0,
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp(),
+                  });
+                  fixedCount++;
+                }
+              }
+            }
+         }
+      }
+    } 
+    // 2. Normal Bundle
+    else {
+      const tryoutRef = doc(db, 'tryout_packages', payment.tryoutId);
+      const tryoutSnap = await getDoc(tryoutRef);
+      const tryoutData = tryoutSnap.exists() ? tryoutSnap.data() : null;
+      
+      if (tryoutData?.isBundle && tryoutData?.includedTryoutIds && Array.isArray(tryoutData.includedTryoutIds)) {
+         for (const incId of tryoutData.includedTryoutIds) {
+           const existingChild = await getDocs(
+              query(userTryoutsRef, where('userId', '==', payment.userId), where('tryoutId', '==', incId), where('paymentStatus', '==', 'success'))
+           );
+           if (existingChild.empty) {
+             const incRef = doc(db, 'tryout_packages', incId);
+             const incSnap = await getDoc(incRef);
+             if (incSnap.exists()) {
+               const incData = incSnap.data();
+               await addDoc(userTryoutsRef, {
+                  userId: payment.userId,
+                  tryoutId: incId,
+                  tryoutName: incData.name,
+                  purchaseDate: serverTimestamp(),
+                  status: 'not_started',
+                  paymentStatus: 'success',
+                  transactionId: `${payment.reference}-BNDL`,
+                  bundleId: payment.tryoutId,
+                  attempts: 0,
+                  createdAt: serverTimestamp(),
+                  updatedAt: serverTimestamp(),
+               });
+               fixedCount++;
+             }
+           }
+         }
+      }
+    }
+  }
+  return fixedCount;
+};

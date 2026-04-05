@@ -339,7 +339,7 @@ export const PaymentPage: React.FC = () => {
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">
-                    {tryout.id === VIP_BUNDLING_ID ? 'Harga Paket' : isEarlyBirdActive ? 'Harga Early Bird' : 'Harga Try Out'}
+                    {tryout.id === VIP_BUNDLING_ID ? 'Harga Paket' : isEarlyBirdActive ? 'Harga Diskon' : 'Harga Try Out'}
                   </span>
                   <div className="text-right">
                     {isEarlyBirdActive && tryout.price > 0 && (

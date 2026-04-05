@@ -432,11 +432,11 @@ export const TryoutDetailPage: React.FC = () => {
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 relative overflow-hidden group">
               {isEarlyBirdActive && (
                 <div className="absolute -right-12 top-6 bg-orange-500 text-white px-12 py-1 rotate-45 text-[10px] font-black uppercase tracking-widest shadow-sm z-10">
-                  Early Bird
+                  Diskon 50%
                 </div>
               )}
               <p className="text-xs text-gray-600 font-medium mb-2">
-                {isEarlyBirdActive ? 'Harga Early Bird' : (tryout.originalPrice && tryout.originalPrice > tryout.price) ? 'Harga Promo' : 'Harga'}
+                {isEarlyBirdActive ? 'Harga Diskon' : (tryout.originalPrice && tryout.originalPrice > tryout.price) ? 'Harga Promo' : 'Harga'}
               </p>
               <div className="space-y-1">
                 {isEarlyBirdActive && tryout.price > 0 ? (
@@ -656,7 +656,7 @@ export const TryoutDetailPage: React.FC = () => {
             <div className="space-y-3">
               {!!displayPrice && displayPrice > 0 && (
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-gray-600 font-medium">{isEarlyBirdActive ? 'Early Bird' : 'Harga'}:</span>
+                  <span className="text-xs text-gray-600 font-medium">{isEarlyBirdActive ? 'Diskon' : 'Harga'}:</span>
                   <div className="text-right">
                     {isEarlyBirdActive && (
                       <span className="text-[10px] text-gray-400 line-through block leading-none mb-1">

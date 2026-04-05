@@ -1,12 +1,12 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { getAllPayments, updatePaymentStatus } from '@/services/paymentService';
+import { getAllPayments, updatePaymentStatus, syncStuckBundlePurchases } from '@/services/paymentService';
 import { PaymentTransaction } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Search, RefreshCw, Filter, CreditCard, Clock, CheckCircle2, AlertCircle, TrendingUp } from 'lucide-react';
+import { Search, RefreshCw, Filter, CreditCard, Clock, CheckCircle2, AlertCircle, TrendingUp, Settings } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -16,6 +16,28 @@ export const PaymentsManagement: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const { toast } = useToast();
     const [activeTab, setActiveTab] = useState('all');
+    const [syncing, setSyncing] = useState(false);
+
+    const handleSyncStuckPurchases = async () => {
+        try {
+            setSyncing(true);
+            const count = await syncStuckBundlePurchases();
+            toast({
+                title: 'Sinkronisasi Selesai',
+                description: `Berhasil mencocokkan dan menyisipkan ${count} akses try out paket anak yang belum masuk.`,
+                variant: 'default',
+            });
+        } catch (error) {
+            console.error('Error syncing stuck purchases:', error);
+            toast({
+                title: 'Error',
+                description: 'Gagal melakukan sinkronisasi paket sangkut',
+                variant: 'destructive',
+            });
+        } finally {
+            setSyncing(false);
+        }
+    };
 
     useEffect(() => {
         loadPayments();
@@ -123,9 +145,18 @@ export const PaymentsManagement: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-3">
                     <Button 
+                        variant="outline"
+                        onClick={handleSyncStuckPurchases}
+                        disabled={syncing}
+                        className="bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 h-10 px-4 shadow-sm"
+                    >
+                        <Settings className={`w-4 h-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+                        {syncing ? 'Memeriksa...' : 'Sync Paket Sangkut'}
+                    </Button>
+                    <Button 
                         variant="outline" 
                         onClick={loadPayments}
-                        className="bg-white hover:bg-gray-50 text-gray-700 h-10 px-4"
+                        className="bg-white hover:bg-gray-50 text-gray-700 h-10 px-4 shadow-sm"
                     >
                         <RefreshCw className="w-4 h-4 mr-2" />
                         Refresh
