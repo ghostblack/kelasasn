@@ -468,12 +468,15 @@ export function CPNSInstansiPage() {
       return n;
     });
 
-    // Load ALL codes in parallel
-    await Promise.allSettled(toFetch.map(async kode => {
+    // Load codes with a small staggered delay to be kinder to the upstream API
+    await Promise.allSettled(toFetch.map(async (kode, index) => {
       try {
-        const res = await fetch(`/api/sscasn/formasi?instansi_kode=${kode}&limit=100&page=1`);
-        const json = await res.json();
-        const data = json.data ?? [];
+        // Small staggered delay (50ms per item) to prevent massive burst
+        if (index > 0) await new Promise(resolve => setTimeout(resolve, index * 50));
+        
+        // Use limit 100: lightest configuration for maximum efficiency
+        const res = await sscasnService.getFormasi(1, 100, undefined, { instansi_kode: kode });
+        const data = res.data ?? [];
         const totalFormasi = data.reduce((s: number, f: any) => s + (f.jumlah_formasi || 0), 0);
         const totalPelamar = data.reduce((s: number, f: any) => s + (f.jumlah_ms || 0), 0);
         const ratio = totalFormasi > 0 ? totalPelamar / totalFormasi : 0;
@@ -489,7 +492,7 @@ export function CPNSInstansiPage() {
         loadingCodesRef.current.delete(kode);
       }
     }));
-  }, [stats]);
+  }, [isUnlocked, isAdmin, stats]);
 
   useEffect(() => {
     const codes = paginated.map(p => p.kode).filter(k => {
@@ -497,8 +500,7 @@ export function CPNSInstansiPage() {
       return !s || s === 'error';
     });
     if (codes.length) loadStats(codes);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paginated.map(p => p.kode).join(',')]);
+  }, [paginated, loadStats, stats]);
 
   const fmt = (n: number) => new Intl.NumberFormat('id-ID').format(n);
   const ratioColor = (r: number) =>
