@@ -39,6 +39,7 @@ import { FormasiAccessManagement } from "./screens/Admin/FormasiAccessManagement
 import { QuestionsManagement } from "./screens/Admin/QuestionsManagement";
 import { FeedbackManagement } from "./screens/Admin/FeedbackManagement";
 import { UserTryoutDetails } from "./screens/Admin/UserTryoutDetails";
+import { PromoBannerManagement } from "./screens/Admin/PromoBannerManagement";
 import { AuthProvider } from "./contexts/AuthContext";
 import { MaintenanceProvider, useMaintenanceMode } from "./contexts/MaintenanceContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -46,6 +47,7 @@ import { AdminProtectedRoute } from "./components/AdminProtectedRoute";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 import { Toaster } from "./components/ui/toaster";
 import { SessionConflictModal } from "./components/SessionConflictModal";
+import { PromoBannerModal } from "./components/PromoBannerModal";
 import { MaintenancePage } from "./screens/MaintenancePage";
 import { useAuth } from "./contexts/AuthContext";
 import "../tailwind.css";
@@ -351,9 +353,11 @@ function AppWrapper() {
             <Route path="formasi-access" element={<FormasiAccessManagement />} />
             <Route path="questions" element={<QuestionsManagement />} />
             <Route path="feedback" element={<FeedbackManagement />} />
+            <Route path="promo-banner" element={<PromoBannerManagement />} />
           </Route>
         </Routes>
         <Toaster />
+        <PromoBannerModal />
       </BrowserRouter>
     </>
   );

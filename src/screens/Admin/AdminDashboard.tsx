@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { LayoutDashboard, BookOpen, LogOut, Menu, Ticket, Users, CreditCard, Search, Command, Bell, User as UserIcon, MessageSquare } from 'lucide-react';
+import { LayoutDashboard, BookOpen, LogOut, Menu, Ticket, Users, CreditCard, Search, Command, Bell, User as UserIcon, MessageSquare, Image } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export const AdminDashboard: React.FC = () => {
@@ -30,6 +30,7 @@ export const AdminDashboard: React.FC = () => {
         { path: '/admin/payments', icon: CreditCard, label: 'Kelola Pembayaran' },
         { path: '/admin/claim-codes', icon: Ticket, label: 'Kode Klaim' },
         { path: '/admin/formasi-access', icon: Ticket, label: 'Akses Formasi' },
+        { path: '/admin/promo-banner', icon: Image, label: 'Promo / Iklan' },
       ]
     },
     {

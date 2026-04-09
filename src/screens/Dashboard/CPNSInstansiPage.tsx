@@ -534,7 +534,7 @@ export function CPNSInstansiPage() {
       </div>
 
       {/* Tab Bar */}
-      <div className="flex gap-0 border-b border-gray-200">
+      <div className="flex custom-scrollbar overflow-x-auto w-full border-b border-gray-200">
         {[
           { key: 'klasifikasi', label: 'Klasifikasi Tukin', icon: Layers },
           { key: 'instansi', label: 'Cari Instansi', icon: Building2 },
@@ -543,7 +543,7 @@ export function CPNSInstansiPage() {
             key={key}
             onClick={() => setTab(key as any)}
             className={cn(
-              'flex items-center gap-2 px-6 py-3 text-xs font-black uppercase tracking-widest border-b-2 transition-all',
+              'flex items-center flex-shrink-0 whitespace-nowrap gap-2 px-6 py-3 text-xs font-black uppercase tracking-widest border-b-2 transition-all',
               tab === key
                 ? 'border-blue-600 text-blue-600 bg-blue-50/40'
                 : 'border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-300'
@@ -719,37 +719,43 @@ export function CPNSInstansiPage() {
             </button>
           </div>
 
-          {/* Search + Filter bar */}
-          <div className="flex flex-col sm:flex-row">
-            <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          {/* Search + Filter bar: 1 baris di desktop, terpisah di mobile */}
+          {/* Desktop: flex-row | Mobile: flex-col */}
+          <div className="flex flex-col sm:flex-row gap-3 items-stretch">
+            {/* Search — flex-1 untuk isi sisa ruang di desktop */}
+            <div className="relative flex-1 min-w-0">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
               <Input
-                placeholder="CARI NAMA INSTANSI..."
+                placeholder="Cari nama instansi..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="pl-12 h-12 rounded-none border border-gray-200 font-mono text-xs uppercase placeholder:text-gray-300"
+                className="pl-12 h-11 w-full rounded-xl border border-gray-200 shadow-sm text-xs uppercase placeholder:text-gray-300 focus-visible:ring-1 focus-visible:ring-blue-500"
               />
             </div>
-            <select
-              value={filterType}
-              onChange={e => setFilterType(e.target.value as any)}
-              className="h-12 px-4 border border-l-0 border-gray-200 bg-gray-50 text-[10px] font-black uppercase tracking-widest text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="semua">Semua Tipe</option>
-              <option value="pusat">K/L Pusat</option>
-              <option value="daerah">Pemda</option>
-            </select>
-            <select
-              value={sortMode}
-              onChange={e => setSortMode(e.target.value as any)}
-              className="h-12 px-4 border border-l-0 border-gray-200 bg-gray-50 text-[10px] font-black uppercase tracking-widest text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="default">Default (A-Z)</option>
-              <option value="tukin_desc">👑 Tukin Tertinggi</option>
-              <option value="pelamar_desc">👥 Pelamar Terbanyak</option>
-              <option value="ratio_desc">🔴 Paling Ketat</option>
-              <option value="ratio_asc">🟢 Paling Santai</option>
-            </select>
+
+            {/* Dropdowns: grid 2 kolom di mobile, flex-row di desktop */}
+            <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 sm:gap-3">
+              <select
+                value={filterType}
+                onChange={e => setFilterType(e.target.value as any)}
+                className="h-11 px-3 rounded-xl border border-gray-200 bg-white text-[11px] font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm w-full sm:w-[140px] cursor-pointer"
+              >
+                <option value="semua">Semua Tipe</option>
+                <option value="pusat">K/L Pusat</option>
+                <option value="daerah">Pemda</option>
+              </select>
+              <select
+                value={sortMode}
+                onChange={e => setSortMode(e.target.value as any)}
+                className="h-11 px-3 rounded-xl border border-gray-200 bg-white text-[11px] font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm w-full sm:w-[170px] cursor-pointer"
+              >
+                <option value="default">Default (A–Z)</option>
+                <option value="tukin_desc">👑 Tukin Tertinggi</option>
+                <option value="pelamar_desc">👥 Pelamar Terbanyak</option>
+                <option value="ratio_desc">🔴 Paling Ketat</option>
+                <option value="ratio_asc">🟢 Paling Santai</option>
+              </select>
+            </div>
           </div>
 
           {/* Stats headline */}
@@ -841,11 +847,11 @@ export function CPNSInstansiPage() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-gray-100">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center sm:text-left">
                 Hal {currentPage}/{totalPages} · {filtered.length} instansi
               </p>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center justify-center gap-2">
                 <Button variant="outline" size="icon" disabled={currentPage === 1}
                   onClick={() => setCurrentPage(p => p - 1)} className="h-9 w-9 rounded-xl border-gray-200">
                   <ChevronLeft className="h-4 w-4" />
