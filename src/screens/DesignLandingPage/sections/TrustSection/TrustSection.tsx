@@ -23,19 +23,19 @@ const StatCounter = ({ value, label, icon: Icon, delay = 0 }: { value: number; l
   return (
     <div
       ref={ref}
-      className={`flex flex-col items-center p-8 rounded-3xl bg-white border border-gray-100 shadow-sm transition-all duration-700 ${
+      className={`flex flex-col items-center p-8 rounded-3xl bg-white border border-gray-100 shadow-sm transition-all duration-700 hover:shadow-md hover:-translate-y-1 ${
         isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
       }`}
       style={{ transitionDelay: `${delay * 1000}ms` }}
     >
-      <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-6">
-        <Icon className="w-8 h-8 text-blue-600" />
+      <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center mb-6 border border-gray-100">
+        <Icon className="w-7 h-7 text-[#1f1f1f]" />
       </div>
       <div className="flex flex-col items-center gap-2">
-        <h3 className="[font-family:'PP_Neue_Montreal-Bold',Helvetica] font-bold text-black text-4xl sm:text-5xl tracking-tight">
+        <h3 className="[font-family:'PP_Neue_Montreal-Bold',Helvetica] font-bold text-[#1e1e1e] text-4xl sm:text-5xl tracking-[-1.44px]">
           {displayValue.toLocaleString("id-ID")}+
         </h3>
-        <p className="[font-family:'PP_Neue_Montreal-Medium',Helvetica] font-medium text-gray-500 text-lg">
+        <p className="[font-family:'PP_Neue_Montreal-Medium',Helvetica] font-medium text-[#1f1f1fb2] text-sm sm:text-base tracking-[-0.16px]">
           {label}
         </p>
       </div>
@@ -56,25 +56,29 @@ export const TrustSection = (): JSX.Element => {
   }, []);
 
   return (
-    <section ref={sectionRef} className="w-full flex justify-center py-20 lg:py-32 bg-gray-50/50">
+    <section ref={sectionRef} className="w-full flex justify-center py-16 lg:py-28 bg-gray-50/50">
       <div className="w-full max-w-[1280px] px-4 lg:px-8">
-        <div className="flex flex-col items-center text-center mb-16 gap-4">
+        <div className="flex flex-col items-center text-center mb-16 gap-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={isVisible ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.6 }}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-full"
+            className="inline-flex items-center gap-2 pl-1 pr-5 py-1 bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm"
           >
-            <CheckCircle className="w-4 h-4 text-blue-600" />
-            <span className="text-blue-700 font-semibold text-sm uppercase tracking-wider">
-              Terpercaya & Terbukti
+            <div className="inline-flex items-center justify-center gap-2.5 px-3 py-2 bg-[#19b269] rounded-[32px] h-auto">
+              <span className="[font-family:'PP_Neue_Montreal-Bold',Helvetica] font-bold text-white text-sm tracking-[0] leading-[18px]">
+                #1 Terpercaya
+              </span>
+            </div>
+            <span className="[font-family:'PP_Neue_Montreal-Medium',Helvetica] font-medium text-[#1f1f1f] text-sm sm:text-base tracking-[0] leading-[18px] whitespace-nowrap">
+              & Terbukti
             </span>
           </motion.div>
           <motion.h2
             initial={{ opacity: 0, y: 20 }}
             animate={isVisible ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="[font-family:'PP_Neue_Montreal-Bold',Helvetica] font-bold text-black text-[32px] sm:text-[42px] lg:text-[54px] tracking-tight leading-tight max-w-3xl"
+            className="[font-family:'PP_Neue_Montreal-Bold',Helvetica] font-bold text-[#1e1e1e] text-[28px] sm:text-[36px] lg:text-[48px] tracking-[-1.44px] leading-tight max-w-3xl"
           >
             Pilihan Utama Ribuan Calon ASN Indonesia
           </motion.h2>
@@ -82,7 +86,7 @@ export const TrustSection = (): JSX.Element => {
             initial={{ opacity: 0, y: 20 }}
             animate={isVisible ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="[font-family:'PP_Neue_Montreal-Book',Helvetica] font-normal text-gray-500 text-lg sm:text-xl max-w-2xl"
+            className="[font-family:'PP_Neue_Montreal-Book',Helvetica] font-normal text-[#1f1f1fb2] text-sm sm:text-base md:text-lg tracking-[-0.16px] leading-6 sm:leading-7 max-w-2xl"
           >
             Kami berkomitmen memberikan pengalaman belajar terbaik dengan data yang transparan dan hasil yang nyata.
           </motion.p>
