@@ -170,25 +170,28 @@ export function CPNSInstansiDetailPage() {
 
   // Filtering & Sorting
   const filteredFormasi = useMemo(() => {
-    let result = formasiList;
-    if (searchTerm) {
-      const q = searchTerm.toLowerCase();
-      result = result.filter(f => 
-        f.jabatan_nm?.toLowerCase().includes(q) || 
-        f.pendidikan_nm?.toLowerCase().includes(q) ||
-        f.lokasi_nm?.toLowerCase().includes(q)
-      );
-    }
-    
-    return result.sort((a, b) => {
+    // Filter dulu berdasarkan searchTerm
+    let result = searchTerm
+      ? formasiList.filter(f => {
+          const q = searchTerm.toLowerCase();
+          return (
+            f.jabatan_nm?.toLowerCase().includes(q) ||
+            f.pendidikan_nm?.toLowerCase().includes(q) ||
+            f.lokasi_nm?.toLowerCase().includes(q)
+          );
+        })
+      : [...formasiList]; // spread agar tidak mutasi array asli
+
+    // Sort — selalu gunakan copy baru agar tidak mempengaruhi formasiList
+    return [...result].sort((a, b) => {
       if (sortBy === 'gaji_desc') return (b.gaji_max || 0) - (a.gaji_max || 0);
-      
+
       const ratioA = (a.jumlah_formasi || 0) > 0 ? (a.jumlah_ms || 0) / a.jumlah_formasi : Infinity;
       const ratioB = (b.jumlah_formasi || 0) > 0 ? (b.jumlah_ms || 0) / b.jumlah_formasi : Infinity;
-      
+
       if (sortBy === 'ratio_asc') return ratioA - ratioB;
       if (sortBy === 'ratio_desc') return ratioB - ratioA;
-      
+
       return 0;
     });
   }, [formasiList, searchTerm, sortBy]);
