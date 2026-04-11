@@ -46,16 +46,19 @@ export const RankingPage = () => {
   }, [user, isAdmin]);
 
   useEffect(() => {
-    loadTryouts();
-  }, []);
-
-  useEffect(() => {
     if (isUnlocked === true) {
+      loadTryouts();
       loadRankings();
     } else if (isUnlocked === false) {
       setLoading(false);
     }
-  }, [selectedTryout, isUnlocked]);
+  }, [isUnlocked]);
+
+  useEffect(() => {
+    if (isUnlocked === true) {
+      loadRankings();
+    }
+  }, [selectedTryout]);
 
   const loadTryouts = async () => {
     try {

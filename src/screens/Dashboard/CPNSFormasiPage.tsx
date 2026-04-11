@@ -127,10 +127,12 @@ export function CPNSFormasiPage() {
   };
 
 
-  // Initial Load Metadata only once
+  // Initial Load Metadata only once — HANYA jika user sudah VIP/unlock
   useEffect(() => {
-    loadMetadata();
-  }, []);
+    if (isUnlocked === true) {
+      loadMetadata();
+    }
+  }, [isUnlocked]);
 
   // Handle Search & Filter Changes - Only reset page, don't auto-load
   useEffect(() => {

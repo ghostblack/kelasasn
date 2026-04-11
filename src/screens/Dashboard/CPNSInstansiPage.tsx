@@ -344,8 +344,13 @@ export function CPNSInstansiPage() {
     initAccess();
   }, [user, isAdmin]);
 
-  // ─── Load master data ───────────────────────────────────────────────────────
+  // ─── Load master data (hanya jika user sudah VIP/unlock) ──────────────────
   useEffect(() => {
+    if (isUnlocked === null) return; // tunggu cek akses selesai
+    if (!isUnlocked) {
+      setLoading(false);
+      return;
+    }
     const init = async () => {
       setLoading(true);
       try {
@@ -366,7 +371,7 @@ export function CPNSInstansiPage() {
       }
     };
     init();
-  }, []);
+  }, [isUnlocked]);
 
   const classify = (nama: string): 'pusat' | 'daerah' => {
     const n = nama.toUpperCase();
