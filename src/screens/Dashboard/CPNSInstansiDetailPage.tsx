@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Search, Building2, MapPin, GraduationCap, Briefcase, 
   TrendingUp, Wallet, Star, AlertTriangle, ShieldCheck, 
-  ThumbsUp, ThumbsDown, Info, ArrowLeft
+  ThumbsUp, ThumbsDown, Info, ArrowLeft, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SSCASNFormation } from '@/types/sscasn';
@@ -37,6 +37,9 @@ export function CPNSInstansiDetailPage() {
   
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'ratio_asc' | 'ratio_desc' | 'gaji_desc'>('default' as any);
+  
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 25;
 
   // VIP Access States
   const { user, isAdmin } = useAuth();
@@ -190,6 +193,17 @@ export function CPNSInstansiDetailPage() {
     });
   }, [formasiList, searchTerm, sortBy]);
 
+  // Reset pagination when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, sortBy]);
+
+  const totalPages = Math.ceil(filteredFormasi.length / PAGE_SIZE);
+  const paginatedFormasi = useMemo(() => {
+    const startIndex = (currentPage - 1) * PAGE_SIZE;
+    return filteredFormasi.slice(startIndex, startIndex + PAGE_SIZE);
+  }, [filteredFormasi, currentPage]);
+
 
   const fmtCurr = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
   const fmtNum = (n: number) => new Intl.NumberFormat('id-ID').format(n);
@@ -226,24 +240,24 @@ export function CPNSInstansiDetailPage() {
       {/* --- HEADER --- */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-8 group overflow-hidden relative">
         <div className="absolute top-0 right-0 w-64 h-64 bg-slate-50 rounded-full blur-3xl -z-10 -translate-y-1/2 translate-x-1/2 group-hover:bg-blue-50/50 transition-colors duration-700" />
-        <div className="flex gap-5 items-center">
+        <div className="flex flex-col sm:flex-row gap-5 items-start sm:items-center">
           {instansi.logo ? (
-            <img src={instansi.logo} alt="" className="h-20 w-20 sm:h-24 sm:w-24 object-contain rounded-2xl bg-white p-2 border border-gray-100 shadow-sm" onError={e => e.currentTarget.style.display='none'} />
+            <img src={instansi.logo} alt="" className="h-16 w-16 sm:h-24 sm:w-24 object-contain rounded-2xl bg-white p-1 sm:p-2 border border-gray-100 shadow-sm" onError={e => e.currentTarget.style.display='none'} />
           ) : (
-            <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl bg-slate-50 flex items-center justify-center border border-slate-100 shadow-sm">
-              <Building2 className="h-10 w-10 text-slate-300" />
+            <div className="h-16 w-16 sm:h-24 sm:w-24 rounded-2xl bg-slate-50 flex items-center justify-center border border-slate-100 shadow-sm">
+              <Building2 className="h-8 w-8 sm:h-10 sm:w-10 text-slate-300" />
             </div>
           )}
           <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight leading-tight uppercase mb-3">{instansi.nama}</h1>
+            <h1 className="text-xl sm:text-3xl font-black text-gray-900 tracking-tight leading-tight uppercase mb-2 sm:mb-3">{instansi.nama}</h1>
             <div className="flex flex-wrap gap-2">
-              <span className={cn('text-[10px] sm:text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-full border', 
+              <span className={cn('text-[9px] sm:text-xs font-black uppercase tracking-widest px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full border', 
                 instansi.type === 'pusat' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-purple-50 text-purple-600 border-purple-100')}>
-                {instansi.type === 'pusat' ? 'K/L Pusat' : 'Pemerintah Daerah'}
+                {instansi.type === 'pusat' ? 'K/L Pusat' : 'Pemda'}
               </span>
               {instansi.tier && instansi.type === 'pusat' && (
-                <span className={cn('text-[10px] sm:text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-full border', instansi.tier.badgeBg, instansi.tier.badgeText, instansi.tier.badgeBorder)}>
-                  Tukin Kategori {instansi.tier.cat} ({instansi.tier.label})
+                <span className={cn('text-[9px] sm:text-xs font-black uppercase tracking-widest px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full border', instansi.tier.badgeBg, instansi.tier.badgeText, instansi.tier.badgeBorder)}>
+                  Tier {instansi.tier.cat}
                 </span>
               )}
             </div>
@@ -251,7 +265,7 @@ export function CPNSInstansiDetailPage() {
         </div>
         
         {review && (
-          <div className="flex flex-col items-end md:items-center bg-slate-50 px-6 py-4 rounded-2xl border border-slate-100 whitespace-nowrap">
+          <div className="flex flex-col items-start md:items-center bg-slate-50 px-5 sm:px-6 py-4 rounded-2xl border border-slate-100 whitespace-nowrap w-full md:w-auto">
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Rating Instansi</p>
             <div className="flex items-center gap-2">
               <Star className="h-5 w-5 sm:h-6 sm:w-6 fill-amber-400 text-amber-400" />
@@ -404,8 +418,8 @@ export function CPNSInstansiDetailPage() {
               <div className="bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm flex flex-col mt-4">
                 <div className="p-5 sm:p-6 border-b border-gray-100 bg-white flex flex-col sm:flex-row gap-4 justify-between items-center">
                   <h3 className="text-sm font-black uppercase tracking-widest text-gray-900 whitespace-nowrap">Daftar Formasi ({filteredFormasi.length})</h3>
-                  <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                    <div className="relative flex-1 sm:w-64">
+                  <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                    <div className="relative flex-1 md:w-64">
                       <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                       <input 
                         className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
@@ -415,7 +429,7 @@ export function CPNSInstansiDetailPage() {
                       />
                     </div>
                     <select 
-                      className="py-2.5 px-4 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer transition-all"
+                      className="w-full sm:w-auto py-2.5 px-4 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer transition-all"
                       value={sortBy}
                       onChange={(e) => setSortBy(e.target.value as any)}
                     >
@@ -427,40 +441,42 @@ export function CPNSInstansiDetailPage() {
                   </div>
                 </div>
 
-                <div className="overflow-x-auto flex-1 max-h-[600px] bg-slate-50/50">
-                  <table className="w-full text-xs">
-                    <thead className="bg-white sticky top-0 z-10 shadow-sm border-b border-gray-100">
+                <div className="flex-1 bg-slate-50/50 p-4 sm:p-0">
+                  <table className="w-full text-xs block md:table">
+                    <thead className="hidden md:table-header-group bg-white sticky top-0 z-10 shadow-sm border-b border-gray-100">
                       <tr className="text-[9px] font-black uppercase tracking-widest text-gray-400">
                         <th className="px-6 py-4 text-left">Jabatan & Penempatan</th>
                         <th className="px-6 py-4 text-left">Pendidikan Syarat</th>
-                        <th className="px-6 py-4 text-right">Potensi Penghasilan</th>
-                        <th className="px-6 py-4 text-center">Rasio Keketan</th>
+                        <th className="px-6 py-4 text-right">Penghasilan Maksimal</th>
+                        <th className="px-6 py-4 text-center">Rasio Keketatan</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100 bg-white">
-                      {filteredFormasi.slice(0, 300).map((f) => {
+                    <tbody className="block md:table-row-group divide-y divide-gray-100 bg-transparent md:bg-white space-y-4 md:space-y-0">
+                      {paginatedFormasi.map((f) => {
                         const ratio = (f.jumlah_formasi || 0) > 0 ? (f.jumlah_ms || 0) / f.jumlah_formasi : 0;
                         return (
-                          <tr key={f.formasi_id} className="hover:bg-blue-50/40 transition-colors group">
-                            <td className="px-6 py-4 max-w-[200px]">
-                              <p className="font-bold text-gray-900 leading-tight mb-1.5 line-clamp-2">{f.jabatan_nm}</p>
-                              <p className="text-[10px] text-gray-500 flex items-start gap-1 line-clamp-2">
+                          <tr key={f.formasi_id} className="block md:table-row bg-white md:hover:bg-blue-50/40 transition-colors group p-4 rounded-2xl shadow-sm border border-gray-100 md:p-0 md:rounded-none md:shadow-none md:border-none">
+                            <td className="block md:table-cell px-2 py-2 md:px-6 md:py-4 md:max-w-[200px]">
+                              <p className="font-bold text-gray-900 leading-tight mb-1.5 md:line-clamp-2">{f.jabatan_nm}</p>
+                              <p className="text-[10px] text-gray-500 flex items-start gap-1 md:line-clamp-2">
                                 <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" /> {f.lokasi_nm}
                               </p>
                             </td>
-                            <td className="px-6 py-4 max-w-[180px]">
-                              <p className="text-[10px] text-gray-700 leading-relaxed font-medium line-clamp-3" title={f.pendidikan_nm}>
+                            <td className="block md:table-cell px-2 py-2 md:px-6 md:py-4 md:max-w-[180px]">
+                              <p className="text-[10px] md:hidden font-black text-gray-400 uppercase tracking-widest mb-1.5 mt-2">Pendidikan</p>
+                              <p className="text-[10px] text-gray-700 leading-relaxed font-medium md:line-clamp-3" title={f.pendidikan_nm}>
                                 {f.pendidikan_nm ? f.pendidikan_nm.split('/').join(', ') : '-'}
                               </p>
                             </td>
-                            <td className="px-6 py-4 text-right">
-                              <p className="text-[10px] font-bold text-slate-400 mb-0.5">S.d Maksimal</p>
+                            <td className="flex justify-between items-center md:table-cell px-2 py-2 md:px-6 md:py-4 md:text-right border-t border-gray-50 md:border-0 mt-3 md:mt-0">
+                              <p className="text-[10px] font-bold text-slate-400 md:mb-0.5 md:hidden">Potensi Penghasilan</p>
                               <span className="inline-block bg-emerald-50 text-emerald-700 border border-emerald-100 text-[11px] font-black px-2.5 py-1.5 rounded-lg shadow-sm">
                                 {fmtCurr(f.gaji_max)}
                               </span>
                             </td>
-                            <td className="px-6 py-4 text-center">
-                              <div className="flex flex-col items-center gap-1">
+                            <td className="flex justify-between items-center md:table-cell px-2 py-2 md:px-6 md:py-4 text-center">
+                              <p className="text-[10px] font-bold text-slate-400 md:hidden">Rasio & Kuota</p>
+                              <div className="flex flex-row md:flex-col items-center gap-2 md:gap-1">
                                 <span className={cn('inline-block text-[11px] font-black px-2.5 py-1.5 rounded-lg border shadow-sm', ratioColor(ratio))}>
                                   {ratio >= 1 ? `${Math.round(ratio)}:1` : '< 1:1'}
                                 </span>
@@ -472,13 +488,39 @@ export function CPNSInstansiDetailPage() {
                       })}
                     </tbody>
                   </table>
-                  {filteredFormasi.length > 300 && (
-                    <div className="p-6 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest bg-slate-50 border-t border-slate-100">
-                      Menampilkan 300 dari {filteredFormasi.length} formasi. Gunakan pencarian untuk hasil spesifik.
+                  {totalPages > 1 && (
+                    <div className="pt-6 pb-2 px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center sm:text-left">
+                        Menampilkan {paginatedFormasi.length} dari total {filteredFormasi.length} formasi
+                      </p>
+                      
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                          disabled={currentPage === 1}
+                          className="h-9 w-9 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </button>
+                        
+                        <div className="h-9 px-4 rounded-xl border border-gray-200 bg-white flex items-center justify-center">
+                          <span className="text-[11px] font-black text-gray-700">
+                            Hal {currentPage} / {totalPages}
+                          </span>
+                        </div>
+                        
+                        <button
+                          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                          disabled={currentPage === totalPages}
+                          className="h-9 w-9 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
                   )}
                   {filteredFormasi.length === 0 && (
-                    <div className="p-12 text-center text-gray-400 text-sm font-bold bg-white">
+                    <div className="p-12 text-center text-gray-400 text-sm font-bold bg-white rounded-3xl mx-4 mt-4 border border-gray-100">
                       Tidak ada formasi ditemukan dengan filter tersebut.
                     </div>
                   )}
