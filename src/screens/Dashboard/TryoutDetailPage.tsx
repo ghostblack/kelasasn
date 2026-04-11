@@ -32,6 +32,8 @@ export const TryoutDetailPage: React.FC = () => {
   const [attempts, setAttempts] = useState<number>(0);
   const [showConfirmationDialog, setShowConfirmationDialog] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [agreedToPurchaseTerms, setAgreedToPurchaseTerms] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
   const [includedTryouts, setIncludedTryouts] = useState<TryoutPackage[]>([]);
 
   useEffect(() => {
@@ -516,11 +518,24 @@ export const TryoutDetailPage: React.FC = () => {
               </div>
             ) : !isPurchased ? (
               <div className="space-y-3">
+                {isReleased && tryout.price > 0 && (
+                  <label className="flex items-center gap-2 cursor-pointer py-1 group">
+                    <input
+                      type="checkbox"
+                      checked={agreedToPurchaseTerms}
+                      onChange={(e) => setAgreedToPurchaseTerms(e.target.checked)}
+                      className="w-3.5 h-3.5 accent-blue-600 rounded-sm shrink-0 cursor-pointer opacity-70 group-hover:opacity-100 transition-opacity"
+                    />
+                    <span className="text-[10px] text-gray-500 font-normal leading-tight select-none">
+                      Dengan membeli paket ini saya menyetujui <button type="button" onClick={() => setShowTermsModal(true)} className="text-blue-600 hover:underline font-medium">syarat dan ketentuan</button>
+                    </span>
+                  </label>
+                )}
                 <Button
                   onClick={handlePurchase}
-                  disabled={purchasing || !isReleased}
+                  disabled={purchasing || !isReleased || (tryout.price > 0 && !agreedToPurchaseTerms)}
                   className={`w-full h-11 text-sm font-semibold rounded-lg shadow-sm transition-all duration-200 ${
-                    !isReleased 
+                    !isReleased || (tryout.price > 0 && !agreedToPurchaseTerms)
                       ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200 hover:bg-gray-100' 
                       : 'bg-blue-600 hover:bg-blue-700 text-white'
                   }`}
@@ -669,11 +684,24 @@ export const TryoutDetailPage: React.FC = () => {
                   </div>
                 </div>
               )}
+              {isReleased && tryout.price > 0 && (
+                <label className="flex items-center gap-2 cursor-pointer py-1 group mt-1">
+                  <input
+                    type="checkbox"
+                    checked={agreedToPurchaseTerms}
+                    onChange={(e) => setAgreedToPurchaseTerms(e.target.checked)}
+                    className="w-3.5 h-3.5 accent-blue-600 rounded-sm shrink-0 cursor-pointer opacity-70 group-hover:opacity-100 transition-opacity"
+                  />
+                  <span className="text-[10px] text-gray-500 font-normal leading-tight select-none">
+                    Dengan membeli paket ini saya menyetujui <button type="button" onClick={() => setShowTermsModal(true)} className="text-blue-600 hover:underline font-medium">syarat dan ketentuan</button>
+                  </span>
+                </label>
+              )}
               <Button
                 onClick={handlePurchase}
-                disabled={purchasing || !isReleased}
+                disabled={purchasing || !isReleased || (tryout.price > 0 && !agreedToPurchaseTerms)}
                 className={`w-full h-12 text-sm font-semibold rounded-lg shadow-sm transition-all duration-200 ${
-                  !isReleased 
+                  !isReleased || (tryout.price > 0 && !agreedToPurchaseTerms)
                     ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200' 
                     : 'bg-blue-600 hover:bg-blue-700 text-white'
                 }`}
@@ -873,6 +901,40 @@ export const TryoutDetailPage: React.FC = () => {
               className="flex-1 bg-blue-600 hover:bg-blue-700"
             >
               Mulai Try Out
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={showTermsModal} onOpenChange={setShowTermsModal}>
+        <DialogContent className="sm:max-w-lg max-sm:fixed max-sm:bottom-0 max-sm:top-auto max-sm:left-0 max-sm:right-0 max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-b-none max-sm:rounded-t-3xl max-sm:max-h-[90vh] max-sm:overflow-y-auto max-sm:w-full">
+          <DialogHeader>
+            <DialogTitle>Syarat & Ketentuan Kelas ASN</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4 text-sm text-gray-600 leading-relaxed">
+            <div>
+              <h4 className="font-bold text-gray-900 mb-1">1. Kebijakan Pembatalan (Non-Refundable)</h4>
+              <p>Paket (Try Out/Bundling) yang telah dibeli tidak dapat dibatalkan, ditukar, atau dikembalikan dananya (refund) dengan alasan apapun.</p>
+            </div>
+            <div>
+              <h4 className="font-bold text-gray-900 mb-1">2. Penggunaan Pribadi (Single User)</h4>
+              <p>Akun hanya untuk penggunaan pribadi. Dilarang membagikan akses, merekam soal, atau memperjualbelikan fasilitas Kelas ASN kepada pihak lain.</p>
+            </div>
+            <div>
+              <h4 className="font-bold text-gray-900 mb-1">3. Sanksi Pelanggaran</h4>
+              <p>Pihak Kelas ASN berhak memblokir akun secara permanen tanpa pengembalian dana jika terdeteksi adanya sharing akun atau penyebaran materi soal.</p>
+            </div>
+            <div>
+              <h4 className="font-bold text-gray-900 mb-1">4. Kesesuaian Produk</h4>
+              <p>Pengguna dianggap sudah membaca deskripsi fitur dan jadwal rilis paket sebelum melakukan pembayaran.</p>
+            </div>
+            <div>
+              <h4 className="font-bold text-gray-900 mb-1">5. Masa Aktif</h4>
+              <p>Akses try out berlaku sesuai dengan masa aktif paket yang dipilih (misal: 1 tahun untuk VIP Bundling).</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setShowTermsModal(false)} className="w-full bg-blue-600 hover:bg-blue-700 font-bold">
+              Saya Mengerti
             </Button>
           </DialogFooter>
         </DialogContent>
