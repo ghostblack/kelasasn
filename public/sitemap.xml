@@ -39,12 +39,12 @@
   
   <!-- Halaman Auth & Legal (Optional tapi baik untuk sitelink) -->
   <url>
-    <loc>https://kelasasn.com/login</loc>
+    <loc>https://kelasasn.id/login</loc>
     <changefreq>yearly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://kelasasn.com/register</loc>
+    <loc>https://kelasasn.id/register</loc>
     <changefreq>yearly</changefreq>
     <priority>0.5</priority>
   </url>
