@@ -1,4 +1,4 @@
-import { StrictMode } from "react";
+import { StrictMode, lazy, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { DesignLandingPage } from "./screens/DesignLandingPage";
@@ -49,6 +49,11 @@ import { Toaster } from "./components/ui/toaster";
 import { SessionConflictModal } from "./components/SessionConflictModal";
 import { PromoBannerModal } from "./components/PromoBannerModal";
 import { MaintenancePage } from "./screens/MaintenancePage";
+// PGInputPage: LAZY — pdf.js (331KB) hanya dimuat saat /pg-input dibuka
+// Sama sekali tidak memengaruhi bundle user biasa
+const PGInputPage = lazy(() =>
+  import('./screens/PGInput').then((m) => ({ default: m.PGInputPage }))
+);
 import { useAuth } from "./contexts/AuthContext";
 import "../tailwind.css";
 
@@ -326,6 +331,16 @@ function AppWrapper() {
                   </DashboardLayout>
                 </MaintenanceGuard>
               </ProtectedRoute>
+            }
+          />
+
+          {/* Hidden internal route — PG Data Tool (tidak di-load untuk user biasa) */}
+          <Route
+            path="/pg-input"
+            element={
+              <Suspense fallback={<div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f0c29', color: '#fff', fontFamily: 'sans-serif', fontSize: 14 }}>⏳ Loading PG Tool...</div>}>
+                <PGInputPage />
+              </Suspense>
             }
           />
 

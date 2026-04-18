@@ -149,6 +149,14 @@ service cloud.firestore {
       allow read, update, delete: if isAdmin();
     }
 
+    // ===== Passing Grades Collection =====
+    // Data PG CPNS hasil scan PDF — dibaca semua user (tampil di halaman formasi),
+    // ditulis hanya admin (tool /pg-input localhost-only)
+    match /passing_grades/{pgId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
     // ===== Default Deny All =====
     match /{document=**} {
       allow read, write: if false;

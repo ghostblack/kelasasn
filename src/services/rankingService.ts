@@ -46,18 +46,6 @@ export const getRankingByTryout = async (
         let userName = 'Unknown';
         let tryoutName = data.tryoutName || 'Tryout';
 
-        try {
-          const userDocRef = doc(db, 'users', data.userId);
-          const userDoc = await getDoc(userDocRef);
-          if (userDoc.exists()) {
-            const userData = userDoc.data();
-            userEmail = userData.email || userEmail;
-            userName = userData.displayName || userData.name || userEmail.split('@')[0];
-          }
-        } catch (err) {
-          console.error('Error fetching user data for userId:', data.userId, err);
-        }
-
         if (!data.tryoutName && data.tryoutId) {
           try {
             const tryoutDocRef = doc(db, 'tryouts', data.tryoutId);
@@ -115,17 +103,40 @@ export const getRankingByTryout = async (
     });
 
     const rankedResults = bestResults
-      .slice(0, limitCount)
+      // Hapus slice(0, limitCount) dari service agar array lengkap diteruskan ke frontend untuk pagination
       .map((result, index) => ({
         ...result,
         rank: index + 1,
-      }));
+      }))
+      .slice(0, limitCount === -1 ? undefined : limitCount); // Beri opsi bypass limit jika -1
 
     return rankedResults;
   } catch (error) {
     console.error('Error in getRankingByTryout:', error);
     return [];
   }
+};
+
+export const hydrateRankingUsers = async (entries: RankingEntry[]): Promise<RankingEntry[]> => {
+  return await Promise.all(
+    entries.map(async (entry) => {
+      let userEmail = entry.userEmail || 'Unknown';
+      let userName = entry.userName || 'Unknown';
+      
+      try {
+        const userDocRef = doc(db, 'users', entry.userId);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          userEmail = userData.email || userEmail;
+          userName = userData.displayName || userData.name || userEmail.split('@')[0];
+        }
+      } catch (err) {
+        console.error('Error fetching user data in hydration:', err);
+      }
+      return { ...entry, userEmail, userName };
+    })
+  );
 };
 
 export const getUserRankInTryout = async (

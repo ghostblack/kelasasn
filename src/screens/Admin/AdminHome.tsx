@@ -3,7 +3,7 @@ import { LoadingScreen } from '@/components/ui/spinner';
 import { getAllQuestions } from '@/services/questionService';
 import { getAllTryouts } from '@/services/tryoutService';
 import { deleteAllRankings } from '@/services/rankingService';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, getCountFromServer } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { FileText, BookOpen, Users, TrendingUp, CircleAlert as AlertCircle, Trash2, Activity, Bell, Construction, Power } from 'lucide-react';
 import { getMaintenanceStatus, setMaintenanceStatus } from '@/services/maintenanceService';
@@ -45,18 +45,19 @@ export const AdminHome: React.FC = () => {
   const loadStats = async () => {
     try {
       setHasError(false);
-      const [questions, tryouts, usersSnapshot, resultsSnapshot] = await Promise.all([
-        getAllQuestions(),
-        getAllTryouts(),
-        getDocs(collection(db, 'users')),
-        getDocs(collection(db, 'tryout_results')),
+      // Optimalisasi: Menggunakan getCountFromServer untuk memangkas read tagihan
+      const [questionsCount, tryoutsCount, usersCount, resultsCount] = await Promise.all([
+        getCountFromServer(collection(db, 'questions')),
+        getCountFromServer(collection(db, 'tryout_packages')),
+        getCountFromServer(collection(db, 'users')),
+        getCountFromServer(collection(db, 'tryout_results')),
       ]);
 
       setStats({
-        totalQuestions: questions.length,
-        totalTryouts: tryouts.length,
-        totalUsers: usersSnapshot.size,
-        totalParticipants: resultsSnapshot.size,
+        totalQuestions: questionsCount.data().count,
+        totalTryouts: tryoutsCount.data().count,
+        totalUsers: usersCount.data().count,
+        totalParticipants: resultsCount.data().count,
       });
     } catch (error) {
       console.error('Error loading stats:', error);
@@ -178,60 +179,60 @@ export const AdminHome: React.FC = () => {
 
       {/* Main Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="group relative p-8 bg-white border border-gray-100 transition-all hover:border-gray-200">
-          <div className="flex items-center justify-between mb-8">
-            <div className="p-2 bg-blue-50 text-blue-500">
-               <FileText className="h-4 w-4" />
-            </div>
-            <span className="text-[10px] font-bold text-green-500 bg-green-50 px-2 py-0.5 rounded-none">+12.5%</span>
-          </div>
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Total Questions</p>
-          <div className="flex items-baseline gap-2">
-             <span className="text-4xl font-extrabold text-gray-900 tracking-tighter">{stats.totalQuestions}</span>
-             <span className="text-xs font-medium text-gray-300 italic">items</span>
-          </div>
+        <div className="p-6 bg-white border border-gray-100 rounded-2xl hover:border-blue-100 hover:shadow-md transition-all shadow-sm">
+           <div className="flex items-center justify-between mb-4">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Pengguna</p>
+              <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center">
+                 <Users className="w-4 h-4 text-blue-500" />
+              </div>
+           </div>
+           <p className="text-3xl font-extrabold text-gray-900 tracking-tight">{stats.totalUsers.toLocaleString()}</p>
+           <p className="text-[10px] text-gray-400 font-medium mt-3 flex items-center gap-1.5">
+             <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-green-50 text-green-600 font-bold">+18%</span> 
+             <span>vs bulan lalu</span>
+           </p>
         </div>
 
-        <div className="group relative p-8 bg-white border border-gray-100 transition-all hover:border-gray-200">
-          <div className="flex items-center justify-between mb-8">
-            <div className="p-2 bg-purple-50 text-purple-500">
-               <BookOpen className="h-4 w-4" />
-            </div>
-            <span className="text-[10px] font-bold text-blue-500 bg-blue-50 px-2 py-0.5 rounded-none">Stable</span>
-          </div>
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Try Out Packages</p>
-          <div className="flex items-baseline gap-2">
-             <span className="text-4xl font-extrabold text-gray-900 tracking-tighter">{stats.totalTryouts}</span>
-             <span className="text-xs font-medium text-gray-300 italic">live</span>
-          </div>
+        <div className="p-6 bg-white border border-gray-100 rounded-2xl hover:border-emerald-100 hover:shadow-md transition-all shadow-sm">
+           <div className="flex items-center justify-between mb-4">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Sesi Tryout</p>
+              <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center">
+                 <TrendingUp className="w-4 h-4 text-emerald-500" />
+              </div>
+           </div>
+           <p className="text-3xl font-extrabold text-gray-900 tracking-tight">{stats.totalParticipants.toLocaleString()}</p>
+           <p className="text-[10px] text-gray-400 font-medium mt-3 flex items-center gap-1.5">
+             <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600 font-bold">Aktif</span>
+             <span>sesi diselesaikan</span>
+           </p>
         </div>
 
-        <div className="group relative p-8 bg-white border border-gray-100 transition-all hover:border-gray-200">
-          <div className="flex items-center justify-between mb-8">
-            <div className="p-2 bg-orange-50 text-orange-500">
-               <Users className="h-4 w-4" />
-            </div>
-            <span className="text-[10px] font-bold text-blue-500 bg-blue-50 px-2 py-0.5 rounded-none">+34 New</span>
-          </div>
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Registered Users</p>
-          <div className="flex items-baseline gap-2">
-             <span className="text-4xl font-extrabold text-gray-900 tracking-tighter">{stats.totalUsers}</span>
-             <span className="text-xs font-medium text-gray-300 italic">verified</span>
-          </div>
+        <div className="p-6 bg-white border border-gray-100 rounded-2xl hover:border-amber-100 hover:shadow-md transition-all shadow-sm">
+           <div className="flex items-center justify-between mb-4">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Bank Soal</p>
+              <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center">
+                 <FileText className="w-4 h-4 text-amber-500" />
+              </div>
+           </div>
+           <p className="text-3xl font-extrabold text-gray-900 tracking-tight">{stats.totalQuestions.toLocaleString()}</p>
+           <p className="text-[10px] text-gray-400 font-medium mt-3 flex items-center gap-1.5">
+             <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-green-50 text-green-600 font-bold">+12%</span>
+             <span>butir tambahan</span>
+           </p>
         </div>
 
-        <div className="group relative p-8 bg-white border border-gray-100 transition-all hover:border-gray-200">
-          <div className="flex items-center justify-between mb-8">
-            <div className="p-2 bg-green-50 text-green-500">
-               <TrendingUp className="h-4 w-4" />
-            </div>
-            <span className="text-[10px] font-bold text-gray-400">Total Runs</span>
-          </div>
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Sessions Completed</p>
-          <div className="flex items-baseline gap-2">
-             <span className="text-4xl font-extrabold text-gray-900 tracking-tighter">{stats.totalParticipants}</span>
-             <span className="text-xs font-medium text-gray-300 italic">results</span>
-          </div>
+        <div className="p-6 bg-white border border-gray-100 rounded-2xl hover:border-purple-100 hover:shadow-md transition-all shadow-sm">
+           <div className="flex items-center justify-between mb-4">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Modul Tryout</p>
+              <div className="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center">
+                 <BookOpen className="w-4 h-4 text-purple-500" />
+              </div>
+           </div>
+           <p className="text-3xl font-extrabold text-gray-900 tracking-tight">{stats.totalTryouts.toLocaleString()}</p>
+           <p className="text-[10px] text-gray-400 font-medium mt-3 flex items-center gap-1.5">
+             <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 font-bold">Stable</span>
+             <span>modul berjalan normal</span>
+           </p>
         </div>
       </div>
 

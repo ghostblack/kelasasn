@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/select';
 import { Trophy, Medal, Award, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getRankingByTryout } from '@/services/rankingService';
+import { getRankingByTryout, hydrateRankingUsers } from '@/services/rankingService';
 import type { RankingEntry } from '@/services/rankingService';
 import { getAllTryouts } from '@/services/tryoutService';
 import { checkUserFormasiAccess } from '@/services/formasiAccessCodeService';
@@ -23,6 +23,7 @@ import { TryoutPackage } from '@/types';
 export const RankingPage = () => {
   const { user, isAdmin } = useAuth();
   const [isUnlocked, setIsUnlocked] = useState<boolean | null>(null);
+  const [baseRankings, setBaseRankings] = useState<RankingEntry[]>([]);
   const [rankings, setRankings] = useState<RankingEntry[]>([]);
   const [tryouts, setTryouts] = useState<TryoutPackage[]>([]);
   const [selectedTryout, setSelectedTryout] = useState<string>('all');
@@ -60,6 +61,35 @@ export const RankingPage = () => {
     }
   }, [selectedTryout]);
 
+  useEffect(() => {
+    const hydratePage = async () => {
+      if (baseRankings.length === 0) {
+        setRankings([]);
+        return;
+      }
+      
+      const top100 = baseRankings.slice(0, 100);
+      const toHydrate = [...top100];
+
+      // Pastikan info user diri sendiri juga ikut di-hydrate 
+      if (user?.uid) {
+         const userInBase = baseRankings.find(r => r.userId === user.uid);
+         if (userInBase && !toHydrate.some(r => r.userId === user.uid)) {
+            toHydrate.push(userInBase);
+         }
+      }
+
+      setLoading(true);
+      const hydratedData = await hydrateRankingUsers(toHydrate);
+      setRankings(hydratedData);
+      setLoading(false);
+    };
+
+    if (isUnlocked === true && baseRankings.length > 0) {
+      hydratePage();
+    }
+  }, [baseRankings, user?.uid]);
+
   const loadTryouts = async () => {
     try {
       const data = await getAllTryouts();
@@ -74,16 +104,9 @@ export const RankingPage = () => {
     setError(null);
     try {
       const tryoutId = selectedTryout === 'all' ? undefined : selectedTryout;
-      console.log('Loading rankings for tryout:', tryoutId);
-      const data = await getRankingByTryout(tryoutId);
-      console.log('Ranking data loaded:', data);
-      console.log('Total rankings:', data.length);
-
-      if (data.length === 0) {
-        console.log('No ranking data available');
-      }
-
-      setRankings(data);
+      console.log('Loading base rankings for tryout:', tryoutId);
+      const data = await getRankingByTryout(tryoutId, -1); // Ambil semua raw scores sekalian tanpa berat (0ms read time)
+      setBaseRankings(data);
     } catch (err: any) {
       console.error('Error loading rankings:', err);
 
@@ -146,7 +169,7 @@ export const RankingPage = () => {
 
       <div className="flex items-center justify-between">
         <div className="text-sm text-gray-500">
-          {rankings.length > 0 && `${rankings.length} peserta`}
+          {baseRankings.length > 0 && `Top 100 dari ${baseRankings.length} peserta`}
         </div>
         <Select value={selectedTryout} onValueChange={setSelectedTryout}>
           <SelectTrigger className="w-full md:w-[280px] h-11 bg-white border-gray-200/60 focus:border-gray-300 rounded-xl">
@@ -181,7 +204,7 @@ export const RankingPage = () => {
             Coba Lagi
           </Button>
         </div>
-      ) : rankings.length === 0 ? (
+      ) : baseRankings.length === 0 ? (
         <div className="bg-white border border-gray-200/60 rounded-xl p-12 text-center">
           <div className="w-16 h-16 bg-gray-100 rounded-xl flex items-center justify-center mx-auto mb-4">
             <Users className="h-8 w-8 text-gray-400" />
@@ -295,51 +318,97 @@ export const RankingPage = () => {
               <Users className="h-4 w-4 text-gray-400" />
               <h2 className="text-sm font-bold text-gray-800 uppercase tracking-widest">Peringkat Lainnya</h2>
             </div>
-            {rankings.length > 3 ? (
-              <div className="space-y-2 bg-gray-50/50 p-3 rounded-2xl border border-gray-100 max-h-[500px] overflow-y-auto custom-scrollbar">
-                {rankings.slice(3).map((entry) => {
-                  const isCurrentUser = entry.userId === user?.uid;
-                  return (
-                    <div
-                      key={entry.id}
-                      className={`flex items-center justify-between gap-3 p-3 bg-white rounded-xl border ${
-                        isCurrentUser ? 'border-blue-200 bg-blue-50/30' : 'border-gray-100'
-                      }`}
-                    >
-                      <div className="w-6 text-center text-[11px] font-black text-gray-400">
-                        {entry.rank}
-                      </div>
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback className="bg-gray-100 text-gray-600 text-[10px] font-bold">
-                          {getInitials(entry.userName || entry.userEmail || 'U')}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="font-bold text-gray-900 text-xs truncate">
-                            {isCurrentUser
-                              ? entry.userName || 'Anda'
-                              : anonymizeName(entry.userName || entry.userEmail || 'user')}
+            {baseRankings.length > 3 ? (
+              <>
+                <div className="space-y-2 bg-gray-50/50 p-3 rounded-2xl border border-gray-100 max-h-[500px] overflow-y-auto custom-scrollbar">
+                  {(() => {
+                    // rankings yang ter-render di list (slice setelah top3 yang di-hydrate) limit top 100
+                    const displayList = rankings.filter(r => {
+                      const isTop3 = rankings.slice(0, 3).some(top => top.userId === r.userId);
+                      const isSelf = r.userId === user?.uid;
+                      const isTop100 = r.rank <= 100;
+                      return !isTop3 && isTop100; 
+                    });
+
+                    return displayList.map((entry) => {
+                    const isCurrentUser = entry.userId === user?.uid;
+                    return (
+                      <div
+                        key={entry.id}
+                        className={`flex items-center justify-between gap-3 p-3 bg-white rounded-xl border ${
+                          isCurrentUser ? 'border-blue-200 bg-blue-50/30' : 'border-gray-100'
+                        }`}
+                      >
+                        <div className="w-6 text-center text-[11px] font-black text-gray-400">
+                          {entry.rank}
+                        </div>
+                        <Avatar className="h-8 w-8">
+                          <AvatarFallback className="bg-gray-100 text-gray-600 text-[10px] font-bold">
+                            {getInitials(entry.userName || entry.userEmail || 'U')}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="font-bold text-gray-900 text-xs truncate">
+                              {isCurrentUser
+                                ? entry.userName || 'Anda'
+                                : anonymizeName(entry.userName || entry.userEmail || 'user')}
+                            </p>
+                            {isCurrentUser && (
+                              <Badge className="bg-blue-600 text-white text-[8px] px-1.5 py-0 h-4 rounded-sm uppercase tracking-wider">
+                                You
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-[9px] font-medium text-gray-400 truncate uppercase mt-0.5">
+                            {entry.tryoutName}
                           </p>
-                          {isCurrentUser && (
-                            <Badge className="bg-blue-600 text-white text-[8px] px-1.5 py-0 h-4 rounded-sm uppercase tracking-wider">
-                              You
-                            </Badge>
-                          )}
                         </div>
-                        <p className="text-[9px] font-medium text-gray-400 truncate uppercase mt-0.5">
-                          {entry.tryoutName}
-                        </p>
+                        <div className="text-right">
+                          <div className="font-black text-sm text-gray-900">
+                            {entry.totalScore?.toFixed(0) || 0} <span className="text-[8px] text-gray-400 font-bold uppercase">pts</span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <div className="font-black text-sm text-gray-900">
-                          {entry.totalScore?.toFixed(0) || 0} <span className="text-[8px] text-gray-400 font-bold uppercase">pts</span>
+                    );
+                  });
+                  })()}
+                </div>
+                
+
+
+                {/* Info Ranking User Sendiri (Selalu Muncul) */}
+                {(() => {
+                  const currentUserRanking = rankings.find(r => r.userId === user?.uid);
+                  if (!currentUserRanking) return null;
+                  
+                  return (
+                    <div className="mt-4 p-4 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl shadow-lg border border-blue-500 text-white flex items-center justify-between animate-fade-in relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform duration-500 pointer-events-none">
+                        <Trophy className="h-20 w-20" />
+                      </div>
+                      <div className="flex items-center gap-4 relative z-10">
+                        <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm shadow-inner flex items-center justify-center font-black text-xl border border-white/20">
+                          {currentUserRanking.rank}
                         </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-blue-200 uppercase tracking-widest mb-0.5">Peringkat Anda</p>
+                          <p className="font-black text-sm md:text-base leading-tight">
+                            {currentUserRanking.tryoutName || 'Try Out'} 
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right flex flex-col items-end relative z-10">
+                        <p className="text-[10px] font-bold text-blue-200 uppercase tracking-widest mb-0.5">Skor Akhir</p>
+                        <p className="font-black text-2xl leading-none drop-shadow-md">
+                          {currentUserRanking.totalScore?.toFixed(0) || 0}
+                          <span className="text-[10px] text-blue-200 uppercase font-bold ml-1">pts</span>
+                        </p>
                       </div>
                     </div>
                   );
-                })}
-              </div>
+                })()}
+              </>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center p-8 bg-gray-50/50 rounded-2xl border border-gray-100 border-dashed">
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Hanya ada top 3</p>

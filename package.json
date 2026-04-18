@@ -30,6 +30,7 @@
     "framer-motion": "^12.23.24",
     "katex": "^0.16.38",
     "lucide-react": "^0.453.0",
+    "pdfjs-dist": "^4.9.155",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-katex": "^3.1.0",

@@ -11,6 +11,8 @@ import { getInstansiReview, InstansiReview } from '@/data/instansi-reviews';
 import { useAuth } from '@/contexts/AuthContext';
 import { checkUserFormasiAccess } from '@/services/formasiAccessCodeService';
 import { LockedFeatureOverlay } from '@/components/LockedFeatureOverlay';
+import { getAllPassingGrades, getPassingGradesByInstansiNm } from '@/services/passingGradeService';
+import { PassingGrade } from '@/types/passingGrade';
 
 interface AggregatedStats {
   avgGajiMin: number;
@@ -35,11 +37,17 @@ export function CPNSInstansiDetailPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
+  // pgMap: key = "jabatan_nm|pendidikan_nm" → PassingGrade (PG data)
+  const [pgMap, setPgMap] = useState<Map<string, PassingGrade>>(new Map());
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'ratio_asc' | 'ratio_desc' | 'gaji_desc'>('default' as any);
   
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 25;
+
+  // Modal detail PG
+  const [pgDetailModal, setPgDetailModal] = useState<PassingGrade | null>(null);
 
   // VIP Access States
   const { user, isAdmin } = useAuth();
@@ -115,6 +123,134 @@ export function CPNSInstansiDetailPage() {
     
     return () => { isMounted = false; };
   }, [instansi?.kode]);
+
+  // Fetch Passing Grade data — query by instansi_nm (nama) sebagai primary strategy
+  // karena format instansi_kode di PDF bisa berbeda dengan kode API BKN
+  // CACHE: PG data di-cache localStorage 12 jam untuk hemat Firestore reads
+  useEffect(() => {
+    if (!instansi?.nama || !formasiList.length) return;
+    let cancelled = false;
+
+    const PG_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 jam (data PG jarang berubah)
+    const cacheKey = `pg_data_v2_${instansi.kode || instansi.nama.slice(0, 20)}`;
+
+    // Cek cache dulu
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const { ts, data } = JSON.parse(cached);
+        if (Date.now() - ts < PG_CACHE_TTL && data.length > 0) {
+          // Rebuild map dari cache — TANPA Firestore call
+          const norm = (s: string) => (s || '').toUpperCase().replace(/\s+/g, ' ').trim();
+          const normPend = (s: string) =>
+            (s || '').toUpperCase().split(/[,\/]/).map(t => t.replace(/\s+/g, ' ').trim()).filter(Boolean).sort().join('|');
+          const map = new Map<string, PassingGrade>();
+          const exactMap = new Map<string, PassingGrade[]>();
+          const jabMap = new Map<string, PassingGrade[]>();
+          const pendMap = new Map<string, PassingGrade[]>();
+          (data as PassingGrade[]).forEach((pg) => {
+            const key = `${norm(pg.jabatan_nm)}|${norm(pg.pendidikan_nm)}`;
+            if (!exactMap.has(key)) exactMap.set(key, []);
+            exactMap.get(key)!.push(pg);
+            const jk = norm(pg.jabatan_nm);
+            if (!jabMap.has(jk)) jabMap.set(jk, []);
+            jabMap.get(jk)!.push(pg);
+            const pk = `${jk}|${normPend(pg.pendidikan_nm)}`;
+            if (!pendMap.has(pk)) pendMap.set(pk, []);
+            pendMap.get(pk)!.push(pg);
+          });
+          (map as any).__exactMap = exactMap;
+          (map as any).__jabMap = jabMap;
+          (map as any).__pendMap = pendMap;
+          (map as any).__normPend = normPend;
+          setPgMap(map);
+          return; // ← STOP, tidak panggil Firestore sama sekali
+        }
+      }
+    } catch { /* ignore cache error */ }
+
+    const norm = (s: string) => (s || '').toUpperCase().replace(/\s+/g, ' ').trim();
+
+    const tryQueryByNm = async (name: string): Promise<PassingGrade[]> => {
+      try {
+        const r = await getPassingGradesByInstansiNm(name);
+        return r;
+      } catch { return []; }
+    };
+
+    const load = async () => {
+      let pgs: PassingGrade[] = [];
+
+      // 1. Coba by instansi_kode (paling efisien — 1 query saja)
+      if (instansi.kode) {
+        pgs = await getAllPassingGrades({ instansi_kode: String(instansi.kode) }).catch(() => []);
+      }
+
+      // 2. Fallback: by nama instansi — hanya jika kode tidak menghasilkan data
+      //    Coba urutan: as-is → UPPERCASE → short name (tanpa "Republik Indonesia")
+      //    Masing-masing berhenti segera jika sudah ada hasil (tidak lanjut query berikut)
+      if (pgs.length === 0) {
+        for (const nameVariant of [
+          instansi.nama,
+          norm(instansi.nama),
+          norm(instansi.nama).replace(/\bREPUBLIK INDONESIA\b/g, '').replace(/\bRI\b/g, '').trim(),
+        ]) {
+          if (!nameVariant) continue;
+          pgs = await tryQueryByNm(nameVariant);
+          if (pgs.length > 0) break; // stop segera, tidak perlu coba variasi lain
+        }
+      }
+
+      if (cancelled) return;
+
+      const map = new Map<string, PassingGrade>();
+      const exactMap = new Map<string, PassingGrade[]>();
+      const jabMap = new Map<string, PassingGrade[]>();
+      // pendMap: key = jabatan + sorted-normalized-pendidikan tokens (order/separator agnostic)
+      const pendMap = new Map<string, PassingGrade[]>();
+
+      // Helper: normalise pendidikan string → split by , or /, sort tokens, rejoin
+      // Handles: "D-IV AKUNTANSI/ S-1 AKUNTANSI" == "S-1 AKUNTANSI , D-IV AKUNTANSI"
+      const normPend = (s: string) =>
+        (s || '').toUpperCase()
+          .split(/[,\/]/)         // split by , or /
+          .map(t => t.replace(/\s+/g, ' ').trim())
+          .filter(Boolean)
+          .sort()
+          .join('|');
+
+      pgs.forEach((pg) => {
+        const key = `${norm(pg.jabatan_nm)}|${norm(pg.pendidikan_nm)}`;
+        if (!exactMap.has(key)) exactMap.set(key, []);
+        exactMap.get(key)!.push(pg);
+
+        const jk = norm(pg.jabatan_nm);
+        if (!jabMap.has(jk)) jabMap.set(jk, []);
+        jabMap.get(jk)!.push(pg);
+
+        // pendMap key: jabatan + sorted pend tokens (toleran separator & urutan)
+        const pk = `${jk}|${normPend(pg.pendidikan_nm)}`;
+        if (!pendMap.has(pk)) pendMap.set(pk, []);
+        pendMap.get(pk)!.push(pg);
+      });
+
+      (map as any).__exactMap = exactMap;
+      (map as any).__jabMap = jabMap;
+      (map as any).__pendMap = pendMap;
+      (map as any).__normPend = normPend;
+      setPgMap(map);
+
+      // Simpan ke cache hanya jika ada data (hemat storage kalau memang kosong)
+      if (pgs.length > 0) {
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data: pgs }));
+        } catch { /* ignore storage full */ }
+      }
+    };
+
+    load();
+    return () => { cancelled = true; };
+  }, [instansi?.kode, instansi?.nama, formasiList.length]);
 
   // Aggregation
   const stats: AggregatedStats | null = useMemo(() => {
@@ -452,15 +588,132 @@ export function CPNSInstansiDetailPage() {
                         <th className="px-6 py-4 text-left">Pendidikan Syarat</th>
                         <th className="px-6 py-4 text-right">Penghasilan Maksimal</th>
                         <th className="px-6 py-4 text-center">Rasio Keketatan</th>
+                        {/* <th className="px-6 py-4 text-center">Target SKD 2024</th> */}
                       </tr>
                     </thead>
                     <tbody className="block md:table-row-group divide-y divide-gray-100 bg-transparent md:bg-white space-y-4 md:space-y-0">
                       {paginatedFormasi.map((f) => {
                         const ratio = (f.jumlah_formasi || 0) > 0 ? (f.jumlah_ms || 0) / f.jumlah_formasi : 0;
+
+                        // ── Cari PG dengan multi-level matching ──
+                        const normStr = (s: string) => (s || '').toUpperCase().replace(/\s+/g, ' ').trim();
+                        // normPend: split by , atau /, sort token → order & separator agnostic
+                        const normPendFn = (pgMap as any).__normPend as ((s: string) => string) | undefined;
+                        const normPendLocal = normPendFn ?? ((s: string) =>
+                          (s || '').toUpperCase().split(/[,\/]/).map(t => t.replace(/\s+/g, ' ').trim()).filter(Boolean).sort().join('|')
+                        );
+
+                        // Normalisasi formasi: API kadang mengembalikan kode angka ("1","2") alih-alih label
+                        // Peta ke label standar yang sama dgn parser PDF (Umum, Cumlaude, dll)
+                        const normalizeFormasiNm = (raw: string | undefined | null): string => {
+                          const s = (raw ?? '').trim();
+                          const up = s.toUpperCase();
+                          if (!s || /^\d+$/.test(s)) {
+                            // Kode angka: 1=Umum (UMUM), 2=Cumlaude (heuristic BKN)
+                            if (s === '2') return 'Cumlaude';
+                            if (s === '3') return 'Disabilitas';
+                            return 'Umum'; // default: 1 atau kosong = Umum
+                          }
+                          if (up.includes('CUMLAUDE') || up.includes('CUM LAUDE')) return 'Cumlaude';
+                          if (up.includes('DISABILITAS') || up.includes('DISABLE')) return 'Disabilitas';
+                          if (up.includes('PUTRA') && up.includes('PAPUA')) return 'Putra/i Papua';
+                          if (up.includes('PUTRA') && up.includes('KALIMANTAN')) return 'Putra/i Kalimantan';
+                          if (up.includes('DIASPORA')) return 'Diaspora';
+                          // Jika sudah 'Umum', 'UMUM', 'umum' dll → Umum
+                          return 'Umum';
+                        };
+
+                        const jabNorm = normStr(f.jabatan_nm);
+                        const pendNorm = normStr(f.pendidikan_nm);
+                        const pendSorted = normPendLocal(f.pendidikan_nm);
+                        const locNorm = normStr(f.lokasi_nm);
+                        // Gunakan normalizeFormasiNm agar "1"/"2" dari API dipetakan ke label standar
+                        const formasiNorm = normalizeFormasiNm(f.formasi_nm).toUpperCase();
+
+                        // Helper pilih kandidat terbaik (prioritas: lokasi → formasi cocok → UMUM → nilai tertinggi)
+                        const pickBest = (candidates: PassingGrade[]): PassingGrade => {
+                          // P1: lokasi sama DAN formasi sama
+                          const p1 = candidates.find(p => normStr(p.lokasi_nm) === locNorm && normStr(p.formasi_nm).toUpperCase() === formasiNorm.toUpperCase());
+                          if (p1) return p1;
+                          // P2: lokasi sama saja
+                          const p2 = candidates.find(p => normStr(p.lokasi_nm) === locNorm);
+                          if (p2) return p2;
+                          // P3: formasi UMUM
+                          const p3 = candidates.find(p => normStr(p.formasi_nm) === 'UMUM');
+                          if (p3) return p3;
+                          // P4: nilai akhir tertinggi
+                          return [...candidates].sort((a, b) => (b.nilai_akhir || 0) - (a.nilai_akhir || 0))[0];
+                        };
+
+                        let pgData: PassingGrade | undefined;
+
+                        // ── Level 1: exact jabatan + exact pendidikan (as-is dari API) ──
+                        const exactCandidates = (pgMap as any).__exactMap?.get(`${jabNorm}|${pendNorm}`) as PassingGrade[] | undefined;
+                        if (exactCandidates && exactCandidates.length > 0) {
+                          pgData = pickBest(exactCandidates);
+                        }
+
+                        // ── Level 2: jabatan exact + pendidikan order/separator agnostic ──
+                        // Menangani: PDF "D-IV AKUNTANSI/ S-1 AKUNTANSI" == API "S-1 AKUNTANSI , D-IV AKUNTANSI"
+                        if (!pgData) {
+                          const pendKey = `${jabNorm}|${pendSorted}`;
+                          const pendCandidates = (pgMap as any).__pendMap?.get(pendKey) as PassingGrade[] | undefined;
+                          if (pendCandidates && pendCandidates.length > 0) {
+                            pgData = pickBest(pendCandidates);
+                          }
+                        }
+
+                        // ── Level 3: jabatan exact + pendidikan fuzzy token match ──
+                        // Fallback jika token-sorted masih tidak cocok (misal nama prodi beda singkatan)
+                        if (!pgData) {
+                          const jabCandidates = (pgMap as any).__jabMap?.get(jabNorm) as PassingGrade[] | undefined;
+                          if (jabCandidates) {
+                            // Tokenize pendidikan dari API untuk dicocokkan
+                            const apiTokens = pendNorm.split(/[,\/\s]+/).filter(t => t.length > 3);
+                            const fuzzyCandidates = jabCandidates.filter(pg => {
+                              const pgPend = normStr(pg.pendidikan_nm);
+                              // a) substring check dua arah
+                              if (pendNorm.includes(pgPend) || pgPend.includes(pendNorm)) return true;
+                              // b) token intersection: minimal 1 token pend API ada di pend PG
+                              const pgTokens = pgPend.split(/[,\/\s]+/).filter(t => t.length > 3);
+                              const intersection = apiTokens.filter(t => pgTokens.includes(t));
+                              return intersection.length >= Math.min(2, apiTokens.length);
+                            });
+                            if (fuzzyCandidates.length > 0) {
+                              pgData = pickBest(fuzzyCandidates);
+                            }
+                          }
+                        }
+
+                        // ── Level 4: jabatan exact saja (last resort) → hanya jika lokasi atau formasi cocok ──
+                        // Jangan tampilkan jika sama sekali tidak ada konteks (bisa salah data)
+                        if (!pgData) {
+                          const jabCandidates = (pgMap as any).__jabMap?.get(jabNorm) as PassingGrade[] | undefined;
+                          if (jabCandidates && jabCandidates.length > 0) {
+                            // Hanya tampilkan jika ada lokasi yang sama
+                            const locMatch = jabCandidates.find(p => normStr(p.lokasi_nm) === locNorm);
+                            if (locMatch) pgData = locMatch;
+                          }
+                        }
+
                         return (
                           <tr key={f.formasi_id} className="block md:table-row bg-white md:hover:bg-blue-50/40 transition-colors group p-4 rounded-2xl shadow-sm border border-gray-100 md:p-0 md:rounded-none md:shadow-none md:border-none">
                             <td className="block md:table-cell px-2 py-2 md:px-6 md:py-4 md:max-w-[200px]">
-                              <p className="font-bold text-gray-900 leading-tight mb-1.5 md:line-clamp-2">{f.jabatan_nm}</p>
+                              <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+                                <p className="font-bold text-gray-900 leading-tight md:line-clamp-2">{f.jabatan_nm}</p>
+                                {(() => {
+                                  // Normalisasi formasi API sebelum ditampilkan
+                                  const formasiTag = normalizeFormasiNm(f.formasi_nm) || pgData?.formasi_nm || 'Umum';
+                                  // Sembunyikan badge jika Umum — jenis default, tidak perlu label khusus
+                                  const isUmum = formasiTag.toUpperCase() === 'UMUM';
+                                  if (isUmum) return null;
+                                  return (
+                                    <span className={cn("text-[9px] font-bold px-1.5 py-0.5 border rounded uppercase tracking-wider whitespace-nowrap", "bg-indigo-50 text-indigo-600 border-indigo-200")}>
+                                      {formasiTag}
+                                    </span>
+                                  );
+                                })()}
+                              </div>
                               <p className="text-[10px] text-gray-500 flex items-start gap-1 md:line-clamp-2">
                                 <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" /> {f.lokasi_nm}
                               </p>
@@ -486,6 +739,28 @@ export function CPNSInstansiDetailPage() {
                                 <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{f.jumlah_formasi} Kursi</span>
                               </div>
                             </td>
+
+                            {/* ── Kolom Target SKD 2024 (DISEMBUNYIKAN SEMENTARA) ── */}
+                            {/* <td className="block md:table-cell px-2 py-2 md:px-4 md:py-3 text-center">
+                              {pgData ? (() => {
+                                const skd = (pgData.nilai_skd_total ??
+                                  ((pgData.nilai_skd_twk ?? 0) + (pgData.nilai_skd_tiu ?? 0) + (pgData.nilai_skd_tkp ?? 0))) || null;
+                                return (
+                                  <button
+                                    onClick={() => setPgDetailModal(pgData)}
+                                    className="inline-flex flex-col items-center gap-0.5 bg-amber-50 hover:bg-amber-100 active:scale-95 border border-amber-200 hover:border-amber-400 rounded-xl px-3 py-2 transition-all cursor-pointer shadow-sm"
+                                    title="Lihat detail SKD passing grade 2024"
+                                  >
+                                    <span className="text-[8px] font-black text-amber-500 uppercase tracking-widest">Target SKD</span>
+                                    <span className="text-[17px] font-black text-amber-800 leading-tight">
+                                      {skd ?? '—'}
+                                    </span>
+                                  </button>
+                                );
+                              })() : (
+                                <span className="text-[10px] text-gray-300 font-bold">—</span>
+                              )}
+                            </td> */}
                           </tr>
                         );
                       })}
@@ -539,6 +814,98 @@ export function CPNSInstansiDetailPage() {
     {/* Overlay for Locked State */}
     {!isUnlocked && <LockedFeatureOverlay type="detail" />}
 
+    {/* ── Modal Detail PG ── */}
+    {pgDetailModal && (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        onClick={() => setPgDetailModal(null)}
+      >
+        {/* Backdrop */}
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+        {/* Panel */}
+        <div
+          className="relative z-10 bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 animate-in fade-in zoom-in-95 duration-200"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-start justify-between mb-5">
+            <div>
+              <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-1">Nilai PG 2024</p>
+              <h3 className="text-sm font-black text-gray-900 leading-snug">{pgDetailModal.jabatan_nm}</h3>
+              <p className="text-[10px] text-gray-400 font-medium mt-0.5">{pgDetailModal.pendidikan_nm}</p>
+            </div>
+            <button
+              onClick={() => setPgDetailModal(null)}
+              className="h-8 w-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors flex-shrink-0 ml-3"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* SKD Block — satu-satunya yang ditampilkan */}
+          <div className="bg-amber-50 rounded-2xl p-4 border border-amber-100">
+            <p className="text-[9px] font-black text-amber-600 uppercase tracking-widest mb-3">Seleksi Kompetensi Dasar (SKD)</p>
+
+            {/* TWK | TIU | TKP */}
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              {([
+                ['TWK', pgDetailModal.nilai_skd_twk, 'Max 150'],
+                ['TIU', pgDetailModal.nilai_skd_tiu, 'Max 175'],
+                ['TKP', pgDetailModal.nilai_skd_tkp, 'Min 76'],
+              ] as const).map(([label, val, hint]) => (
+                <div key={label} className="bg-white rounded-xl p-2.5 text-center border border-amber-100">
+                  <p className="text-[8px] font-black text-amber-500 mb-0.5">{label}</p>
+                  <p className="text-[18px] font-black text-gray-900 leading-tight">{val ?? '—'}</p>
+                  <p className="text-[8px] text-gray-400">{hint}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Total SKD highlight */}
+            {(() => {
+              const total = (pgDetailModal.nilai_skd_total ??
+                ((pgDetailModal.nilai_skd_twk ?? 0) + (pgDetailModal.nilai_skd_tiu ?? 0) + (pgDetailModal.nilai_skd_tkp ?? 0))) || null;
+              return total ? (
+                <div className="bg-amber-400 rounded-xl px-4 py-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-[9px] font-black text-amber-900 uppercase tracking-widest">Total SKD</p>
+                    <p className="text-[9px] text-amber-800 font-medium mt-0.5">P/L terakhir yang lolos seleksi</p>
+                  </div>
+                  <span className="text-3xl font-black text-white">{total}</span>
+                </div>
+              ) : (
+                <div className="bg-gray-100 rounded-xl px-4 py-3 text-center">
+                  <p className="text-[10px] text-gray-400 font-bold">Data SKD belum tersedia</p>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Lokasi & Formasi badge */}
+          {(pgDetailModal.lokasi_nm || pgDetailModal.formasi_nm) && (
+            <div className="flex flex-wrap gap-1.5 mt-3">
+              {pgDetailModal.formasi_nm && (
+                <span className="text-[9px] font-bold px-2 py-1 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-lg">
+                  {pgDetailModal.formasi_nm}
+                </span>
+              )}
+              {pgDetailModal.lokasi_nm && (
+                <span className="text-[9px] font-bold px-2 py-1 bg-gray-50 text-gray-500 border border-gray-100 rounded-lg">
+                  📍 {pgDetailModal.lokasi_nm}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Footer note */}
+          <p className="text-[9px] text-gray-400 text-center mt-3 font-medium">
+            📊 Data hasil integrasi SKD &amp; SKB CPNS 2024 · BKN
+          </p>
+        </div>
+      </div>
+    )}
+
   </div>
 );
 }
+

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
@@ -17,6 +17,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { useAuth } from '@/contexts/AuthContext';
+import { LoadingScreen } from '@/components/ui/spinner';
 
 export const AdminLoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -29,6 +31,14 @@ export const AdminLoginPage: React.FC = () => {
   const [sendingResetEmail, setSendingResetEmail] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
   const [resetError, setResetError] = useState('');
+
+  const { user, isAdmin, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && user && isAdmin) {
+      navigate('/admin/dashboard', { replace: true });
+    }
+  }, [user, isAdmin, authLoading, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,6 +143,10 @@ export const AdminLoginPage: React.FC = () => {
       setSendingResetEmail(false);
     }
   };
+
+  if (authLoading) {
+    return <LoadingScreen message="Memeriksa sesi admin..." type="spinner" fullScreen />;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#F9FAFB] font-sans antialiased text-gray-900 p-4">
