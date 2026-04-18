@@ -2,7 +2,7 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <!-- Halaman Utama -->
   <url>
-    <loc>https://kelasasn.com/</loc>
+    <loc>https://kelasasn.id/</loc>
     <lastmod>2026-04-18</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
@@ -10,28 +10,28 @@
   
   <!-- Fitur Utama -->
   <url>
-    <loc>https://kelasasn.com/dashboard/tryouts</loc>
+    <loc>https://kelasasn.id/dashboard/tryouts</loc>
     <lastmod>2026-04-18</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   
   <url>
-    <loc>https://kelasasn.com/dashboard/formasi</loc>
+    <loc>https://kelasasn.id/dashboard/formasi</loc>
     <lastmod>2026-04-18</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   
   <url>
-    <loc>https://kelasasn.com/dashboard/instansi</loc>
+    <loc>https://kelasasn.id/dashboard/instansi</loc>
     <lastmod>2026-04-18</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   
   <url>
-    <loc>https://kelasasn.com/dashboard/ranking</loc>
+    <loc>https://kelasasn.id/dashboard/ranking</loc>
     <lastmod>2026-04-18</lastmod>
     <changefreq>hourly</changefreq>
     <priority>0.9</priority>
