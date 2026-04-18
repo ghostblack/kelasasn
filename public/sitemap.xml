@@ -1,69 +1,51 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
-
-  <!-- Home Page -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- Halaman Utama -->
   <url>
     <loc>https://kelasasn.com/</loc>
-    <lastmod>2026-03-15</lastmod>
-    <changefreq>daily</changefreq>
+    <lastmod>2026-04-18</lastmod>
+    <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
-
-  <!-- Login Page -->
-  <url>
-    <loc>https://kelasasn.com/login</loc>
-    <lastmod>2026-03-15</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-
-  <!-- Register Page -->
-  <url>
-    <loc>https://kelasasn.com/register</loc>
-    <lastmod>2026-03-15</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-
-  <!-- Dashboard -->
-  <url>
-    <loc>https://kelasasn.com/dashboard</loc>
-    <lastmod>2026-03-15</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-
-  <!-- Try Out Page -->
+  
+  <!-- Fitur Utama -->
   <url>
     <loc>https://kelasasn.com/dashboard/tryouts</loc>
-    <lastmod>2026-03-15</lastmod>
+    <lastmod>2026-04-18</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
-
-  <!-- Ranking Page -->
+  
   <url>
-    <loc>https://kelasasn.com/dashboard/ranking</loc>
-    <lastmod>2026-03-15</lastmod>
-    <changefreq>daily</changefreq>
+    <loc>https://kelasasn.com/dashboard/formasi</loc>
+    <lastmod>2026-04-18</lastmod>
+    <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
-
-  <!-- Jabatan Page -->
+  
   <url>
-    <loc>https://kelasasn.com/dashboard/jabatan</loc>
-    <lastmod>2026-03-15</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-
-  <!-- Profile Page -->
-  <url>
-    <loc>https://kelasasn.com/dashboard/profile</loc>
-    <lastmod>2026-03-15</lastmod>
+    <loc>https://kelasasn.com/dashboard/instansi</loc>
+    <lastmod>2026-04-18</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
+    <priority>0.8</priority>
   </url>
-
+  
+  <url>
+    <loc>https://kelasasn.com/dashboard/ranking</loc>
+    <lastmod>2026-04-18</lastmod>
+    <changefreq>hourly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  
+  <!-- Halaman Auth & Legal (Optional tapi baik untuk sitelink) -->
+  <url>
+    <loc>https://kelasasn.com/login</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://kelasasn.com/register</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
 </urlset>

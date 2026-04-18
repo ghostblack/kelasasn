@@ -20,7 +20,13 @@ import { LockedFeatureOverlay } from '@/components/LockedFeatureOverlay';
 import { cn } from '@/lib/utils';
 import { TryoutPackage } from '@/types';
 
+import { useSEO } from '@/hooks/useSEO';
+
 export const RankingPage = () => {
+  useSEO(
+    "Leaderboard Nasional Try Out CPNS 2026 - Kelas ASN",
+    "Peringkat dan leaderboard nasional hasil simulasi Try Out CPNS. Bandingkan nilaimu dengan puluhan ribu peserta lain dari seluruh Indonesia."
+  );
   const { user, isAdmin } = useAuth();
   const [isUnlocked, setIsUnlocked] = useState<boolean | null>(null);
   const [baseRankings, setBaseRankings] = useState<RankingEntry[]>([]);

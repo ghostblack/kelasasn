@@ -10,8 +10,13 @@ import { TestimonialSection } from "./sections/TestimonialSection";
 import { TryOutSection } from "./sections/TryOutSection";
 import { TrustSection } from "./sections/TrustSection";
 import { FormasiPreviewSection } from "./sections/FormasiPreviewSection/FormasiPreviewSection";
+import { useSEO } from "@/hooks/useSEO";
 
 export const DesignLandingPage = (): JSX.Element => {
+  useSEO(
+    "Try Out CPNS Gratis 2026 Terlengkap | Kelas ASN",
+    "Try out CPNS gratis dengan simulasi CAT BKN + cek data formasi CPNS 2026 terlengkap: jumlah pelamar, rasio persaingan, dan peluang lolos."
+  );
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 

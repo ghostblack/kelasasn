@@ -75,9 +75,9 @@ export const LockedFeatureOverlay: React.FC<LockedFeatureOverlayProps> = ({ type
       <div className="relative w-full flex flex-col items-center max-w-4xl mx-auto">
         {/* Teaser Header */}
         <div className="text-center space-y-3 mb-6 px-6 animate-in fade-in slide-in-from-bottom-4 duration-700 font-sans">
-           <div className="inline-flex items-center justify-center pl-1 pr-4 py-1 bg-white rounded-full border border-gray-100 shadow-sm mb-4">
-              <Badge className="bg-[#19b269] hover:bg-[#19b269] text-white border-0 text-[10px] px-2 h-6 mr-3">VIP ONLY</Badge>
-              <span className="text-[11px] font-bold text-gray-600">Upgrade ke VIP Bundling</span>
+           <div className="inline-flex items-center justify-center pl-1 pr-4 py-1 bg-white rounded-full border border-emerald-100 shadow-sm mb-4">
+              <Badge className="bg-rose-500 hover:bg-rose-600 text-white border-0 text-[10px] px-2 h-6 mr-3">DISKON 50%</Badge>
+              <span className="text-[11px] font-bold text-gray-700">Akses Semua Fitur Premium (1 Tahun)</span>
            </div>
            <h2 className="text-2xl md:text-3xl lg:text-4xl font-black text-gray-900 tracking-tight leading-tight uppercase max-w-3xl mx-auto px-4">
              {type === 'instansi' ? (
@@ -102,23 +102,27 @@ export const LockedFeatureOverlay: React.FC<LockedFeatureOverlayProps> = ({ type
 
         {/* CTA Section */}
         <div className="flex flex-col items-center gap-6 px-4 w-full animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-300">
-           <div className="text-center space-y-5 max-w-sm">
+           <div className="text-center space-y-5 max-w-md mx-auto">
              <Button
                onClick={() => navigate('/dashboard/tryouts?category=bundling')}
-               className="group relative inline-flex items-center justify-center gap-4 pl-8 pr-2 py-2 h-auto bg-gray-900 hover:bg-black rounded-full overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-2xl active:scale-95 border-0"
+               className="group relative inline-flex items-center justify-center gap-3 pl-6 pr-2 py-2 h-auto bg-gray-900 hover:bg-black rounded-full overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-2xl active:scale-95 border-0 focus:ring-0"
              >
-               <span className="font-black text-white text-[11px] sm:text-xs tracking-[0.2em] uppercase">
-                 Beli Paket VIP Bundling
+               <span className="font-black text-white text-[11px] sm:text-xs tracking-widest uppercase flex items-center gap-2">
+                 Daftar VIP Bundling
+                 <div className="flex items-center gap-1.5 ml-1 bg-white/20 px-2 py-1 rounded-md text-[9px] sm:text-[10px] tracking-wider">
+                   <span className="line-through opacity-50 text-white font-medium">Rp60K</span>
+                   <span className="text-emerald-400 font-black">Rp30K</span>
+                 </div>
                </span>
-               <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center group-hover:bg-white/20 transition-colors">
+               <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center group-hover:bg-emerald-500 transition-colors">
                   <ArrowRight className="w-6 h-6 text-white group-hover:-rotate-45 transition-transform" />
                </div>
              </Button>
              
-             <div className="flex flex-col items-center gap-1.5 opacity-60">
-                <Lock className="w-4 h-4 text-gray-400 mb-1" />
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-loose">
-                   Masa Aktif 1 Tahun & Update Rutin <br/>
+             <div className="flex flex-col items-center gap-2 bg-emerald-50/50 backdrop-blur-sm border border-emerald-100/50 p-4 rounded-3xl mx-auto">
+                <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest leading-relaxed text-center">
+                   ✅ Sudah Termasuk Semua Try Out, Instansi & Formasi<br/>
+                   ✅ Masa Berlaku Sangat Panjang (1 Tahun Penuh)
                 </p>
              </div>
            </div>

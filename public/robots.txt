@@ -1,15 +1,7 @@
-# robots.txt for Kelas ASN
 User-agent: *
 Allow: /
-
-# Sitemap
-Sitemap: https://kelasasn.com/sitemap.xml
-
-# Disallow admin pages
 Disallow: /admin/
-Disallow: /admin-login/
+Disallow: /*?*category=
+Disallow: /*?*source=
 
-# Disallow test files
-Disallow: /test-*.html
-Disallow: /debug-*.html
-Disallow: /create-admin.html
+Sitemap: https://kelasasn.com/sitemap.xml

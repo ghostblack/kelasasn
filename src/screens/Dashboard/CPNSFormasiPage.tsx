@@ -9,6 +9,9 @@ import {
   LayoutGrid, 
   BarChart3
 } from "lucide-react";
+import FormasiCard from './components/FormasiCard';
+import Pagination from './components/Pagination';
+import { useSEO } from '@/hooks/useSEO';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -44,6 +47,10 @@ const PROVINSI_SEARCH_MAP: Record<string, string> = {
 };
 
 export function CPNSFormasiPage() {
+  useSEO(
+    "Cek Peluang & Rasio Pesaing Formasi CPNS 2026 - Kelas ASN",
+    "Data lengkap formasi CPNS 2026 dari SSCASN BKN 14.000+ data Instansi dan Jabatan. Cek jumlah pelamar, persaingan, dan peluang kelulusan."
+  );
   const { user, isAdmin } = useAuth();
   const [isUnlocked, setIsUnlocked] = useState<boolean | null>(null);
 

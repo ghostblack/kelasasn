@@ -296,8 +296,14 @@ function saveStatsCache(map: Map<string, InstansiStats | 'loading' | 'error'>) {
   } catch {}
 }
 
+import { useSEO } from '@/hooks/useSEO';
+
 // ─── Main Component ──────────────────────────────────────────────────────────
 export function CPNSInstansiPage() {
+  useSEO(
+    "Rating, Tukin & Profil Instansi CPNS 2026 - Kelas ASN",
+    "Cek rincian tunjangan kinerja, profil, dan rasio ketetatan tiap instansi K/L/D Pusat dan Daerah untuk persiapan pendaftaran CPNS."
+  );
   const [tab, setTab] = useState<'klasifikasi' | 'instansi'>('klasifikasi');
   const [tukinRaw, setTukinRaw] = useState<TukinKLItem[]>([]);
   const [instansiList, setInstansiList] = useState<InstansiItem[]>([]);
