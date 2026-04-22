@@ -7,7 +7,8 @@ import {
   getDoc,
   addDoc,
   updateDoc,
-  serverTimestamp
+  serverTimestamp,
+  getCountFromServer
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { TryoutSession, TryoutResult } from '@/types';
@@ -245,28 +246,23 @@ export const completeTryoutSession = async (
 
       if (isVIP) {
         const resultsRef = collection(db, 'tryout_results');
-        const allResults = await getDocs(query(resultsRef, where('tryoutId', '==', tryoutId)));
-
-        const userBestScores = new Map<string, number>();
-        allResults.docs.forEach(doc => {
-          const data = doc.data();
-          const uid = data.userId;
-          const score = data.totalScore || 0;
-          const currentBest = userBestScores.get(uid) || 0;
-          if (score > currentBest) {
-            userBestScores.set(uid, score);
-          }
-        });
-
-        const existingBest = userBestScores.get(userId) || 0;
-        if (totalScore > existingBest) {
-          userBestScores.set(userId, totalScore);
-        }
-
-        const allScores = Array.from(userBestScores.values()).sort((a, b) => b - a);
-        rank = allScores.findIndex(score => score <= totalScore) + 1;
-        if (rank === 0) rank = allScores.length + 1;
-        totalParticipants = userBestScores.size;
+        
+        // Optimasi: Hitung total partisipan (attempts) tanpa mengambil semua dokumen
+        const totalQuery = query(resultsRef, where('tryoutId', '==', tryoutId));
+        const totalSnap = await getCountFromServer(totalQuery);
+        totalParticipants = totalSnap.data().count;
+        
+        // Optimasi: Hitung rank dengan mencari berapa banyak skor yang lebih tinggi dari pengguna ini
+        const higherScoresQuery = query(
+           resultsRef, 
+           where('tryoutId', '==', tryoutId), 
+           where('totalScore', '>', totalScore)
+        );
+        const higherScoresSnap = await getCountFromServer(higherScoresQuery);
+        
+        // Rank adalah jumlah skor yang lebih tinggi + 1
+        rank = higherScoresSnap.data().count + 1;
+        
       } else {
         rank = 0;
         totalParticipants = 0;

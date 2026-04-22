@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getPromoBanner, setPromoBanner, PromoBanner, BannerLinkTarget } from '@/services/promoBannerService';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { getAllTryouts } from '@/services/tryoutService';
+import { getAllTryoutsForAdmin } from '@/services/tryoutService';
 import { TryoutPackage } from '@/types';
 
 const LINK_TARGETS: { value: BannerLinkTarget; label: string; desc: string }[] = [
@@ -41,7 +41,7 @@ export const PromoBannerManagement: React.FC = () => {
     });
 
     setLoadingTryouts(true);
-    getAllTryouts()
+    getAllTryoutsForAdmin()
       .then((list) => {
         // Tampilkan hanya yang aktif, utamakan bundling
         const active = list

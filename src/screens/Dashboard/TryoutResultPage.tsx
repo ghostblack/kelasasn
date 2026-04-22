@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { LoadingScreen } from '@/components/ui/spinner';
 import { BookOpen, TrendingUp, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { FreeTrialUpsellModal } from '@/components/FreeTrialUpsellModal';
 
 export const TryoutResultPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -26,6 +27,7 @@ export const TryoutResultPage: React.FC = () => {
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
   const [hasVIPAccess, setHasVIPAccess] = useState(false);
+  const [showUpsellModal, setShowUpsellModal] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -61,7 +63,17 @@ export const TryoutResultPage: React.FC = () => {
         checkUserFormasiAccess(user.uid)
       ]);
       setTryout(tryoutData);
-      setHasVIPAccess(isAdmin || isVIP);
+      const isVIPUser = isAdmin || isVIP;
+      setHasVIPAccess(isVIPUser);
+
+      // Tampilkan modal upsell hanya untuk user gratis (non-VIP, non-admin)
+      // Gunakan sessionStorage agar tidak muncul berulang di halaman yang sama
+      const sessionKey = `upsell_shown_${id}`;
+      if (tryoutData?.category === 'free' && !isVIPUser && !sessionStorage.getItem(sessionKey)) {
+        sessionStorage.setItem(sessionKey, '1');
+        // Delay sedikit agar user sempat lihat skor dulu
+        setTimeout(() => setShowUpsellModal(true), 800);
+      }
 
     } catch (error) {
       console.error('Error loading result:', error);
@@ -132,6 +144,15 @@ export const TryoutResultPage: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+      {/* Upsell Modal untuk user gratis */}
+      {tryout && (
+        <FreeTrialUpsellModal
+          isOpen={showUpsellModal}
+          onClose={() => setShowUpsellModal(false)}
+          tryoutId={id || ''}
+          tryoutName={tryout.name}
+        />
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl text-gray-900">Hasil Try Out</h1>

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { LoadingScreen } from '@/components/ui/spinner';
 import { getAllQuestions } from '@/services/questionService';
-import { getAllTryouts } from '@/services/tryoutService';
+// (getAllTryouts tidak digunakan di sini, statistik diambil via getCountFromServer)
 import { deleteAllRankings } from '@/services/rankingService';
 import { collection, getDocs, getCountFromServer } from 'firebase/firestore';
 import { db } from '@/lib/firebase';

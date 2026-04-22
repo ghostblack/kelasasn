@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TryoutPackage } from '@/types';
-import { getAllTryouts, toggleTryoutStatus } from '@/services/tryoutService';
+import { getAllTryoutsForAdmin, toggleTryoutStatus } from '@/services/tryoutService';
 import { deleteDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
@@ -49,7 +49,7 @@ export const TryoutsManagement: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const tryoutsData = await getAllTryouts();
+      const tryoutsData = await getAllTryoutsForAdmin();
       setTryouts(tryoutsData);
     } catch (error) {
       console.error('Error loading data:', error);

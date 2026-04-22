@@ -10,7 +10,7 @@ import { motion } from 'framer-motion';
 import { collection, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getTryoutById, getAllTryouts } from '@/services/tryoutService';
+import { getTryoutById, getAllTryoutsForAdmin } from '@/services/tryoutService';
 
 export const CreateTryoutPage: React.FC = () => {
   const { toast } = useToast();
@@ -56,7 +56,7 @@ export const CreateTryoutPage: React.FC = () => {
   useEffect(() => {
     const fetchAvailable = async () => {
       try {
-        const tryouts = await getAllTryouts();
+        const tryouts = await getAllTryoutsForAdmin();
         setAvailableTryouts(tryouts.filter(t => !t.isBundle && t.id !== id));
       } catch (err) {
         console.error('Failed to load available tryouts', err);

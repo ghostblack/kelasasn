@@ -68,6 +68,30 @@ export const getAllTryouts = async (): Promise<TryoutPackage[]> => {
   }
 };
 
+// Fungsi khusus admin: mengambil SEMUA try out tanpa filter isActive.
+// Gunakan ini di halaman admin agar try out yang di-hide tetap terlihat.
+export const getAllTryoutsForAdmin = async (): Promise<TryoutPackage[]> => {
+  try {
+    const tryoutsRef = collection(db, 'tryout_packages');
+    const snapshot = await getDocs(tryoutsRef);
+
+    const tryouts = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt?.toDate() || new Date(),
+        releaseDate: data.releaseDate?.toDate(),
+      };
+    }) as TryoutPackage[];
+
+    return tryouts.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  } catch (error) {
+    console.error('Error in getAllTryoutsForAdmin:', error);
+    throw error;
+  }
+};
+
 export const getTryoutById = async (tryoutId: string): Promise<TryoutPackage | null> => {
   const tryoutRef = doc(db, 'tryout_packages', tryoutId);
   const tryoutSnap = await getDoc(tryoutRef);
@@ -113,15 +137,15 @@ export const getUserTryouts = async (userId: string): Promise<UserTryout[]> => {
     };
   }) as UserTryout[];
 
-  const validTryouts: UserTryout[] = [];
+  // Optimasi N+1: Ambil semua katalog tryout dalam 1 request, lalu saring di memori
+  const allMasterPackages = await getAllTryoutsForAdmin();
+  const validPackageIds = new Set(
+    allMasterPackages
+      .filter(t => t.isActive === true || t.isDraft === true)
+      .map(t => t.id)
+  );
 
-  for (const tryout of tryouts) {
-    const tryoutPackage = await getTryoutById(tryout.tryoutId);
-    // Terima paket jika: isActive = true, ATAU isDraft = true (untuk testing lokal)
-    if (tryoutPackage && (tryoutPackage.isActive || tryoutPackage.isDraft)) {
-      validTryouts.push(tryout);
-    }
-  }
+  const validTryouts = tryouts.filter(tryout => validPackageIds.has(tryout.tryoutId));
 
   return validTryouts.sort((a, b) => b.purchaseDate.getTime() - a.purchaseDate.getTime());
 };

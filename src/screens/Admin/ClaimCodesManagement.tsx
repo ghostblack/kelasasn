@@ -6,7 +6,7 @@ import {
   updateClaimCodeStatus,
   deleteClaimCode,
 } from '@/services/claimCodeService';
-import { getAllTryouts } from '@/services/tryoutService';
+import { getAllTryoutsForAdmin } from '@/services/tryoutService';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,7 +41,7 @@ export const ClaimCodesManagement: React.FC = () => {
       setLoading(true);
       const [codesData, tryoutsData] = await Promise.all([
         getAllClaimCodes(),
-        getAllTryouts(),
+        getAllTryoutsForAdmin(),
       ]);
       console.log('Loaded tryouts:', tryoutsData);
       console.log('Loaded claim codes:', codesData);

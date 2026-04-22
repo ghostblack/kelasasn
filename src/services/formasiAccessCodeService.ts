@@ -149,6 +149,64 @@ export const grantFormasiAccess = async (userId: string, durationInDays: number 
   }, { merge: true });
 };
 
+/**
+ * [ADMIN ONLY] Dapatkan info VIP lengkap seorang user.
+ * Mengembalikan null jika user tidak memiliki dokumen akses.
+ */
+export const getUserVIPInfo = async (userId: string): Promise<{
+  isVIP: boolean;
+  expiresAt: Date | null;
+  durationInDays: number;
+  unlockedAt: Date | null;
+} | null> => {
+  try {
+    const userAccessRef = doc(db, COLLECTION_USERS, userId);
+    const snap = await getDoc(userAccessRef);
+
+    if (!snap.exists()) {
+      return { isVIP: false, expiresAt: null, durationInDays: 0, unlockedAt: null };
+    }
+
+    const data = snap.data();
+    const duration = data.durationInDays || 0;
+
+    let expiresAt: Date | null = null;
+    if (data.expiresAt instanceof Timestamp) {
+      expiresAt = data.expiresAt.toDate();
+    } else if (data.expiresAt) {
+      expiresAt = new Date(data.expiresAt);
+    }
+
+    const unlockedAt = data.unlockedAt instanceof Timestamp
+      ? data.unlockedAt.toDate()
+      : data.unlockedAt ? new Date(data.unlockedAt) : null;
+
+    const isVIP = duration >= 365 && !!expiresAt && expiresAt > new Date();
+
+    return { isVIP, expiresAt, durationInDays: duration, unlockedAt };
+  } catch (error) {
+    console.error('Error in getUserVIPInfo:', error);
+    return null;
+  }
+};
+
+/**
+ * [ADMIN ONLY] Cabut akses VIP seorang user.
+ * Menggunakan update (bukan delete) agar audit trail tetap ada.
+ * TIDAK menyentuh payment, user_tryouts, atau data user lainnya.
+ */
+export const revokeFormasiAccess = async (userId: string): Promise<void> => {
+  const userAccessRef = doc(db, COLLECTION_USERS, userId);
+  // Set durationInDays ke 0 → guard '< 365' otomatis menolak akses
+  // Set expiresAt ke masa lalu → guard waktu juga menolak
+  await setDoc(userAccessRef, {
+    userId,
+    durationInDays: 0,
+    expiresAt: new Date(0), // 1 Jan 1970 = sudah expired
+    revokedAt: serverTimestamp(),
+  }, { merge: true });
+};
+
 export const useFormasiCode = async (code: string, userId: string): Promise<void> => {
   const validation = await validateFormasiCode(code, userId);
   

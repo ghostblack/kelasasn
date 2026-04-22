@@ -11,9 +11,10 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Search, Users, CheckCircle2, Clock, User, Eye, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loader2, Search, Users, CheckCircle2, Clock, User, Eye, Trash2, ChevronLeft, ChevronRight, Crown, ShieldOff, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { userMonitoringService, UserMonitoringData } from '@/services/userMonitoringService';
-import { getAllTryouts } from '@/services/tryoutService';
+import { getAllTryoutsForAdmin } from '@/services/tryoutService';
+import { getUserVIPInfo, grantFormasiAccess, revokeFormasiAccess } from '@/services/formasiAccessCodeService';
 import { userService } from '@/services/userService';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -33,6 +34,23 @@ export const UsersMonitoring: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [confirmingDeleteUserId, setConfirmingDeleteUserId] = useState<string | null>(null);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+
+  // VIP management state
+  const [vipInfo, setVipInfo] = useState<{
+    isVIP: boolean;
+    expiresAt: Date | null;
+    durationInDays: number;
+    unlockedAt: Date | null;
+  } | null>(null);
+  const [isLoadingVIP, setIsLoadingVIP] = useState(false);
+  const [isVipActioning, setIsVipActioning] = useState(false);
+  // 2-step VIP confirmation: step 0 = idle, 1 = konfirmasi awal, 2 = konfirmasi final
+  const [vipModal, setVipModal] = useState<{
+    step: 0 | 1 | 2;
+    action: 'grant' | 'revoke' | null;
+    targetUserId: string;
+    targetName: string;
+  }>({ step: 0, action: null, targetUserId: '', targetName: '' });
   
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -156,14 +174,18 @@ export const UsersMonitoring: React.FC = () => {
     setSelectedUser(userData);
     setShowDetailModal(true);
     setIsLoadingDetails(true);
+    setVipInfo(null);
 
     try {
-      const [sessions, results, accessibleIds, tryoutsData] = await Promise.all([
+      const [sessions, results, accessibleIds, tryoutsData, vipData] = await Promise.all([
         userMonitoringService.getUserTryoutSessions(userData.user.uid),
         userMonitoringService.getUserTryoutResults(userData.user.uid),
         userMonitoringService.getUserAccessibleTryouts(userData.user.uid),
-        getAllTryouts()
+        getAllTryoutsForAdmin(),
+        getUserVIPInfo(userData.user.uid),
       ]);
+
+      setVipInfo(vipData);
 
       const tryoutsMap = new Map();
       tryoutsData.forEach(t => tryoutsMap.set(t.id, t.name));
@@ -194,6 +216,40 @@ export const UsersMonitoring: React.FC = () => {
       toast({ title: 'Gagal Memuat Detail', description: 'Gagal mengambil data lengkap riwayat sesi untuk user ini.', variant: 'destructive' });
     } finally {
       setIsLoadingDetails(false);
+    }
+  };
+
+  const handleVIPAction = (action: 'grant' | 'revoke', userId: string, userName: string) => {
+    // Step 1: buka modal konfirmasi awal
+    setVipModal({ step: 1, action, targetUserId: userId, targetName: userName });
+  };
+
+  const executeVIPAction = async () => {
+    const { action, targetUserId, targetName } = vipModal;
+    if (!action || !targetUserId) return;
+    try {
+      setIsVipActioning(true);
+      setVipModal(prev => ({ ...prev, step: 0 }));
+      if (action === 'grant') {
+        await grantFormasiAccess(targetUserId, 365);
+        toast({ title: '✅ VIP Berhasil Diberikan', description: `${targetName} kini memiliki akses VIP selama 1 tahun.` });
+      } else {
+        await revokeFormasiAccess(targetUserId);
+        toast({ title: '🚫 VIP Berhasil Dicabut', description: `Akses VIP ${targetName} telah dicabut.` });
+      }
+      // Refresh VIP info di modal yang sedang terbuka
+      if (selectedUser && selectedUser.user.uid === targetUserId) {
+        const updated = await getUserVIPInfo(targetUserId);
+        setVipInfo(updated);
+        setSelectedUser(prev => prev ? { ...prev, isVIP: updated?.isVIP ?? false, vipExpiry: updated?.expiresAt ?? undefined } : null);
+      }
+      // Refresh daftar user agar badge VIP di tabel ikut update
+      loadUsers();
+    } catch (err) {
+      console.error('VIP action error:', err);
+      toast({ title: 'Error', description: 'Gagal mengubah status VIP. Coba lagi.', variant: 'destructive' });
+    } finally {
+      setIsVipActioning(false);
     }
   };
 
@@ -472,6 +528,50 @@ export const UsersMonitoring: React.FC = () => {
                 </div>
               </div>
 
+              {/* VIP Management */}
+              <div>
+                <h4 className="font-semibold text-gray-900 mb-3">Kelola VIP Akses</h4>
+                <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
+                  <div className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-start gap-3">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${vipInfo?.isVIP ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-500'}`}>
+                        {vipInfo?.isVIP ? <Crown className="w-5 h-5" /> : <ShieldOff className="w-5 h-5" />}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <h5 className="font-semibold text-gray-900">Status Akses VIP</h5>
+                          {vipInfo?.isVIP ? (
+                            <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border border-amber-200 uppercase text-[9px] font-black h-5">Aktif</Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-gray-500 bg-gray-50 uppercase text-[9px] font-black h-5">Tidak Aktif</Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-500 leading-relaxed">
+                          {vipInfo?.isVIP ? (
+                            <>Akses VIP (Formasi & Instansi) aktif hingga <span className="font-semibold text-gray-700">{formatDate(vipInfo.expiresAt)}</span></>
+                          ) : (
+                            'Pengguna belum memiliki akses VIP atau akses telah berakhir.'
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="shrink-0 flex gap-2">
+                       {vipInfo?.isVIP ? (
+                         <Button variant="outline" size="sm" onClick={() => handleVIPAction('revoke', selectedUser.user.uid, selectedUser.user.displayName)} className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200">
+                           Cabut Akses VIP
+                         </Button>
+                       ) : (
+                         <Button onClick={() => handleVIPAction('grant', selectedUser.user.uid, selectedUser.user.displayName)} size="sm" className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-sm gap-2">
+                           <Crown className="w-4 h-4" />
+                           Beri VIP 1 Tahun
+                         </Button>
+                       )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <h4 className="font-semibold text-gray-900 mb-3">Riwayat Tryout</h4>
                 {selectedUser.tryoutSessions.length === 0 ? (
@@ -552,6 +652,61 @@ export const UsersMonitoring: React.FC = () => {
             >
               Hapus Permanen
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation Dialog for VIP Action */}
+      <Dialog open={vipModal.step > 0} onOpenChange={(open) => !open && setVipModal({ step: 0, action: null, targetUserId: '', targetName: '' })}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className={`${vipModal.action === 'revoke' ? 'text-red-700' : 'text-purple-700'} flex items-center gap-2`}>
+              {vipModal.action === 'revoke' ? <AlertTriangle className="w-5 h-5" /> : <Crown className="w-5 h-5" />}
+              {vipModal.step === 1 ? 'Konfirmasi Tindakan' : 'Peringatan Final!'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            {vipModal.step === 1 ? (
+              <p className="text-gray-700 text-sm leading-relaxed">
+                Anda akan <strong className={vipModal.action === 'revoke' ? 'text-red-600' : 'text-purple-600'}>{vipModal.action === 'revoke' ? 'MENCABUT' : 'MEMBERIKAN'}</strong> akses VIP untuk pengguna <strong>{vipModal.targetName}</strong>. 
+                {vipModal.action === 'revoke' ? ' Akses ke Formasi & Instansi akan segera dicabut.' : ' Pengguna akan mendapatkan akses VIP Formasi & Instansi selama 365 hari.'}
+                <br /><br />Lanjutkan?
+              </p>
+            ) : (
+              <div className="bg-orange-50 border border-orange-200 p-4 rounded-lg mt-2">
+                <p className="text-orange-800 text-sm font-semibold mb-2 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4" /> Konfirmasi Sekali Lagi
+                </p>
+                <p className="text-orange-700 text-[13px] leading-relaxed">
+                  Tindakan Anda akan langsung memengaruhi akses pengguna di sistem produksi. Apakah Anda sangat yakin ingin mengeksekusi ini sekarang?
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="flex gap-2 justify-end mt-2">
+            <Button
+              variant="outline"
+              disabled={isVipActioning}
+              onClick={() => setVipModal({ step: 0, action: null, targetUserId: '', targetName: '' })}
+            >
+              Batal
+            </Button>
+            {vipModal.step === 1 ? (
+              <Button
+                className={vipModal.action === 'revoke' ? 'bg-red-600 hover:bg-red-700 text-white border-transparent' : 'bg-purple-600 hover:bg-purple-700 text-white border-transparent'}
+                onClick={() => setVipModal(prev => ({ ...prev, step: 2 }))}
+              >
+                Ya, Lanjutkan
+              </Button>
+            ) : (
+              <Button
+                className={vipModal.action === 'revoke' ? 'bg-red-600 hover:bg-red-700 text-white border-transparent' : 'bg-purple-600 hover:bg-purple-700 text-white border-transparent'}
+                disabled={isVipActioning}
+                onClick={executeVIPAction}
+              >
+                {isVipActioning ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Eksekusi Sekarang'}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
